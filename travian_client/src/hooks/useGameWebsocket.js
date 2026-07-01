@@ -1,30 +1,35 @@
-import useWebSocket from 'react-use-websocket';
-import useGameStore from '../store/useGameStore';
+// src/hooks/useGameWebSocket.js
+import { useEffect, useState } from 'react';
 
-export const useGameWebSocket = () => {
-    const token = localStorage.getItem('token');
-    const updateResources = useGameStore((state) => state.updateResources);
+export function useGameWebSocket(userId = '1') {
+    const [lastMessage, setLastMessage] = useState(null);
 
-    const { lastJsonMessage } = useWebSocket(
-        // ارسال توکن در URL برای تایید هویت در Channels
-        token ? `ws://127.0.0.1:8000/ws/game/?token=${token}` : null,
-        {
-            shouldReconnect: () => true, // اتصال مجدد خودکار در صورت قطعی
-            onMessage: (event) => {
-                const data = JSON.parse(event.data);
+    useEffect(() => {
+        // ایجاد اتصال با پروتکل سوکت بک‌اند
+        const ws = new WebSocket(`ws://127.0.0.1:8000/ws/game/${userId}/`);
 
-                if (data.type === 'building_completed') {
-                    console.log('ساختمان تکمیل شد!', data);
-                    // اینجا می‌توانیم یک هشدار (Toast) به کاربر نشان دهیم
-                    alert(`ساختمان ${data.building_id} با موفقیت ارتقا یافت!`);
-                    // همچنین باید لیست ساختمان‌ها را رفرش کنیم (در کامپوننت نقشه)
-                }
-                else if (data.type === 'gold_added') {
-                    alert(`تعداد ${data.amount} سکه طلا به حساب شما واریز شد!`);
-                }
+        ws.onopen = () => {
+            console.log("اتصال زنده با سرور بازی برقرار شد 🟢");
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            setLastMessage(data);
+            
+            // مدیریت نوتیفیکیشن‌های عمومی مثل نتیجه نبردها
+            if (data.type === 'COMBAT_RESULT') {
+                alert(`📢 گزارش جنگ جدید: ${data.data.message}`);
             }
-        }
-    );
+        };
 
-    return lastJsonMessage;
-};
+        ws.onclose = () => {
+            console.log("اتصال زنده با سرور قطع شد 🔴");
+        };
+
+        return () => {
+            ws.close();
+        };
+    }, [userId]);
+
+    return lastMessage;
+}

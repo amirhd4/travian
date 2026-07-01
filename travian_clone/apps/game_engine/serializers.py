@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import GameLog
+from .models import GameLog, Message
 
 
 class GameLogSerializer(serializers.ModelSerializer):

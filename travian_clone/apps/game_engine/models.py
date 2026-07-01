@@ -137,3 +137,23 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.subject} - از {self.sender} به {self.receiver}"
+
+
+class Alliance(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    tag = models.CharField(max_length=10, unique=True)
+    founder = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='founded_alliances', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"[{self.tag}] {self.name}"
+
+class AllianceMember(models.Model):
+    alliance = models.ForeignKey(Alliance, related_name='members', on_delete=models.CASCADE)
+    player = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='alliance_membership', on_delete=models.CASCADE)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    role = models.CharField(max_length=50, default='Member') # e.g., Leader, Diplomat, Member
+
+    def __str__(self):
+        return f"{self.player} in {self.alliance.tag}"

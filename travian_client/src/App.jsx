@@ -9,6 +9,8 @@ import Statistics from "./pages/Statistics.jsx";
 import Marketplace from "./pages/Marketplace.jsx";
 import WorldWonder from "./pages/WorldWonder.jsx";
 import Messages from "./pages/Message.jsx";
+import Barracks from "./pages/Barracks.jsx";
+import Embassy from "./pages/Embassy.jsx";
 
 const PrivateRoute = ({ children }) => {
     const token = localStorage.getItem('token');
@@ -44,6 +46,8 @@ function App() {
                 <Route path="/marketplace" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
                 <Route path="/world-wonder" element={<PrivateRoute><WorldWonder /></PrivateRoute>} />
                 <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
+                <Route path="/barracks" element={<PrivateRoute><Barracks /></PrivateRoute>} />
+                <Route path="/embassy" element={<PrivateRoute><Embassy /></PrivateRoute>} />
             </Routes>
         </Router>
     );

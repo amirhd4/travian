@@ -7,7 +7,6 @@ import datetime
 from .models import TroopMovement, VillageTroop
 from apps.game_engine.models import Village, GameLog
 
-
 class SendTroopsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -68,13 +67,6 @@ class SendTroopsView(APIView):
             )
 
         return Response({"message": "نیروها با موفقیت ارسال شدند و از دهکده شما کسر گردیدند."})
-
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.db import transaction
-from apps.game_engine.models import Village, GameLog
 
 
 class BarracksTrainView(APIView):

@@ -40,6 +40,12 @@ export default function Navbar() {
             <button onClick={() => navigate('/messages')} className={getBtnClass('/messages')}>
                 ✉️ پیام‌ها
             </button>
+            <button onClick={() => navigate('/barracks')} className={getBtnClass('/barracks')}>
+                ⚔️ پادگان
+            </button>
+            <button onClick={() => navigate('/embassy')} className={getBtnClass('/embassy')}>
+                🏛️ سفارتخانه
+            </button>
             <button onClick={handleLogout} className="text-red-400 hover:text-red-500 font-bold px-3 py-1 rounded transition ml-auto absolute left-4">
                 🚪 خروج
             </button>

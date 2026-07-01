@@ -15,6 +15,8 @@ from .models import Transaction, Discount, GameLog
 from .serializers import GameLogSerializer
 from .models import Message
 from .serializers import MessageSerializer
+from .models import Alliance, AllianceMember
+
 
 Player = get_user_model()
 
@@ -276,3 +278,58 @@ class MessageReadView(APIView):
             return Response({"status": "خوانده شد"})
         except Message.DoesNotExist:
             return Response({"error": "پیام یافت نشد."}, status=404)
+
+
+class EmbassyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # دریافت اطلاعات اتحاد فعلی بازیکن
+        try:
+            membership = AllianceMember.objects.get(player=request.user)
+            alliance = membership.alliance
+            members = AllianceMember.objects.filter(alliance=alliance).values('player__email', 'role')
+            return Response({
+                "has_alliance": True,
+                "alliance_data": {
+                    "id": alliance.id,
+                    "name": alliance.name,
+                    "tag": alliance.tag,
+                    "role": membership.role,
+                    "members": list(members)
+                }
+            })
+        except AllianceMember.DoesNotExist:
+            # ارسال لیست تمام اتحادها برای پیوستن
+            alliances = Alliance.objects.all().values('id', 'name', 'tag')
+            return Response({
+                "has_alliance": False,
+                "available_alliances": list(alliances)
+            })
+
+    def post(self, request):
+        # تاسیس اتحاد جدید
+        action = request.data.get('action')
+
+        if AllianceMember.objects.filter(player=request.user).exists():
+            return Response({"error": "شما از قبل عضو یک اتحاد هستید."}, status=400)
+
+        if action == 'create':
+            name = request.data.get('name')
+            tag = request.data.get('tag')
+
+            with transaction.atomic():
+                alliance = Alliance.objects.create(name=name, tag=tag, founder=request.user)
+                AllianceMember.objects.create(alliance=alliance, player=request.user, role='Leader')
+            return Response({"message": f"اتحاد {name} با موفقیت تاسیس شد!"})
+
+        elif action == 'join':
+            alliance_id = request.data.get('alliance_id')
+            try:
+                alliance = Alliance.objects.get(id=alliance_id)
+                AllianceMember.objects.create(alliance=alliance, player=request.user, role='Member')
+                return Response({"message": f"شما با موفقیت به اتحاد {alliance.tag} پیوستید."})
+            except Alliance.DoesNotExist:
+                return Response({"error": "اتحاد مورد نظر یافت نشد."}, status=404)
+
+        return Response({"error": "عملیات نامعتبر"}, status=400)
