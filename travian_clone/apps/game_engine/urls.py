@@ -1,0 +1,13 @@
+from django.urls import path
+from .views import UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView, \
+    InboxView, MessageReadView
+
+urlpatterns = [
+    path('upgrade-building/', UpgradeBuildingView.as_view(), name='upgrade_building'),
+    path('webhook/', PaymentWebhookView.as_view()),
+    path('logs/', GameLogListView.as_view(), name='game_logs'),
+    path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
+    path('marketplace/send/', MarketplaceView.as_view(), name='send_resources'),
+    path('messages/', InboxView.as_view(), name='inbox'),
+    path('messages/<int:pk>/read/', MessageReadView.as_view(), name='read_message'),
+]
