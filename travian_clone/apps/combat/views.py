@@ -16,22 +16,23 @@ class SendTroopsView(APIView):
         movement_type = request.data.get('movement_type', 'ATTACK')
         payload = request.data.get('troops_payload', {})
 
+        if not payload:
+            return Response({"error": "هیچ نیرویی برای ارسال انتخاب نشده است."}, status=400)
+
         try:
             source_village = Village.objects.get(id=source_id, player=request.user)
             target_village = Village.objects.get(id=target_id)
         except Village.DoesNotExist:
             return Response({"error": "مبدا یا مقصد یافت نشد."}, status=404)
 
-        # اجرای تراکنش اتمیک برای جلوگیری از باگ دوگانه‌سوزی (Double-spending)
         with transaction.atomic():
-            # حلقه روی نیروهای درخواستی کاربر برای کسر از دیتابیس
             for troop_id_str, count_to_send in payload.items():
                 count_to_send = int(count_to_send)
                 if count_to_send <= 0:
                     continue
 
                 try:
-                    # قفل‌گذاری روی سطر دیتابیس در زمان بررسی موجودی
+                    # قفل‌گذاری و کسر نیرو
                     village_troop = VillageTroop.objects.select_for_update().get(
                         village=source_village,
                         troop_type_id=int(troop_id_str)
@@ -40,15 +41,14 @@ class SendTroopsView(APIView):
                     if village_troop.count < count_to_send:
                         return Response({"error": f"نیروی کافی برای شناسه {troop_id_str} ندارید."}, status=400)
 
-                    # کسر دقیق نیرو و ذخیره
                     village_troop.count -= count_to_send
                     village_troop.save()
 
                 except VillageTroop.DoesNotExist:
-                    return Response({"error": f"شما این نوع نیرو (شناسه {troop_id_str}) را در دهکده ندارید."},
-                                    status=400)
+                    return Response({"error": f"شما این نوع نیرو (شناسه {troop_id_str}) را در دهکده ندارید."}, status=400)
 
-            # محاسبه زمان رسیدن (در سرور واقعی بر اساس فاصله و سرعت کندترین نیرو محاسبه می‌شود)
+            # در سیستم پروداکشن، این زمان باید بر اساس فرمول (فاصله / سرعت کندترین نیرو) محاسبه شود
+            # در اینجا برای جلوگیری از پیچیدگی فعلاً روی ۱۰ دقیقه ثابت نگه داشته شده است
             arrival_time = timezone.now() + datetime.timedelta(minutes=10)
 
             TroopMovement.objects.create(
@@ -59,14 +59,13 @@ class SendTroopsView(APIView):
                 arrival_time=arrival_time
             )
 
-            # ثبت گزارش ارسال نیرو در سیستم لاگ
             GameLog.objects.create(
                 village=source_village,
                 log_type='COMBAT',
-                description=f"اعزام نیرو ({movement_type}) به سمت دهکده {target_village.name} با موفقیت انجام شد."
+                description=f"اعزام نیرو ({movement_type}) به سمت دهکده {target_village.name} انجام شد."
             )
 
-        return Response({"message": "نیروها با موفقیت ارسال شدند و از دهکده شما کسر گردیدند."})
+        return Response({"message": "نیروها با موفقیت ارسال شدند."})
 
 
 class BarracksTrainView(APIView):
@@ -74,35 +73,30 @@ class BarracksTrainView(APIView):
 
     def post(self, request):
         village_id = request.data.get('village_id')
-        troop_type = str(request.data.get('troop_type'))  # '1': گرزدار, '2': نیزه‌دار
+        troop_type_id = request.data.get('troop_type')
         quantity = int(request.data.get('quantity', 0))
 
         if quantity <= 0:
             return Response({"error": "تعداد نیرو برای آموزش نامعتبر است."}, status=400)
 
-        # هزینه‌های ساخت هر واحد نیرو (در نسخه کامل باید از دیتابیس یا فایل کانفیگ خوانده شود)
-        unit_costs = {
-            '1': {'wood': 95, 'clay': 75, 'iron': 40, 'crop': 40, 'name': 'گرزدار'},
-            '2': {'wood': 145, 'clay': 70, 'iron': 85, 'crop': 40, 'name': 'نیزه‌دار'}
-        }
-
-        if troop_type not in unit_costs:
+        try:
+            # خواندن مشخصات نیرو از دیتابیس به جای هاردکد کردن
+            troop_info = TroopType.objects.get(id=troop_type_id)
+        except TroopType.DoesNotExist:
             return Response({"error": "نوع نیروی درخواستی وجود ندارد."}, status=400)
 
-        cost = unit_costs[troop_type]
         total_cost = {
-            'wood': cost['wood'] * quantity,
-            'clay': cost['clay'] * quantity,
-            'iron': cost['iron'] * quantity,
-            'crop': cost['crop'] * quantity,
+            'wood': troop_info.wood_cost * quantity,
+            'clay': troop_info.clay_cost * quantity,
+            'iron': troop_info.iron_cost * quantity,
+            'crop': troop_info.crop_cost * quantity,
         }
 
         try:
             with transaction.atomic():
-                # قفل‌گذاری روی دهکده برای جلوگیری از Race Condition
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
 
-                # بررسی موجودی منابع
+                # بررسی دقیق موجودی
                 if (village.wood < total_cost['wood'] or
                         village.clay < total_cost['clay'] or
                         village.iron < total_cost['iron'] or
@@ -114,27 +108,27 @@ class BarracksTrainView(APIView):
                 village.clay -= total_cost['clay']
                 village.iron -= total_cost['iron']
                 village.crop -= total_cost['crop']
-
-                # اضافه کردن نیرو به دهکده
-                # نکته: در یک سرور واقعی، نیروها وارد صف (Queue) سلری می‌شوند تا پس از گذشت زمانِ ساخت اضافه شوند.
-                # برای این مرحله از توسعه، نیروها را مستقیماً اضافه می‌کنیم.
-                current_troops = village.troops if isinstance(village.troops, dict) else {}
-                current_amount = current_troops.get(troop_type, 0)
-                current_troops[troop_type] = current_amount + quantity
-                village.troops = current_troops
-
                 village.save()
 
-                # ثبت گزارش سیستم
+                # اضافه کردن نیرو به مدل صحیح (VillageTroop)
+                # در حالت پروداکشن واقعی، این رکورد باید به جدول "صف آموزش" برود و توسط Celery بعدا اضافه شود
+                village_troop, created = VillageTroop.objects.get_or_create(
+                    village=village,
+                    troop_type_id=troop_info.id,
+                    defaults={'count': 0}
+                )
+                village_troop.count += quantity
+                village_troop.save()
+
                 GameLog.objects.create(
                     village=village,
                     log_type='BUILDING',
-                    description=f"آموزش {quantity} سرباز {cost['name']} در پادگان انجام شد."
+                    description=f"دستور آموزش {quantity} سرباز {troop_info.name} صادر شد."
                 )
 
             return Response({
-                "message": f"تعداد {quantity} {cost['name']} با موفقیت به ارتش شما پیوستند!",
-                "troops": current_troops
+                "message": f"تعداد {quantity} {troop_info.name} با موفقیت به پادگان اضافه شدند!",
+                "troops_count": village_troop.count
             })
 
         except Village.DoesNotExist:
