@@ -1,0 +1,5 @@
+docs
+travian_clone/venv
+
+**/migrations
+.idea
