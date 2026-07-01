@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import VillageMap from './pages/VillageMap';
@@ -8,7 +7,7 @@ import Reports from "./pages/Reports.jsx";
 import Statistics from "./pages/Statistics.jsx";
 import Marketplace from "./pages/Marketplace.jsx";
 import WorldWonder from "./pages/WorldWonder.jsx";
-import Messages from "./pages/Message.jsx";
+import Messages from "./pages/Messages.jsx";
 import Barracks from "./pages/Barracks.jsx";
 import Embassy from "./pages/Embassy.jsx";
 
