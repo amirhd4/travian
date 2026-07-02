@@ -4,23 +4,56 @@ const useGameStore = create((set) => ({
     user: null,
     village: null,
     resources: { wood: 0, clay: 0, iron: 0, crop: 0 },
-
     production: { wood: 300, clay: 300, iron: 300, crop: 150 },
+    hydrated: false,
 
-    setUser: (userData) => set({ user: userData }),
+    // خواندن امن اطلاعات کاربر
+    hydrate: () => {
+        const userStr = localStorage.getItem("user");
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                set({ user, hydrated: true });
+            } catch (error) {
+                console.error("خطا در خواندن اطلاعات کاربر:", error);
+                localStorage.removeItem("user");
+                set({ hydrated: true });
+            }
+        } else {
+            set({ hydrated: true });
+        }
+    },
+
+    setUser: (user) => {
+        localStorage.setItem("user", JSON.stringify(user));
+        set({ user });
+    },
+
+    // 🔴 تابع بسیار مهم برای زمان خروج یا انقضای توکن
+    clearUser: () => {
+        localStorage.removeItem("user");
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        set({ user: null, village: null });
+    },
+
     setVillage: (villageData) => set({ village: villageData }),
+
     updateResources: (newResources) => set((state) => ({
         resources: { ...state.resources, ...newResources }
     })),
 
+    // جلوگیری از منفی شدن منابع هنگام کسر هزینه
     deductResources: (cost) => set((state) => ({
         resources: {
-            wood: state.resources.wood - cost.wood,
-            clay: state.resources.clay - cost.clay,
-            iron: state.resources.iron - cost.iron,
-            crop: state.resources.crop - cost.crop,
+            wood: Math.max(0, state.resources.wood - (cost.wood || 0)),
+            clay: Math.max(0, state.resources.clay - (cost.clay || 0)),
+            iron: Math.max(0, state.resources.iron - (cost.iron || 0)),
+            crop: Math.max(0, state.resources.crop - (cost.crop || 0)),
         }
     })),
+
+    // تولید منابع در هر ثانیه (برای نمایش زنده در UI)
     tickResources: () => set((state) => ({
         resources: {
             wood: state.resources.wood + (state.production.wood / 3600),

@@ -6,23 +6,31 @@ import { useGameWebSocket } from '../hooks/useGameWebSocket';
 export default function WorldWonder() {
     const [wwData, setWwData] = useState({ level: 45, maxLevel: 100, isUpgrading: false });
     const [natarAlert, setNatarAlert] = useState(true);
-    const wsMessage = useGameWebSocket();
 
-    // گوش دادن به رویدادهای زنده (مثل رسیدن موج حمله ناتارها)
+    // ۱. استخراج صحیح مقادیر از هوک اصلاح‌شده
+    const { lastMessage, sendMessage } = useGameWebSocket();
+
+    // ۲. اصلاح شرط useEffect برای استفاده از lastMessage
     useEffect(() => {
-        if (wsMessage?.type === 'NATAR_ATTACK_WAVE') {
+        if (lastMessage?.type === 'NATAR_ATTACK_WAVE') {
             alert(`⚠️ هشدار خطر: موج جدید حملات ناتارها به شگفتی جهان شما آغاز شد!`);
         }
-    }, [wsMessage]);
+    }, [lastMessage]);
 
     const handleUpgrade = () => {
         const confirm = window.confirm("ارتقای شگفتی جهان نیازمند میلیون‌ها منبع است. آیا مطمئن هستید؟");
         if (confirm) {
             setWwData({ ...wwData, isUpgrading: true });
-            // در اینجا درخواست به بک‌اند ارسال می‌شود
+
+            // ۳. مثال استفاده از sendMessage برای ارسال فرمان به سرور
+            sendMessage({
+                type: 'UPGRADE_WW',
+                level: wwData.level + 1
+            });
+
+            // این بخش setTimeout صرفاً برای شبیه‌سازی UI است
             setTimeout(() => {
                 setWwData(prev => ({ level: prev.level + 1, maxLevel: 100, isUpgrading: false }));
-                alert("ارتقا با موفقیت انجام شد.");
             }, 3000);
         }
     };

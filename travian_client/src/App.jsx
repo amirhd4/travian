@@ -10,18 +10,29 @@ import WorldWonder from "./pages/WorldWonder.jsx";
 import Messages from "./pages/Messages.jsx";
 import Barracks from "./pages/Barracks.jsx";
 import Embassy from "./pages/Embassy.jsx";
+import Register from "./pages/Register.jsx";
+import useGameStore from "./store/useGameStore.js";
+import {useEffect} from "react";
 
 const PrivateRoute = ({ children }) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access');
     return token ? children : <Navigate to="/login" />;
 };
 
 function App() {
+    const hydrate = useGameStore((state) => state.hydrate);
+
+    useEffect(() => {
+        // خواندن اطلاعات کاربر به محض باز شدن سایت
+        hydrate();
+    }, [hydrate]);
     return (
         <Router>
             <Routes>
+
                 <Route path="/" element={<Navigate to="/login" />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
                 <Route
                     path="/village"
                     element={<PrivateRoute><VillageMap /></PrivateRoute>}

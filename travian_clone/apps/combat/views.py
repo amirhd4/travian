@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
 import datetime
-from .models import TroopMovement, VillageTroop
+from .models import TroopMovement, VillageTroop, TroopType
 from apps.game_engine.models import Village, GameLog
 
 class SendTroopsView(APIView):

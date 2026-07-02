@@ -1,118 +1,128 @@
-import { useEffect, useState, useCallback } from 'react'
-import { Application } from '@pixi/react'
-import { TextStyle } from 'pixi.js'
-
-import api from '../api/axiosConfig'
-import useGameStore from '../store/useGameStore'
-import ResourceBar from '../components/ResourceBar'
-import { useGameWebSocket } from '../hooks/useGameWebSocket'
-
-
-// کامپوننت هر جایگاه ساختمان
-const BuildingSlot = ({ x, y, level, name, onClick }) => {
-  const draw = useCallback((g) => {
-    g.clear()
-
-    g.beginFill(level > 0 ? 0x5c8a00 : 0xd1d5db)
-    g.lineStyle(3, 0x374151)
-    g.drawCircle(0, 0, 45)
-    g.endFill()
-  }, [level])
-
-  return (
-    <Container
-      x={x}
-      y={y}
-      interactive
-      cursor="pointer"
-      onclick={onClick}   // ✅ v8: onclick به جای pointerdown
-    >
-      <Graphics draw={draw} />
-
-      <Text
-        text={level > 0 ? `${name}\nسطح ${level}` : 'جایگاه\nخالی'}
-        anchor={0.5}
-        style={
-          new TextStyle({
-            fontSize: 14,
-            fill: level > 0 ? '#ffffff' : '#4b5563',
-            align: 'center',
-            fontWeight: 'bold',
-            fontFamily: 'Tahoma',
-          })
-        }
-      />
-    </Container>
-  )
-}
+import React, { useEffect, useRef } from 'react';
+import * as PIXI from 'pixi.js';
+import Navbar from '../components/Navbar';
+import ResourceBar from '../components/ResourceBar';
 
 export default function VillageMap() {
-  const [buildings, setBuildings] = useState([])
-  const setResources = useGameStore((state) => state.updateResources)
+    const pixiContainerRef = useRef(null);
+    const pixiAppRef = useRef(null);
 
-  useGameWebSocket()
+    useEffect(() => {
+        // جلوگیری از راه‌اندازی دوگانه در حالت React Strict Mode
+        if (pixiAppRef.current) return;
 
-  const fetchVillageData = async () => {
-    try {
-      setBuildings([
-        { position: 1, level: 5, name: 'چوب‌بری', x: 200, y: 150 },
-        { position: 2, level: 0, name: '', x: 400, y: 150 },
-        { position: 3, level: 3, name: 'انبار', x: 600, y: 150 },
-        { position: 4, level: 0, name: '', x: 300, y: 300 },
-        { position: 5, level: 1, name: 'ساختمان اصلی', x: 500, y: 300 },
-        { position: 6, level: 2, name: 'پادگان', x: 400, y: 450 },
-      ])
+        let isMounted = true;
+        let app = null;
 
-      setResources({ wood: 1200, clay: 800, iron: 900, crop: 1500 })
-    } catch (err) {
-      console.error('خطا در دریافت اطلاعات دهکده', err)
-    }
-  }
+        async function setupPixi() {
+            // ۱. ساخت نمونه خام اپلیکیشن (طبق استاندارد نسخه 8)
+            app = new PIXI.Application();
 
-  useEffect(() => {
-    fetchVillageData()
-  }, [])
+            // ۲. مقداردهی اولیه به صورت ناهمگام (Async)
+            await app.init({
+                width: 800,
+                height: 600,
+                backgroundColor: 0x000000, // پس‌زمینه مشکی محیط داخلی دهکده
+                resolution: window.devicePixelRatio || 1,
+                autoDensity: true,
+                antialias: true,
+            });
 
-  const handleSlotClick = async (position) => {
-    const confirmed = window.confirm(
-      `آیا می‌خواهید ساختمان جایگاه ${position} را ارتقا دهید؟`
-    )
+            // اگر کاربر قبل از لود شدن کامل از صفحه خارج شده بود، متوقف کن
+            if (!isMounted) {
+                app.destroy(true, { children: true });
+                return;
+            }
 
-    if (!confirmed) return
+            pixiAppRef.current = app;
 
-    try {
-      const response = await api.post('game/upgrade-building/', {
-        village_id: 1,
-        position,
-      })
+            // ۳. متصل کردن بوم نقاشی به DOM (در نسخه 8 از app.canvas استفاده می‌شود)
+            if (pixiContainerRef.current) {
+                pixiContainerRef.current.appendChild(app.canvas);
+            }
 
-      alert(response.data.message || 'ارتقا آغاز شد!')
-    } catch (error) {
-      const errorMsg =
-        error.response?.data?.error || 'خطای ناشناخته در ارتباط با سرور'
-      alert(`خطا: ${errorMsg}`)
-    }
-  }
+            // اطلاعات ساختمان‌های دهکده
+            const buildings = [
+                { id: 1, name: 'چوب‌بری\nسطح 5', x: 250, y: 200, color: 0x4a7c1b },
+                { id: 2, name: 'جایگاه\nخالی', x: 400, y: 200, color: 0xc8cce8 },
+                { id: 3, name: 'انبار\nسطح 3', x: 550, y: 200, color: 0x4a7c1b },
+                { id: 4, name: 'جایگاه\nخالی', x: 325, y: 350, color: 0xc8cce8 },
+                { id: 5, name: 'ساختمان اصلی\nسطح 1', x: 475, y: 350, color: 0x4a7c1b },
+                { id: 6, name: 'پادگان\nسطح 2', x: 400, y: 500, color: 0x4a7c1b },
+            ];
 
-  return (
-    <div className="relative w-full h-screen bg-[#c2d79c] flex flex-col justify-center items-center overflow-hidden">
-      <ResourceBar />
+            // ۴. رسم ساختمان‌ها با متد جدید مدرن PixiJS v8
+            buildings.forEach((b) => {
+                const buildingContainer = new PIXI.Container();
 
-      <div className="relative border-8 border-[#8B5A2B] rounded-xl shadow-2xl overflow-hidden mt-12 bg-[#e0e6b8]">
-        {/* ✅ Pixi v8 Root */}
-        <Application>
-          {buildings.map((b) => (
-            <BuildingSlot
-              key={b.position}
-              x={b.x}
-              y={b.y}
-              level={b.level}
-              name={b.name}
-              onClick={() => handleSlotClick(b.position)}
-            />
-          ))}
-        </Application>
-      </div>
-    </div>
-  )
+                buildingContainer.x = b.x;
+                buildingContainer.y = b.y;
+                buildingContainer.eventMode = 'static';
+                buildingContainer.cursor = 'pointer';
+
+                // افکت‌های هاور و کلیک روی کل کانتینر
+                buildingContainer.on('pointerover', () => {
+                    buildingContainer.alpha = 0.8;
+                });
+                buildingContainer.on('pointerout', () => {
+                    buildingContainer.alpha = 1.0;
+                });
+                buildingContainer.on('pointerdown', () => {
+                    alert(`شما روی ساختمان "${b.name.replace('\n', ' ')}" کلیک کردید.`);
+                });
+
+                // ۲. رسم دایره (بدون x و y چون کانتینر جابجا شده است)
+                const circle = new PIXI.Graphics();
+                circle.circle(0, 0, 45);
+                circle.fill({ color: b.color });
+
+                // ۳. ایجاد متن
+                const text = new PIXI.Text({
+                    text: b.name,
+                    style: {
+                        fontFamily: 'Tahoma, Arial',
+                        fontSize: 13,
+                        fill: b.color === 0xc8cce8 ? 0x222222 : 0xffffff,
+                        align: 'center',
+                        fontWeight: 'bold',
+                    }
+                });
+                text.anchor.set(0.5);
+
+                // ۴. اضافه کردن دایره و متن به کانتینر (این کار ارور را حل می‌کند)
+                buildingContainer.addChild(circle);
+                buildingContainer.addChild(text);
+
+                // ۵. اضافه کردن کانتینر به استیج اصلی
+                app.stage.addChild(buildingContainer);
+            });
+        }
+
+        setupPixi();
+
+        // پاکسازی حافظه هنگام خروج از صفحه برای جلوگیری از کرش (Memory Leak)
+        return () => {
+            isMounted = false;
+            if (pixiAppRef.current) {
+                pixiAppRef.current.destroy(true, { children: true });
+                pixiAppRef.current = null;
+            }
+        };
+    }, []);
+
+    return (
+        // لایه‌بندی اصلاح شده برای فیکس شدن مشکل نوار ناوبری
+        <div className="w-full min-h-screen bg-[#c2d69b] flex flex-col items-center pt-32 pb-10">
+            <ResourceBar />
+            <Navbar />
+
+            {/* باکس نگه‌دارنده نقشه بازی با فریم قهوه‌ای نوستالژیک تراوین */}
+            <div
+                className="shadow-2xl border-[12px] border-[#593d2b] rounded-lg overflow-hidden relative bg-black"
+                ref={pixiContainerRef}
+                style={{ width: '800px', height: '600px' }}
+            >
+            </div>
+        </div>
+    );
 }

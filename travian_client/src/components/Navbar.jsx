@@ -1,24 +1,26 @@
 import { useNavigate, useLocation } from 'react-router-dom';
+import useGameStore from "../store/useGameStore.js";
 
 export default function Navbar() {
     const navigate = useNavigate();
+    const clearUser = useGameStore((state) => state.clearUser);
     const location = useLocation();
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
+        clearUser();
         navigate('/login');
     };
 
-    // تابع کمکی برای استایل دادن به دکمه فعال
     const getBtnClass = (path) => {
-        const base = "font-bold px-3 py-1 rounded transition ";
+        const base = "font-bold px-3 py-1.5 rounded transition text-sm md:text-base ";
         return location.pathname === path
-            ? base + "text-travian-gold bg-gray-700"
-            : base + "hover:text-travian-gold";
+            ? base + "text-yellow-400 bg-gray-700 shadow-inner"
+            : base + "hover:text-yellow-400 hover:bg-gray-700/50";
     };
 
     return (
-        <div className="absolute top-14 left-0 w-full bg-gray-800 text-white p-2 flex justify-center gap-6 z-10 border-b border-gray-700 shadow-md">
+        // تغییر از absolute به fixed و افزایش z-index
+        <div className="fixed top-12 left-0 w-full bg-gray-800 text-white p-3 flex flex-wrap justify-center gap-4 z-[100] border-b-2 border-gray-900 shadow-xl">
             <button onClick={() => navigate('/village')} className={getBtnClass('/village')}>
                 🏛️ دهکده من
             </button>
@@ -46,7 +48,8 @@ export default function Navbar() {
             <button onClick={() => navigate('/embassy')} className={getBtnClass('/embassy')}>
                 🏛️ سفارتخانه
             </button>
-            <button onClick={handleLogout} className="text-red-400 hover:text-red-500 font-bold px-3 py-1 rounded transition ml-auto absolute left-4">
+
+            <button onClick={handleLogout} className="text-red-400 hover:text-red-500 hover:bg-red-900/30 font-bold px-3 py-1.5 rounded transition absolute left-4">
                 🚪 خروج
             </button>
         </div>
