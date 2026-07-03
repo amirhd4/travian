@@ -12,3 +12,4 @@ urlpatterns = [
     path('messages/<int:pk>/read/', MessageReadView.as_view(), name='read_message'),
     path('embassy/', EmbassyView.as_view(), name='embassy'),
 ]
+

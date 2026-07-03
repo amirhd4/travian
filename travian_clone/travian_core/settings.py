@@ -29,7 +29,7 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'default-unsafe-secret-key-for-dev')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'server-9a323059-0fa0-48ce-8d98-278f8c1a7f99.ir-thr-fr1.arvancompute.ir,www.server-9a323059-0fa0-48ce-8d98-278f8c1a7f99.ir-thr-fr1.arvancompute.ir').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -147,7 +147,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+]
 
 CORS_ALLOW_ALL_ORIGINS = False
 cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173')
@@ -171,3 +177,7 @@ SIMPLE_JWT = {
 AUTHENTICATION_BACKENDS = [
     "apps.authentication.authentication.UsernameOrEmailBackend",
 ]
+
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    "CSRF_TRUSTED_ORIGINS", ""
+).split(",")
