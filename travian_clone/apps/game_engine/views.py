@@ -28,53 +28,58 @@ class UpgradeBuildingView(APIView):
         village_id = request.data.get('village_id')
         position = request.data.get('position')
 
-        try:
-            village = Village.objects.get(id=village_id, player=request.user)
-        except Village.DoesNotExist:
-            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=403)
+        with transaction.atomic():
+            try:
+                # قفل‌گذاری روی ردیف دهکده تا پایان تراکنش (جلوگیری از race condition)
+                village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=403)
 
-        # ۱. به‌روزرسانی منابع در لحظه (Lazy Evaluation)
-        update_village_resources(village)
+            # ۱. به‌روزرسانی منابع در لحظه (Lazy Evaluation)
+            update_village_resources(village)
 
-        try:
-            building = VillageBuilding.objects.get(village=village, position=position)
-        except VillageBuilding.DoesNotExist:
-            return Response({"error": "ساختمانی در این جایگاه یافت نشد."}, status=404)
+            try:
+                # قفل روی خود ساختمان هم لازمه، وگرنه دو درخواست هم‌زمان
+                # هر دو از روی is_upgrading=False رد می‌شن
+                building = VillageBuilding.objects.select_for_update().get(village=village, position=position)
+            except VillageBuilding.DoesNotExist:
+                return Response({"error": "ساختمانی در این جایگاه یافت نشد."}, status=404)
 
-        if building.is_upgrading:
-            return Response({"error": "این ساختمان در حال حاضر در حال ارتقا است."}, status=400)
+            if building.is_upgrading:
+                return Response({"error": "این ساختمان در حال حاضر در حال ارتقا است."}, status=400)
 
-        # محاسبه هزینه ارتقا برای سطح بعدی (فرمول تصاعدی ساده: هزینه پایه * 1.5 ^ سطح فعلی)
-        next_level = building.level + 1
-        multiplier = 1.5 ** building.level
-        req_wood = int(building.building_type.base_wood_cost * multiplier)
-        req_clay = int(building.building_type.base_clay_cost * multiplier)
-        req_iron = int(building.building_type.base_iron_cost * multiplier)
-        req_crop = int(building.building_type.base_crop_cost * multiplier)
+            # محاسبه هزینه ارتقا برای سطح بعدی (فرمول تصاعدی ساده: هزینه پایه * 1.5 ^ سطح فعلی)
+            next_level = building.level + 1
+            multiplier = 1.5 ** building.level
+            req_wood = int(building.building_type.base_wood_cost * multiplier)
+            req_clay = int(building.building_type.base_clay_cost * multiplier)
+            req_iron = int(building.building_type.base_iron_cost * multiplier)
+            req_crop = int(building.building_type.base_crop_cost * multiplier)
 
-        # ۲. بررسی کفایت منابع
-        if village.wood < req_wood or village.clay < req_clay or village.iron < req_iron or village.crop < req_crop:
-            return Response({"error": "منابع کافی نیست."}, status=400)
+            # ۲. بررسی کفایت منابع
+            if village.wood < req_wood or village.clay < req_clay or village.iron < req_iron or village.crop < req_crop:
+                return Response({"error": "منابع کافی نیست."}, status=400)
 
-        # ۳. کسر منابع
-        village.wood -= req_wood
-        village.clay -= req_clay
-        village.iron -= req_iron
-        village.crop -= req_crop
-        village.save()
+            # ۳. کسر منابع
+            village.wood -= req_wood
+            village.clay -= req_clay
+            village.iron -= req_iron
+            village.crop -= req_crop
+            village.save()
 
-        # ۴. محاسبه زمان و ارسال به موتور زمان‌بندی
-        base_time = building.building_type.base_build_time * (1.2 ** building.level)
-        building.is_upgrading = True
-        building.save()
+            # ۴. علامت‌گذاری ساختمان به عنوان در حال ارتقا
+            base_time = building.building_type.base_build_time * (1.2 ** building.level)
+            building.is_upgrading = True
+            building.save()
 
-        # فراخوانی تابع زمان‌بندی (که در engine.py ساختیم)
-        schedule_game_event(
-            village_id=village.id,
-            event_type="BUILDING_UPGRADE",
-            base_duration_seconds=base_time,
-            details={"building_id": building.id, "next_level": next_level}
-        )
+            # ارسال به صف Celery فقط بعد از commit موفق تراکنش انجام می‌شه
+            # (اگه تراکنش rollback بشه، تسکی برای رویدادی که هرگز commit نشده زمان‌بندی نمی‌شه)
+            transaction.on_commit(lambda: schedule_game_event(
+                village_id=village.id,
+                event_type="BUILDING_UPGRADE",
+                base_duration_seconds=base_time,
+                details={"building_id": building.id, "next_level": next_level}
+            ))
 
         return Response({"message": "ارتقای ساختمان آغاز شد."})
 

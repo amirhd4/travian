@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv()
@@ -23,7 +24,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# SECRET_KEY = "django-insecure-(wl29k&)=yufy=&$upj6t@=^98o(m6r08sn%bfs@(fqm(m@a!_"
 SECRET_KEY = os.getenv('SECRET_KEY', 'default-unsafe-secret-key-for-dev')
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "channels",
     "rest_framework.authtoken",
     "corsheaders",
@@ -158,6 +159,8 @@ STATICFILES_DIRS = [
 CORS_ALLOW_ALL_ORIGINS = False
 cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173')
 CORS_ALLOWED_ORIGINS = cors_origins.split(',')
+# لازمه تا مرورگر بتونه کوکی httpOnly رفرش توکن رو بین فرانت و بک‌اند رد و بدل کنه
+CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -166,13 +169,19 @@ REST_FRAMEWORK = {
     ],
 }
 
-from datetime import timedelta
-
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
+    "ROTATE_REFRESH_TOKENS": True,      # هر رفرش، یک refresh token جدید صادر می‌کنه
+    "BLACKLIST_AFTER_ROTATION": True,   # توکن قدیمی بعد از رفرش باطل می‌شه (جلوی reuse رو می‌گیره)
 }
+
+# --- تنظیمات کوکی httpOnly برای نگهداری امن refresh token ---
+AUTH_COOKIE_NAME = "refresh_token"
+AUTH_COOKIE_PATH = "/api/auth/"     # فقط برای مسیرهای auth ارسال می‌شه، نه کل API
+AUTH_COOKIE_SAMESITE = "Lax"
+AUTH_COOKIE_SECURE = not DEBUG      # روی پروداکشن (HTTPS) باید True باشه
 
 AUTHENTICATION_BACKENDS = [
     "apps.authentication.authentication.UsernameOrEmailBackend",

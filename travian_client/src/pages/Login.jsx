@@ -11,6 +11,7 @@ export default function Login() {
 
     const navigate = useNavigate();
     const setUser = useGameStore((s) => s.setUser);
+    const setAccessToken = useGameStore((s) => s.setAccessToken);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -23,11 +24,10 @@ export default function Login() {
                 password,
             });
 
-            localStorage.setItem("access", data.access);
-            localStorage.setItem("refresh", data.refresh);
-
-            const me = await api.get("auth/me/");
-            setUser(me.data);
+            // refresh token به صورت httpOnly cookie توسط خود سرور ست شده؛
+            // اینجا فقط access token (در حافظه) و اطلاعات کاربر رو نگه می‌داریم
+            setAccessToken(data.access);
+            setUser(data.user);
 
             navigate("/village");
 
@@ -55,7 +55,6 @@ export default function Login() {
 
                 <form onSubmit={handleLogin} className="space-y-4 text-right" dir="rtl">
 
-                    {/* username/email */}
                     <div>
                         <label className="block font-bold mb-1">
                             نام کاربری یا ایمیل:
@@ -69,7 +68,6 @@ export default function Login() {
                         />
                     </div>
 
-                    {/* password */}
                     <div>
                         <label className="block font-bold mb-1">
                             رمز عبور:
@@ -84,7 +82,6 @@ export default function Login() {
                         />
                     </div>
 
-                    {/* submit */}
                     <button
                         type="submit"
                         disabled={loading}

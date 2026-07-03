@@ -1,14 +1,22 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import useGameStore from "../store/useGameStore.js";
+import api from "../api/axiosConfig.js";
 
 export default function Navbar() {
     const navigate = useNavigate();
     const clearUser = useGameStore((state) => state.clearUser);
     const location = useLocation();
 
-    const handleLogout = () => {
-        clearUser();
-        navigate('/login');
+    const handleLogout = async () => {
+        try {
+            // این کار refresh token رو روی سرور blacklist و کوکی رو پاک می‌کنه
+            await api.post('auth/logout/');
+        } catch (error) {
+            // حتی اگه درخواست به سرور fail بشه، کاربر رو محلی خارج می‌کنیم
+        } finally {
+            clearUser();
+            navigate('/login');
+        }
     };
 
     const getBtnClass = (path) => {
@@ -19,7 +27,6 @@ export default function Navbar() {
     };
 
     return (
-        // تغییر از absolute به fixed و افزایش z-index
         <div className="fixed top-12 left-0 w-full bg-gray-800 text-white p-3 flex flex-wrap justify-center gap-4 z-[100] border-b-2 border-gray-900 shadow-xl">
             <button onClick={() => navigate('/village')} className={getBtnClass('/village')}>
                 🏛️ دهکده من

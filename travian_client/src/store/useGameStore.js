@@ -2,39 +2,25 @@ import { create } from 'zustand';
 
 const useGameStore = create((set) => ({
     user: null,
+    accessToken: null, // فقط در حافظه (RAM) نگه‌داری می‌شه، هرگز در localStorage ذخیره نمی‌شه
     village: null,
     resources: { wood: 0, clay: 0, iron: 0, crop: 0 },
     production: { wood: 300, clay: 300, iron: 300, crop: 150 },
     hydrated: false,
 
-    // خواندن امن اطلاعات کاربر
-    hydrate: () => {
-        const userStr = localStorage.getItem("user");
-        if (userStr) {
-            try {
-                const user = JSON.parse(userStr);
-                set({ user, hydrated: true });
-            } catch (error) {
-                console.error("خطا در خواندن اطلاعات کاربر:", error);
-                localStorage.removeItem("user");
-                set({ hydrated: true });
-            }
-        } else {
-            set({ hydrated: true });
-        }
-    },
+    setAccessToken: (token) => set({ accessToken: token }),
+
+    setHydrated: (value) => set({ hydrated: value }),
 
     setUser: (user) => {
         localStorage.setItem("user", JSON.stringify(user));
         set({ user });
     },
 
-    // 🔴 تابع بسیار مهم برای زمان خروج یا انقضای توکن
+    // 🔴 تابع بسیار مهم برای زمان خروج یا انقضای نشست
     clearUser: () => {
         localStorage.removeItem("user");
-        localStorage.removeItem("access");
-        localStorage.removeItem("refresh");
-        set({ user: null, village: null });
+        set({ user: null, village: null, accessToken: null });
     },
 
     setVillage: (villageData) => set({ village: villageData }),

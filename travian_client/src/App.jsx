@@ -12,20 +12,50 @@ import Barracks from "./pages/Barracks.jsx";
 import Embassy from "./pages/Embassy.jsx";
 import Register from "./pages/Register.jsx";
 import useGameStore from "./store/useGameStore.js";
-import {useEffect} from "react";
+import { useEffect } from "react";
+import api from "./api/axiosConfig.js";
 
 const PrivateRoute = ({ children }) => {
-    const token = localStorage.getItem('access');
-    return token ? children : <Navigate to="/login" />;
+    const accessToken = useGameStore((state) => state.accessToken);
+    const hydrated = useGameStore((state) => state.hydrated);
+
+    // تا وقتی تلاش برای رفرش خودکار نشست تموم نشده، ریدایرکت نکن
+    if (!hydrated) {
+        return (
+            <div className="w-full h-screen flex items-center justify-center text-gray-500 font-bold">
+                در حال بررسی نشست...
+            </div>
+        );
+    }
+
+    return accessToken ? children : <Navigate to="/login" />;
 };
 
 function App() {
-    const hydrate = useGameStore((state) => state.hydrate);
+    const setAccessToken = useGameStore((state) => state.setAccessToken);
+    const setUser = useGameStore((state) => state.setUser);
+    const setHydrated = useGameStore((state) => state.setHydrated);
 
     useEffect(() => {
-        // خواندن اطلاعات کاربر به محض باز شدن سایت
-        hydrate();
-    }, [hydrate]);
+        // با استفاده از httpOnly cookie رفرش توکن (که سرور موقع لاگین ست کرده)
+        // بدون نیاز به localStorage یک access token جدید می‌گیریم
+        const bootstrap = async () => {
+            try {
+                const { data } = await api.post('auth/token/refresh/');
+                setAccessToken(data.access);
+
+                const me = await api.get('auth/me/');
+                setUser(me.data);
+            } catch (error) {
+                // نشست معتبری وجود نداره؛ کاربر باید دوباره لاگین کنه
+            } finally {
+                setHydrated(true);
+            }
+        };
+
+        bootstrap();
+    }, [setAccessToken, setUser, setHydrated]);
+
     return (
         <Router>
             <Routes>
