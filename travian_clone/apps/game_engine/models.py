@@ -20,6 +20,10 @@ class Village(models.Model):
     x_coord = models.IntegerField()
     y_coord = models.IntegerField()
 
+    # اولین دهکده هر بازیکن به عنوان پایتخت علامت‌گذاری می‌شود
+    # (برای انتخاب پیش‌فرض دهکده فعال در فرانت‌اند و منطق‌های آینده مثل انتقال پایتخت)
+    is_capital = models.BooleanField(default=False)
+
     # منابع (مقادیر ذخیره شده در آخرین آپدیت)
     wood = models.FloatField(default=750.0)
     clay = models.FloatField(default=750.0)
@@ -43,6 +47,9 @@ class Village(models.Model):
         unique_together = ('x_coord', 'y_coord')
         indexes = [models.Index(fields=['x_coord', 'y_coord'])]
 
+    def __str__(self):
+        return f"{self.name} ({self.x_coord}|{self.y_coord}) - {self.player}"
+
 
 class BuildingType(models.Model):
     """مدل نگهدارنده اطلاعات ثابت ساختمان‌ها (مثل پادگان، انبار، معدن آهن)"""
@@ -60,6 +67,11 @@ class BuildingType(models.Model):
 
     # مصرف گندم این ساختمان در ساعت
     crop_upkeep = models.IntegerField(default=2)
+
+    # مشخص می‌کند این نوع ساختمان نقش «دیوار دفاعی» را ایفا می‌کند.
+    # به این ترتیب موتور نبرد به‌جای جستجوی ساختمان بر اساس نام (که شکننده است)
+    # می‌تواند دیوار دهکده را با یک کوئری ساده پیدا کند.
+    provides_wall_defense = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name

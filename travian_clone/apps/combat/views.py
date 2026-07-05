@@ -5,7 +5,10 @@ from django.utils import timezone
 from django.db import transaction
 import datetime
 from .models import TroopMovement, VillageTroop, TroopType
+from .utils import calculate_travel_seconds
+from .tasks import resolve_combat_movement
 from apps.game_engine.models import Village, GameLog
+
 
 class SendTroopsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -16,7 +19,11 @@ class SendTroopsView(APIView):
         movement_type = request.data.get('movement_type', 'ATTACK')
         payload = request.data.get('troops_payload', {})
 
-        if not payload:
+        valid_types = dict(TroopMovement.MOVEMENT_TYPES)
+        if movement_type not in valid_types:
+            return Response({"error": "نوع عملیات تاکتیکی نامعتبر است."}, status=400)
+
+        if not payload or not any(int(v or 0) > 0 for v in payload.values()):
             return Response({"error": "هیچ نیرویی برای ارسال انتخاب نشده است."}, status=400)
 
         try:
@@ -25,9 +32,21 @@ class SendTroopsView(APIView):
         except Village.DoesNotExist:
             return Response({"error": "مبدا یا مقصد یافت نشد."}, status=404)
 
+        if movement_type == 'ATTACK' and source_village.id == target_village.id:
+            return Response({"error": "نمی‌توانید به دهکده خودتان حمله کنید."}, status=400)
+
+        sent_troop_ids = [int(tid) for tid, qty in payload.items() if int(qty or 0) > 0]
+        troop_types = {t.id: t for t in TroopType.objects.filter(id__in=sent_troop_ids)}
+        missing_ids = set(sent_troop_ids) - set(troop_types.keys())
+        if missing_ids:
+            return Response({"error": f"نوع نیروی نامعتبر: {sorted(missing_ids)}"}, status=400)
+
+        # کندترین نیرو سرعت کل ستون را تعیین می‌کند
+        slowest_speed = min(t.speed for t in troop_types.values())
+
         with transaction.atomic():
             for troop_id_str, count_to_send in payload.items():
-                count_to_send = int(count_to_send)
+                count_to_send = int(count_to_send or 0)
                 if count_to_send <= 0:
                     continue
 
@@ -47,25 +66,33 @@ class SendTroopsView(APIView):
                 except VillageTroop.DoesNotExist:
                     return Response({"error": f"شما این نوع نیرو (شناسه {troop_id_str}) را در دهکده ندارید."}, status=400)
 
-            # در سیستم پروداکشن، این زمان باید بر اساس فرمول (فاصله / سرعت کندترین نیرو) محاسبه شود
-            # در اینجا برای جلوگیری از پیچیدگی فعلاً روی ۱۰ دقیقه ثابت نگه داشته شده است
-            arrival_time = timezone.now() + datetime.timedelta(minutes=10)
+            # محاسبه زمان رسیدن واقعی بر اساس فاصله دو دهکده و سرعت کندترین نیرو
+            # (قبلا این عدد همیشه ثابت و ۱۰ دقیقه بود)
+            travel_seconds = calculate_travel_seconds(source_village, target_village, slowest_speed)
+            arrival_time = timezone.now() + datetime.timedelta(seconds=travel_seconds)
 
-            TroopMovement.objects.create(
+            movement = TroopMovement.objects.create(
                 source_village=source_village,
                 target_village=target_village,
                 movement_type=movement_type,
                 troops_payload=payload,
-                arrival_time=arrival_time
+                arrival_time=arrival_time,
             )
 
             GameLog.objects.create(
                 village=source_village,
                 log_type='COMBAT',
-                description=f"اعزام نیرو ({movement_type}) به سمت دهکده {target_village.name} انجام شد."
+                description=f"اعزام نیرو ({movement.get_movement_type_display()}) به سمت دهکده {target_village.name} انجام شد."
             )
 
-        return Response({"message": "نیروها با موفقیت ارسال شدند."})
+            # نکته حیاتی: قبلا اینجا هیچ تسکی زمان‌بندی نمی‌شد، پس هیچ
+            # حمله‌ای هیچ‌وقت به نتیجه نمی‌رسید. حالا دقیقا در لحظه رسیدن
+            # نیروها (arrival_time)، resolve_combat_movement اجرا می‌شود.
+            transaction.on_commit(lambda: resolve_combat_movement.apply_async(
+                args=[movement.id], eta=arrival_time
+            ))
+
+        return Response({"message": "نیروها با موفقیت اعزام شدند و در زمان مقرر به مقصد می‌رسند."})
 
 
 class BarracksTrainView(APIView):

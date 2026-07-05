@@ -9,8 +9,9 @@ class ServerSettingAdmin(admin.ModelAdmin):
 
 @admin.register(Village)
 class VillageAdmin(admin.ModelAdmin):
-    list_display = ('name', 'player', 'x_coord', 'y_coord', 'wood', 'clay', 'iron', 'crop')
+    list_display = ('name', 'player', 'x_coord', 'y_coord', 'is_capital', 'wood', 'clay', 'iron', 'crop')
     search_fields = ('name', 'player__email')
+    list_filter = ('is_capital',)
 
 admin.site.register(BuildingType)
 admin.site.register(VillageBuilding)

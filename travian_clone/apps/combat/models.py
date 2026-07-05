@@ -25,18 +25,26 @@ class TroopType(models.Model):
     crop_upkeep = models.IntegerField(default=1)  # مصرف گندم در ساعت
     base_train_time = models.IntegerField(default=120)
 
+    # آیا این نیرو یک سلاح محاصره‌ای (منجنیق/قوچ) محسوب می‌شود؟
+    # موتور نبرد از این فلگ برای محاسبه تعداد منجنیق‌های اعزامی استفاده می‌کند
+    # تا تخریب ساختمان/دیوار را حساب کند.
+    is_siege_weapon = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.name} ({self.tribe})"
 
 
 class VillageTroop(models.Model):
-    """تعداد نیروهای مستقر در هر دهکده"""
+    """تعداد نیروهای مستقر در هر دهکده - تنها منبع صحت برای تعداد نیروها"""
     village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='troops')
     troop_type = models.ForeignKey(TroopType, on_delete=models.CASCADE)
     count = models.IntegerField(default=0)
 
     class Meta:
         unique_together = ('village', 'troop_type')
+
+    def __str__(self):
+        return f"{self.village.name} - {self.troop_type.name}: {self.count}"
 
 
 class TroopMovement(models.Model):
@@ -54,6 +62,9 @@ class TroopMovement(models.Model):
 
     # ذخیره نیروهای ارسال شده به صورت JSON (مثلا {"1": 500, "2": 100} که کلیدها آیدی TroopType هستند)
     troops_payload = models.JSONField(default=dict)
+
+    # منابع غارت‌شده‌ای که همراه نیروهای بازگشتی (RETURN) به دهکده مبدا می‌رسند
+    loot_payload = models.JSONField(default=dict, blank=True)
 
     start_time = models.DateTimeField(auto_now_add=True)
     arrival_time = models.DateTimeField()

@@ -8,6 +8,12 @@ const useGameStore = create((set) => ({
     production: { wood: 300, clay: 300, iron: 300, crop: 150 },
     hydrated: false,
 
+    // لیست دهکده‌های واقعی بازیکن (از /api/game/villages/) و دهکده‌ی فعال فعلی.
+    // قبلا هیچ‌کدام از این‌ها وجود نداشت و همه‌ی صفحات village_id: 1 را
+    // هاردکد کرده بودند؛ به همین دلیل سیستم چند دهکده‌ای عملا کار نمی‌کرد.
+    villages: [],
+    activeVillageId: null,
+
     setAccessToken: (token) => set({ accessToken: token }),
 
     setHydrated: (value) => set({ hydrated: value }),
@@ -17,10 +23,14 @@ const useGameStore = create((set) => ({
         set({ user });
     },
 
+    setVillages: (villages) => set({ villages }),
+
+    setActiveVillageId: (villageId) => set({ activeVillageId: villageId }),
+
     // 🔴 تابع بسیار مهم برای زمان خروج یا انقضای نشست
     clearUser: () => {
         localStorage.removeItem("user");
-        set({ user: null, village: null, accessToken: null });
+        set({ user: null, village: null, accessToken: null, villages: [], activeVillageId: null });
     },
 
     setVillage: (villageData) => set({ village: villageData }),

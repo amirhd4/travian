@@ -21,6 +21,37 @@ from .models import Alliance, AllianceMember
 Player = get_user_model()
 
 
+class VillageListView(APIView):
+    """
+    لیست تمام دهکده‌های بازیکن فعلی.
+
+    قبل از این ویو، فرانت‌اند هیچ راهی برای دانستن آی‌دی واقعی دهکده‌ها
+    نداشت و همیشه village_id=1 را هاردکد می‌کرد؛ به همین دلیل سیستم
+    چند دهکده‌ای عملا کار نمی‌کرد. این endpoint دقیقا همان چیزی است که
+    فرانت‌اند برای انتخاب «دهکده فعال» به آن نیاز دارد.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        villages = Village.objects.filter(player=request.user).order_by('-is_capital', 'id')
+
+        data = [
+            {
+                "id": v.id,
+                "name": v.name,
+                "x_coord": v.x_coord,
+                "y_coord": v.y_coord,
+                "is_capital": v.is_capital,
+                "wood": v.wood,
+                "clay": v.clay,
+                "iron": v.iron,
+                "crop": v.crop,
+            }
+            for v in villages
+        ]
+        return Response(data)
+
+
 class UpgradeBuildingView(APIView):
     permission_classes = [IsAuthenticated]
 

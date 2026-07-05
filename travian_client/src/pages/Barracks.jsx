@@ -6,6 +6,7 @@ import useGameStore from '../store/useGameStore';
 
 export default function Barracks() {
     const { resources, updateResources } = useGameStore();
+    const activeVillageId = useGameStore((state) => state.activeVillageId);
     const [loading, setLoading] = useState(false);
 
     // استیت برای نگهداری مقادیر ورودی هر نیروی نظامی
@@ -37,10 +38,15 @@ export default function Barracks() {
         const quantity = trainQueue[unitId];
         if (quantity <= 0) return;
 
+        if (!activeVillageId) {
+            alert("دهکده فعال هنوز مشخص نشده، لطفا لحظاتی صبر کنید و دوباره تلاش کنید.");
+            return;
+        }
+
         setLoading(true);
         try {
             const response = await api.post('combat/barracks/train/', {
-                village_id: 1, // در پروژه نهایی از اطلاعات کاربر گرفته می‌شود
+                village_id: activeVillageId, // دهکده فعال واقعی بازیکن (نه دیگر هاردکد شده)
                 troop_type: unitId,
                 quantity: quantity
             });
@@ -113,7 +119,7 @@ export default function Barracks() {
                                     </div>
                                     <button
                                         onClick={() => handleTrain(unit.id, unit.costs)}
-                                        disabled={loading || trainQueue[unit.id] <= 0}
+                                        disabled={loading || trainQueue[unit.id] <= 0 || !activeVillageId}
                                         className="bg-amber-700 text-white px-4 py-2 rounded font-bold hover:bg-amber-800 transition disabled:bg-gray-400 whitespace-nowrap"
                                     >
                                         آموزش 🔨

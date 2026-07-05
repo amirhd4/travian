@@ -35,6 +35,8 @@ function App() {
     const setAccessToken = useGameStore((state) => state.setAccessToken);
     const setUser = useGameStore((state) => state.setUser);
     const setHydrated = useGameStore((state) => state.setHydrated);
+    const setVillages = useGameStore((state) => state.setVillages);
+    const setActiveVillageId = useGameStore((state) => state.setActiveVillageId);
 
     useEffect(() => {
         // با استفاده از httpOnly cookie رفرش توکن (که سرور موقع لاگین ست کرده)
@@ -46,6 +48,22 @@ function App() {
 
                 const me = await api.get('auth/me/');
                 setUser(me.data);
+
+                // دریافت لیست واقعی دهکده‌های بازیکن و انتخاب دهکده فعال.
+                // قبلا این مرحله اصلا وجود نداشت و همه‌جا village_id: 1
+                // هاردکد شده بود؛ حالا اولین دهکده (ترجیحا پایتخت) انتخاب می‌شود.
+                try {
+                    const villagesRes = await api.get('game/villages/');
+                    setVillages(villagesRes.data);
+                    const capital = villagesRes.data.find((v) => v.is_capital) || villagesRes.data[0];
+                    if (capital) {
+                        setActiveVillageId(capital.id);
+                    }
+                } catch (villageError) {
+                    // اگر دریافت لیست دهکده‌ها fail بشه، کاربر همچنان لاگین می‌مونه
+                    // ولی صفحاتی که به دهکده فعال نیاز دارن پیام مناسب نشون می‌دن
+                    console.error("خطا در دریافت لیست دهکده‌ها", villageError);
+                }
             } catch (error) {
                 // نشست معتبری وجود نداره؛ کاربر باید دوباره لاگین کنه
             } finally {
@@ -54,7 +72,7 @@ function App() {
         };
 
         bootstrap();
-    }, [setAccessToken, setUser, setHydrated]);
+    }, [setAccessToken, setUser, setHydrated, setVillages, setActiveVillageId]);
 
     return (
         <Router>

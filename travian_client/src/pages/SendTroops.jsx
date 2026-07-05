@@ -3,10 +3,12 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import ResourceBar from '../components/ResourceBar';
 import Navbar from '../components/Navbar';
+import useGameStore from '../store/useGameStore';
 
 export default function SendTroops() {
     const location = useLocation();
     const navigate = useNavigate();
+    const activeVillageId = useGameStore((state) => state.activeVillageId);
 
     // دریافت اطلاعات دهکده مقصد از طریق ناوبری نقشه
     const targetVillageId = location.state?.targetVillageId || 0;
@@ -25,10 +27,16 @@ export default function SendTroops() {
 
     const handleSend = async (e) => {
         e.preventDefault();
+
+        if (!activeVillageId) {
+            alert("دهکده فعال هنوز مشخص نشده، لطفا لحظاتی صبر کنید و دوباره تلاش کنید.");
+            return;
+        }
+
         setLoading(true);
         try {
             const response = await api.post('combat/send-troops/', {
-                source_village_id: 1, // در پروژه اصلی از اطلاعات دهکده فعال کاربر پر می‌شود
+                source_village_id: activeVillageId, // دهکده فعال واقعی بازیکن (نه دیگر هاردکد شده)
                 target_village_id: targetVillageId,
                 movement_type: movementType,
                 troops_payload: troops
@@ -90,7 +98,7 @@ export default function SendTroops() {
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !activeVillageId}
                         className="w-full bg-red-700 text-white p-3 rounded font-bold hover:bg-red-800 transition disabled:bg-gray-400"
                     >
                         {loading ? "در حال اعزام ارتش..." : "🚀 تایید و حرکت نیروها"}

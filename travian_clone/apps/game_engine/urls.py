@@ -1,8 +1,9 @@
 from django.urls import path
 from .views import UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView, \
-    InboxView, MessageReadView, EmbassyView
+    InboxView, MessageReadView, EmbassyView, VillageListView
 
 urlpatterns = [
+    path('villages/', VillageListView.as_view(), name='village_list'),
     path('upgrade-building/', UpgradeBuildingView.as_view(), name='upgrade_building'),
     path('webhook/', PaymentWebhookView.as_view()),
     path('logs/', GameLogListView.as_view(), name='game_logs'),
@@ -12,4 +13,3 @@ urlpatterns = [
     path('messages/<int:pk>/read/', MessageReadView.as_view(), name='read_message'),
     path('embassy/', EmbassyView.as_view(), name='embassy'),
 ]
-

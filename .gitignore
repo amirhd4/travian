@@ -5,3 +5,4 @@ travian_clone/venv
 .idea
 
 **/.env
+.aider*

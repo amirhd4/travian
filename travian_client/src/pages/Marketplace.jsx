@@ -6,16 +6,23 @@ import useGameStore from '../store/useGameStore';
 
 export default function Marketplace() {
     const { resources } = useGameStore();
+    const activeVillageId = useGameStore((state) => state.activeVillageId);
     const [targetVillageId, setTargetVillageId] = useState('');
     const [payload, setPayload] = useState({ wood: 0, clay: 0, iron: 0, crop: 0 });
     const [loading, setLoading] = useState(false);
 
     const handleSend = async (e) => {
         e.preventDefault();
+
+        if (!activeVillageId) {
+            alert("دهکده فعال هنوز مشخص نشده، لطفا لحظاتی صبر کنید و دوباره تلاش کنید.");
+            return;
+        }
+
         setLoading(true);
         try {
             const response = await api.post('game/marketplace/send/', {
-                source_village_id: 1, // آی‌دی دهکده فعال
+                source_village_id: activeVillageId, // دهکده فعال واقعی بازیکن (نه دیگر هاردکد شده)
                 target_village_id: targetVillageId,
                 resources: payload
             });
@@ -63,7 +70,7 @@ export default function Marketplace() {
                     </div>
 
                     <button
-                        type="submit" disabled={loading}
+                        type="submit" disabled={loading || !activeVillageId}
                         className="w-full bg-amber-600 text-white p-3 rounded font-bold hover:bg-amber-700 transition"
                     >
                         {loading ? "در حال ارسال..." : "ارسال تجار 🐪"}
