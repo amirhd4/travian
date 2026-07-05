@@ -1,18 +1,18 @@
 from django.core.management.base import BaseCommand
 
-from apps.combat.models import TroopType
+from apps.combat.models import TroopType, Animal, HeroItem
 
 
 class Command(BaseCommand):
     help = (
-        "نیروهای پیش‌فرض مورد نیاز صفحه پادگان (Barracks.jsx) را می‌سازد. "
-        "فرانت‌اند فعلا آی‌دی نیروها را '1' و '2' هاردکد کرده، پس این دستور "
-        "باید روی یک دیتابیس تازه (بدون رکورد TroopType) اجرا شود تا همان "
-        "دو آی‌دی به همین ترتیب ساخته شوند."
+        "دیتای پایه بازی را می‌سازد: نیروهای پیش‌فرض پادگان (Barracks.jsx آی‌دی‌های "
+        "'1' و '2' را هاردکد کرده)، یک نیروی مهاجر برای تاسیس دهکده جدید (Colonize.jsx "
+        "آی‌دی '3' را هاردکد کرده)، و چند حیوان نگهبان / آیتم قهرمان پیش‌فرض. باید روی "
+        "یک دیتابیس تازه اجرا شود تا همین آی‌دی‌ها به همین ترتیب ساخته شوند."
     )
 
     def handle(self, *args, **options):
-        defaults_list = [
+        troop_defaults_list = [
             {
                 "name": "گرزدار",
                 "tribe": "ROMAN",
@@ -28,6 +28,7 @@ class Command(BaseCommand):
                 "crop_upkeep": 1,
                 "base_train_time": 300,
                 "is_siege_weapon": False,
+                "is_settler": False,
             },
             {
                 "name": "محافظ نیزه‌دار",
@@ -44,14 +45,54 @@ class Command(BaseCommand):
                 "crop_upkeep": 1,
                 "base_train_time": 360,
                 "is_siege_weapon": False,
+                "is_settler": False,
+            },
+            {
+                "name": "مهاجر",
+                "tribe": "ROMAN",
+                "attack_power": 0,
+                "defense_infantry": 20,
+                "defense_cavalry": 10,
+                "speed": 5,
+                "carry_capacity": 3000,
+                "wood_cost": 4600,
+                "clay_cost": 4200,
+                "iron_cost": 5800,
+                "crop_cost": 4400,
+                "crop_upkeep": 1,
+                "base_train_time": 7200,
+                "is_siege_weapon": False,
+                "is_settler": True,
             },
         ]
 
-        for data in defaults_list:
+        for data in troop_defaults_list:
             name = data.pop("name")
             tribe = data.pop("tribe")
             obj, created = TroopType.objects.get_or_create(
                 name=name, tribe=tribe, defaults=data
             )
             status = "ساخته شد" if created else "از قبل وجود داشت"
-            self.stdout.write(self.style.SUCCESS(f"{obj.id} - {obj.name}: {status}"))
+            self.stdout.write(self.style.SUCCESS(f"[TroopType] {obj.id} - {obj.name}: {status}"))
+
+        animal_defaults_list = [
+            {"name": "گراز وحشی", "defense_infantry": 20, "defense_cavalry": 10, "gold_price": 5},
+            {"name": "خرس", "defense_infantry": 50, "defense_cavalry": 30, "gold_price": 15},
+            {"name": "ببر", "defense_infantry": 80, "defense_cavalry": 60, "gold_price": 30},
+        ]
+        for data in animal_defaults_list:
+            name = data.pop("name")
+            obj, created = Animal.objects.get_or_create(name=name, defaults=data)
+            status = "ساخته شد" if created else "از قبل وجود داشت"
+            self.stdout.write(self.style.SUCCESS(f"[Animal] {obj.id} - {obj.name}: {status}"))
+
+        hero_item_defaults_list = [
+            {"name": "کلاه‌خود آهنین", "item_type": "HELMET", "attack_bonus": 0, "speed_bonus": 0},
+            {"name": "شمشیر جنگی", "item_type": "WEAPON", "attack_bonus": 50, "speed_bonus": 0},
+            {"name": "اسب تندرو", "item_type": "HORSE", "attack_bonus": 0, "speed_bonus": 2},
+        ]
+        for data in hero_item_defaults_list:
+            name = data.pop("name")
+            obj, created = HeroItem.objects.get_or_create(name=name, defaults=data)
+            status = "ساخته شد" if created else "از قبل وجود داشت"
+            self.stdout.write(self.style.SUCCESS(f"[HeroItem] {obj.id} - {obj.name}: {status}"))

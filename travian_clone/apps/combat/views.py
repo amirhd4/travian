@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
 import datetime
-from .models import TroopMovement, VillageTroop, TroopType
+from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal
 from .utils import calculate_travel_seconds
 from .tasks import resolve_combat_movement
 from apps.game_engine.models import Village, GameLog
@@ -160,3 +160,117 @@ class BarracksTrainView(APIView):
 
         except Village.DoesNotExist:
             return Response({"error": "دهکده مورد نظر یافت نشد یا متعلق به شما نیست."}, status=404)
+
+
+class HeroView(APIView):
+    """اطلاعات قهرمان بازیکن فعلی + کوله‌پشتی او."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        hero, _ = Hero.objects.get_or_create(player=request.user)
+        inventory = PlayerHeroItem.objects.filter(hero=hero).select_related('item')
+
+        return Response({
+            "level": hero.level,
+            "experience": hero.experience,
+            "health": hero.health,
+            "is_alive": hero.is_alive,
+            "home_village_id": hero.home_village_id,
+            "inventory": [
+                {
+                    "id": inv.id,
+                    "item_id": inv.item.id,
+                    "name": inv.item.name,
+                    "item_type": inv.item.item_type,
+                    "attack_bonus": inv.item.attack_bonus,
+                    "speed_bonus": inv.item.speed_bonus,
+                    "is_equipped": inv.is_equipped,
+                }
+                for inv in inventory
+            ]
+        })
+
+
+class HeroEquipItemView(APIView):
+    """پوشیدن/درآوردن یک آیتم از کوله‌پشتی قهرمان. هر بار فقط یک آیتم از هر نوع
+    (کلاه‌خود/سلاح/اسب) می‌تواند هم‌زمان پوشیده باشد."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        inventory_id = request.data.get('inventory_id')
+        equip = bool(request.data.get('equip', True))
+
+        try:
+            hero = Hero.objects.get(player=request.user)
+            inv_item = PlayerHeroItem.objects.select_related('item').get(id=inventory_id, hero=hero)
+        except (Hero.DoesNotExist, PlayerHeroItem.DoesNotExist):
+            return Response({"error": "آیتم یافت نشد."}, status=404)
+
+        with transaction.atomic():
+            if equip:
+                PlayerHeroItem.objects.filter(
+                    hero=hero, item__item_type=inv_item.item.item_type, is_equipped=True
+                ).update(is_equipped=False)
+            inv_item.is_equipped = equip
+            inv_item.save()
+
+        return Response({"message": "تجهیزات قهرمان به‌روزرسانی شد."})
+
+
+class AnimalCatalogView(APIView):
+    """فهرست حیوانات نگهبانی که با طلا قابل خرید هستند."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        animals = Animal.objects.all()
+        return Response([
+            {
+                "id": a.id,
+                "name": a.name,
+                "defense_infantry": a.defense_infantry,
+                "defense_cavalry": a.defense_cavalry,
+                "gold_price": a.gold_price,
+            }
+            for a in animals
+        ])
+
+
+class VillageAnimalBuyView(APIView):
+    """خرید حیوان نگهبان با سکه طلا برای تقویت دفاع یک دهکده مشخص."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        village_id = request.data.get('village_id')
+        animal_id = request.data.get('animal_id')
+        quantity = int(request.data.get('quantity', 0))
+
+        if quantity <= 0:
+            return Response({"error": "تعداد نامعتبر است."}, status=400)
+
+        try:
+            animal = Animal.objects.get(id=animal_id)
+        except Animal.DoesNotExist:
+            return Response({"error": "این حیوان در فروشگاه موجود نیست."}, status=404)
+
+        total_cost = animal.gold_price * quantity
+
+        with transaction.atomic():
+            try:
+                village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+            player = request.user
+            if player.gold_coins < total_cost:
+                return Response({"error": "سکه طلای کافی ندارید."}, status=400)
+
+            player.gold_coins -= total_cost
+            player.save()
+
+            village_animal, _ = VillageAnimal.objects.select_for_update().get_or_create(
+                village=village, animal=animal, defaults={'count': 0}
+            )
+            village_animal.count += quantity
+            village_animal.save()
+
+        return Response({"message": f"{quantity} عدد {animal.name} برای دفاع از {village.name} خریداری شد."})

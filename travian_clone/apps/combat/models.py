@@ -27,8 +27,12 @@ class TroopType(models.Model):
 
     # آیا این نیرو یک سلاح محاصره‌ای (منجنیق/قوچ) محسوب می‌شود؟
     # موتور نبرد از این فلگ برای محاسبه تعداد منجنیق‌های اعزامی استفاده می‌کند
-    # تا تخریب ساختمان/دیوار را حساب کند.
+    # تا تخریب دیوار را حساب کند.
     is_siege_weapon = models.BooleanField(default=False)
+
+    # آیا این نیرو مهاجر (Settler) است؟ برای تاسیس دهکده جدید به ۳ عدد از این نیرو
+    # در دهکده مبدا نیاز است (services.found_new_village آن را مصرف می‌کند).
+    is_settler = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name} ({self.tribe})"
@@ -76,6 +80,7 @@ class TroopMovement(models.Model):
 
 
 class HeroItem(models.Model):
+    """کاتالوگ آیتم‌های قابل تجهیز برای قهرمان (کلاه‌خود، سلاح، اسب)."""
     name = models.CharField(max_length=50)
     item_type = models.CharField(max_length=20, choices=[('HELMET', 'کلاه‌خود'), ('WEAPON', 'سلاح'), ('HORSE', 'اسب')])
     attack_bonus = models.IntegerField(default=0)  # مثلا +500 قدرت حمله [cite: 40]
@@ -86,6 +91,7 @@ class HeroItem(models.Model):
 
 
 class Animal(models.Model):
+    """کاتالوگ حیواناتی که بازیکن می‌تواند با سکه طلا برای دفاع از دهکده بخرد."""
     name = models.CharField(max_length=50)
     defense_infantry = models.IntegerField()
     defense_cavalry = models.IntegerField()
@@ -93,3 +99,47 @@ class Animal(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Hero(models.Model):
+    """
+    قهرمان هر بازیکن. قبل از این مدل، HeroItem صرفا یک جدول کاتالوگ بدون استفاده بود
+    و هیچ منطقی برای مالکیت/تجهیز/تاثیرگذاری روی نبرد وجود نداشت.
+
+    ساده‌سازی عمدی: این جایگزین کامل سیستم ماجراجویی/فروشگاه قهرمان تراوین اصلی
+    نیست، بلکه یک نسخه ساده و در عین حال واقعا اثرگذار روی نبردهاست.
+    """
+    player = models.OneToOneField('authentication.Player', on_delete=models.CASCADE, related_name='hero')
+    level = models.IntegerField(default=1)
+    experience = models.IntegerField(default=0)
+    health = models.IntegerField(default=100)
+    is_alive = models.BooleanField(default=True)
+
+    # دهکده‌ای که قهرمان در آن مستقر است و از آن دفاع می‌کند
+    home_village = models.ForeignKey(Village, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+
+    def __str__(self):
+        return f"Hero of {self.player.username} (Lvl {self.level})"
+
+
+class PlayerHeroItem(models.Model):
+    """آیتم‌های موجود در کوله‌پشتی قهرمان یک بازیکن (کپی شخصی از HeroItem کاتالوگ)."""
+    hero = models.ForeignKey(Hero, on_delete=models.CASCADE, related_name='inventory')
+    item = models.ForeignKey(HeroItem, on_delete=models.CASCADE)
+    is_equipped = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.hero.player.username} - {self.item.name} ({'پوشیده' if self.is_equipped else 'انبار'})"
+
+
+class VillageAnimal(models.Model):
+    """حیوانات نگهبانی که بازیکن با طلا برای تقویت دفاع یک دهکده مشخص خریده است."""
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='animals')
+    animal = models.ForeignKey(Animal, on_delete=models.CASCADE)
+    count = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ('village', 'animal')
+
+    def __str__(self):
+        return f"{self.village.name} - {self.animal.name}: {self.count}"

@@ -5,7 +5,7 @@ from channels.layers import get_channel_layer
 
 from travian_core.celery import app
 from apps.game_engine.models import Village, GameLog, VillageBuilding
-from .models import TroopMovement, VillageTroop, TroopType
+from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal
 from .engine import calculate_combat, calculate_catapult_damage
 
 
@@ -22,6 +22,46 @@ def _notify_player(player_id, update_type, payload):
             "payload": payload,
         }
     )
+
+
+def _hero_attack_bonus(player):
+    """امتیاز حمله‌ای که قهرمانِ زندهٔ بازیکن به ستون مهاجم اضافه می‌کند."""
+    try:
+        hero = Hero.objects.get(player=player, is_alive=True)
+    except Hero.DoesNotExist:
+        return 0
+    equipped_bonus = sum(
+        inv.item.attack_bonus
+        for inv in PlayerHeroItem.objects.filter(hero=hero, is_equipped=True).select_related('item')
+    )
+    return hero.level * 50 + equipped_bonus
+
+
+def _hero_defense_bonus(player, village):
+    """امتیاز دفاعی قهرمان، فقط وقتی که قهرمان دقیقا در همین دهکده مستقر است."""
+    try:
+        hero = Hero.objects.get(player=player, is_alive=True, home_village=village)
+    except Hero.DoesNotExist:
+        return 0
+    return hero.level * 40
+
+
+def _animal_defense_points(village):
+    """امتیاز دفاعی حیوانات نگهبانی که بازیکن با طلا برای این دهکده خریده است."""
+    animals = VillageAnimal.objects.filter(village=village).select_related('animal')
+    inf = sum(va.count * va.animal.defense_infantry for va in animals)
+    cav = sum(va.count * va.animal.defense_cavalry for va in animals)
+    return inf, cav
+
+
+def _grant_hero_experience(player, amount):
+    """تجربه ساده بعد از نبرد؛ هر ۱۰۰ تجربه یک سطح."""
+    hero, _ = Hero.objects.get_or_create(player=player)
+    if not hero.is_alive:
+        return
+    hero.experience += amount
+    hero.level = 1 + hero.experience // 100
+    hero.save()
 
 
 @app.task
@@ -150,6 +190,9 @@ def _resolve_attack_or_raid(movement):
         if troop_type.is_siege_weapon:
             catapult_units_sent += qty
 
+    # امتیاز قهرمان مهاجم (در صورت زنده بودن)
+    attacker_points_attack += _hero_attack_bonus(source.player)
+
     attacker_data = {"points_attack": attacker_points_attack}
 
     # ------- قدرت مدافع بر اساس نیروهای واقعی مستقر در دهکده مقصد -------
@@ -158,6 +201,16 @@ def _resolve_attack_or_raid(movement):
     )
     defender_points_inf = sum(vt.count * vt.troop_type.defense_infantry for vt in defender_village_troops)
     defender_points_cav = sum(vt.count * vt.troop_type.defense_cavalry for vt in defender_village_troops)
+
+    # امتیاز دفاعی حیوانات نگهبان خریداری‌شده با طلا
+    animal_inf, animal_cav = _animal_defense_points(target)
+    defender_points_inf += animal_inf
+    defender_points_cav += animal_cav
+
+    # امتیاز دفاعی قهرمان مدافع (فقط اگر قهرمان دقیقا در این دهکده مستقر باشد)
+    hero_defense = _hero_defense_bonus(target.player, target)
+    defender_points_inf += hero_defense
+    defender_points_cav += hero_defense
 
     defender_data = {
         "points_def_infantry": defender_points_inf,
@@ -238,6 +291,10 @@ def _resolve_attack_or_raid(movement):
 
     movement.is_completed = True
     movement.save()
+
+    # تجربه ساده برای قهرمان‌های دو طرف (برنده بیشتر، بازنده کمتر)
+    _grant_hero_experience(source.player, 10 if victory == "attacker" else 3)
+    _grant_hero_experience(target.player, 10 if victory == "defender" else 3)
 
     _notify_player(target.player_id, "COMBAT_RESULT", {
         "message": log_msg, "winner": winner_label, "combat": combat_result
