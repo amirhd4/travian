@@ -64,6 +64,24 @@ class Command(BaseCommand):
                 "is_siege_weapon": False,
                 "is_settler": True,
             },
+            {
+                "name": "کاراگاه",
+                "tribe": "ROMAN",
+                "attack_power": 0,
+                "defense_infantry": 5,
+                "defense_cavalry": 5,
+                "speed": 9,
+                "carry_capacity": 0,
+                "wood_cost": 100,
+                "clay_cost": 200,
+                "iron_cost": 150,
+                "crop_cost": 50,
+                "crop_upkeep": 1,
+                "base_train_time": 900,
+                "is_siege_weapon": False,
+                "is_settler": False,
+                "is_scout": True,
+            },
         ]
 
         for data in troop_defaults_list:

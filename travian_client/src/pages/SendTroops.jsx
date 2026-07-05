@@ -15,8 +15,9 @@ export default function SendTroops() {
     const targetName = location.state?.targetName || "مختصات نامشخص";
 
     const [troops, setTroops] = useState({
-        1: 0, // شناسه نیروی ۱ (مثلا گرزدار)
-        2: 0  // شناسه نیروی ۲ (مثلا مدافع)
+        1: 0, // گرزدار
+        2: 0, // محافظ نیزه‌دار
+        4: 0, // کاراگاه (جاسوس) - برای ماموریت شناسایی
     });
     const [movementType, setMovementType] = useState('ATTACK');
     const [loading, setLoading] = useState(false);
@@ -71,6 +72,7 @@ export default function SendTroops() {
                             <option value="ATTACK">🪓 حمله کامل (جنگ تا سر حد مرگ)</option>
                             <option value="RAID">💰 غارت منابع (تک و پاتک سریع)</option>
                             <option value="REINFORCEMENT">🛡️ پشتیبانی نظامی (دفاع از هم‌پیمان)</option>
+                            <option value="SCOUT">🔍 شناسایی (جاسوسی)</option>
                         </select>
                     </div>
 
@@ -94,6 +96,20 @@ export default function SendTroops() {
                                 className="w-24 p-1 border rounded text-center font-bold"
                             />
                         </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">🔍 کاراگاه/جاسوس (نوع ۴):</span>
+                            <input
+                                type="number"
+                                value={troops[4]}
+                                onChange={(e) => handleInputChange(4, e.target.value)}
+                                className="w-24 p-1 border rounded text-center font-bold"
+                            />
+                        </div>
+                        {movementType === 'SCOUT' && (
+                            <p className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded p-2">
+                                برای ماموریت شناسایی فقط تعداد کاراگاه/جاسوس را وارد کنید.
+                            </p>
+                        )}
                     </div>
 
                     <button

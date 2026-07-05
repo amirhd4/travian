@@ -3,13 +3,16 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from asgiref.sync import async_to_sync
 from django.db import transaction
+from django.db.models import Sum
+from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 
 from django.utils import timezone
 
 from .models import Village, VillageBuilding, ServerSetting
 from .engine import schedule_game_event
-from .utils import update_village_resources
+from .utils import update_village_resources, calculate_crop_upkeep
+from .services import found_new_village
 from channels.layers import get_channel_layer
 from .models import Transaction, Discount, GameLog
 from .serializers import GameLogSerializer
@@ -50,6 +53,135 @@ class VillageListView(APIView):
             for v in villages
         ]
         return Response(data)
+
+
+class VillageDetailView(APIView):
+    """
+    اطلاعات زنده یک دهکده مشخص (منابع فعلی + نرخ تولید خالص).
+
+    قبل از این ویو، ResourceBar.jsx هیچ درخواستی به سرور نمی‌زد و صرفا
+    مقادیر پیش‌فرض استور Zustand را هر ثانیه در کلاینت افزایش می‌داد؛
+    یعنی منابع نمایش داده شده هیچ ارتباطی با دیتابیس واقعی نداشت.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, village_id):
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        # همگام‌سازی منابع تا این لحظه (همون منطقی که هنگام ارتقای ساختمان اجرا می‌شه)
+        update_village_resources(village)
+
+        net_crop_production = village.prod_crop - calculate_crop_upkeep(village)
+
+        return Response({
+            "id": village.id,
+            "name": village.name,
+            "x_coord": village.x_coord,
+            "y_coord": village.y_coord,
+            "is_capital": village.is_capital,
+            "resources": {
+                "wood": village.wood,
+                "clay": village.clay,
+                "iron": village.iron,
+                "crop": village.crop,
+            },
+            "production": {
+                "wood": village.prod_wood,
+                "clay": village.prod_clay,
+                "iron": village.prod_iron,
+                "crop": net_crop_production,
+            },
+            "max_storage": village.max_storage,
+            "max_granary": village.max_granary,
+        })
+
+
+class WorldMapView(APIView):
+    """
+    نقشه واقعی جهان اطراف یک مختصات مشخص.
+
+    قبل از این ویو، WorldMap.jsx کاملا در کلاینت و با Math.random() یک
+    شبکه ساختگی می‌ساخت که هیچ ارتباطی با دهکده‌های واقعی بازیکنان نداشت.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            center_x = int(request.query_params.get('x', 0))
+            center_y = int(request.query_params.get('y', 0))
+        except (TypeError, ValueError):
+            return Response({"error": "مختصات نامعتبر است."}, status=400)
+
+        # محدود کردن شعاع جلوی کوئری‌های خیلی سنگین را می‌گیرد
+        radius = min(max(int(request.query_params.get('radius', 2) or 2), 1), 10)
+
+        villages = Village.objects.filter(
+            x_coord__range=(center_x - radius, center_x + radius),
+            y_coord__range=(center_y - radius, center_y + radius),
+        ).select_related('player')
+
+        data = [
+            {
+                "id": v.id,
+                "name": v.name,
+                "x_coord": v.x_coord,
+                "y_coord": v.y_coord,
+                "owner": v.player.username,
+                "is_natar": v.player.username == "Natars",
+            }
+            for v in villages
+        ]
+        return Response(data)
+
+
+class FoundVillageView(APIView):
+    """
+    تاسیس دهکده جدید (Colonization). قبل از این ویو، هیچ راهی برای بازیکن
+    (نه در فرانت و نه در بک‌اند) برای تاسیس دهکده دوم/سوم وجود نداشت.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        source_id = request.data.get('source_village_id')
+        target_x = request.data.get('target_x')
+        target_y = request.data.get('target_y')
+        name = request.data.get('name') or 'دهکده جدید'
+
+        try:
+            with transaction.atomic():
+                try:
+                    source_village = Village.objects.select_for_update().get(
+                        id=source_id, player=request.user
+                    )
+                except Village.DoesNotExist:
+                    return Response({"error": "دهکده مبدا یافت نشد یا متعلق به شما نیست."}, status=404)
+
+                new_village = found_new_village(
+                    request.user,
+                    source_village,
+                    target_x=int(target_x) if target_x not in (None, '') else None,
+                    target_y=int(target_y) if target_y not in (None, '') else None,
+                    name=name,
+                )
+        except ValidationError as e:
+            return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
+
+        return Response({
+            "message": (
+                f"دهکده «{new_village.name}» با موفقیت در مختصات "
+                f"({new_village.x_coord}|{new_village.y_coord}) تاسیس شد!"
+            ),
+            "village": {
+                "id": new_village.id,
+                "name": new_village.name,
+                "x_coord": new_village.x_coord,
+                "y_coord": new_village.y_coord,
+                "is_capital": new_village.is_capital,
+            }
+        })
 
 
 class UpgradeBuildingView(APIView):
@@ -176,38 +308,77 @@ class GameLogListView(APIView):
 
 
 class LeaderboardView(APIView):
+    """
+    رنکینگ واقعی بازیکنان و شگفتی جهان.
+
+    قبل از این ویو، جمعیت، اتحاد و رتبه شگفتی جهان کاملا ساختگی و بر اساس
+    فرمول‌های نمایشی مثل `1000 + rank * 50` تولید می‌شدند و هیچ ربطی به
+    وضعیت واقعی بازی نداشتند.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # در سناریوی واقعی، جمعیت از روی سطح ساختمان‌ها محاسبه می‌شود.
-        # در اینجا لیست بازیکنان را گرفته و دیتای نمایشی برای جمعیت و شگفتی جهان تولید می‌کنیم.
-        players = Player.objects.all().order_by('id')[:100]
+        from apps.world_wonder.models import WorldWonder
+        from apps.combat.models import TroopMovement
+
+        # --- جمعیت واقعی هر بازیکن: مجموع سطح تمام ساختمان‌های تمام دهکده‌هایش ---
+        # (این یک تقریب ساده‌شده از فرمول جمعیت واقعی تراوین است، نه محاسبه دقیق
+        # هزینه هر سطح ساختمان، اما بر خلاف قبل واقعا از دیتابیس می‌آید)
+        population_by_player = {
+            row['village__player_id']: row['total']
+            for row in VillageBuilding.objects.filter(level__gt=0)
+            .values('village__player_id')
+            .annotate(total=Sum('level'))
+        }
+
+        # --- نام اتحاد واقعی هر بازیکن (در صورت عضویت) ---
+        alliance_by_player = {
+            m.player_id: f"[{m.alliance.tag}] {m.alliance.name}"
+            for m in AllianceMember.objects.select_related('alliance').all()
+        }
+
+        players = (
+            Player.objects.exclude(username="Natars")
+            .filter(is_active=True)
+            .order_by('id')
+        )
 
         ranking_data = []
-        ww_data = []
-
-        for rank, p in enumerate(players, start=1):
-            player_name = p.email.split('@')[0] if p.email else f"Player_{p.id}"
-
-            # آمار کلی بازیکنان
+        for p in players:
+            player_name = p.email.split('@')[0] if p.email else p.username
             ranking_data.append({
-                "rank": rank,
                 "player": player_name,
-                "alliance": "بدون اتحاد",
-                "population": 1000 + (rank * 50)  # دیتای نمونه
+                "alliance": alliance_by_player.get(p.id, "بدون اتحاد"),
+                "population": population_by_player.get(p.id, 0),
             })
 
-            # آمار شگفتی جهان (فقط برای نفرات برتر به عنوان نمونه)
-            if rank <= 5:
-                ww_data.append({
-                    "rank": rank,
-                    "player": player_name,
-                    "ww_level": 50 - (rank * 5),
-                    "natar_attacks": "دفع شده" if rank % 2 == 0 else "در راه است"
-                })
+        # مرتب‌سازی بر اساس جمعیت واقعی (نزولی) و اضافه کردن رتبه
+        ranking_data.sort(key=lambda row: row["population"], reverse=True)
+        for rank, row in enumerate(ranking_data, start=1):
+            row["rank"] = rank
+
+        # --- رتبه‌بندی واقعی شگفتی جهان ---
+        ww_data = []
+        ww_qs = WorldWonder.objects.select_related('village__player').order_by('-level')[:20]
+        for rank, ww in enumerate(ww_qs, start=1):
+            player = ww.village.player
+            player_name = player.email.split('@')[0] if player.email else player.username
+
+            pending_attack = TroopMovement.objects.filter(
+                target_village=ww.village,
+                source_village__player__username="Natars",
+                is_completed=False,
+            ).exists()
+
+            ww_data.append({
+                "rank": rank,
+                "player": player_name,
+                "ww_level": ww.level,
+                "natar_attacks": "⚔️ در راه است" if pending_attack else "بدون حمله",
+            })
 
         return Response({
-            "general_ranking": ranking_data,
+            "general_ranking": ranking_data[:100],
             "world_wonder": ww_data
         })
 

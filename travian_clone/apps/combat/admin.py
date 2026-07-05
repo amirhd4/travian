@@ -7,8 +7,8 @@ from .models import (
 
 @admin.register(TroopType)
 class TroopTypeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'tribe', 'attack_power', 'speed', 'carry_capacity', 'is_siege_weapon', 'is_settler')
-    list_filter = ('tribe', 'is_siege_weapon', 'is_settler')
+    list_display = ('name', 'tribe', 'attack_power', 'speed', 'carry_capacity', 'is_siege_weapon', 'is_settler', 'is_scout')
+    list_filter = ('tribe', 'is_siege_weapon', 'is_settler', 'is_scout')
 
 
 admin.site.register(VillageTroop)

@@ -27,6 +27,10 @@ const useGameStore = create((set) => ({
 
     setActiveVillageId: (villageId) => set({ activeVillageId: villageId }),
 
+    // قبلا این استیت هیچ‌وقت از سرور آپدیت نمی‌شد؛ ResourceBar فقط مقادیر
+    // پیش‌فرض هاردکد را هر ثانیه در کلاینت تیک می‌زد.
+    setProduction: (production) => set({ production }),
+
     // 🔴 تابع بسیار مهم برای زمان خروج یا انقضای نشست
     clearUser: () => {
         localStorage.removeItem("user");
@@ -49,13 +53,15 @@ const useGameStore = create((set) => ({
         }
     })),
 
-    // تولید منابع در هر ثانیه (برای نمایش زنده در UI)
+    // تولید منابع در هر ثانیه (برای نمایش زنده در UI). گندم می‌تواند نرخ
+    // منفی داشته باشد (وقتی مصرف نیروها از تولید بیشتر است)، پس زیر صفر
+    // clamp می‌شود تا عدد منفی لحظه‌ای در UI نمایش داده نشود.
     tickResources: () => set((state) => ({
         resources: {
             wood: state.resources.wood + (state.production.wood / 3600),
             clay: state.resources.clay + (state.production.clay / 3600),
             iron: state.resources.iron + (state.production.iron / 3600),
-            crop: state.resources.crop + (state.production.crop / 3600),
+            crop: Math.max(0, state.resources.crop + (state.production.crop / 3600)),
         }
     })),
 }));

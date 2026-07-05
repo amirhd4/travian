@@ -8,6 +8,7 @@ from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem
 from .utils import calculate_travel_seconds
 from .tasks import resolve_combat_movement
 from apps.game_engine.models import Village, GameLog
+from apps.game_engine.engine import schedule_game_event
 
 
 class SendTroopsView(APIView):
@@ -130,32 +131,39 @@ class BarracksTrainView(APIView):
                         village.crop < total_cost['crop']):
                     return Response({"error": "منابع دهکده برای آموزش این تعداد نیرو کافی نیست."}, status=400)
 
-                # کسر منابع
+                # کسر منابع همین الان انجام می‌شود (سرمایه‌گذاری در صف آموزش)
                 village.wood -= total_cost['wood']
                 village.clay -= total_cost['clay']
                 village.iron -= total_cost['iron']
                 village.crop -= total_cost['crop']
                 village.save()
 
-                # اضافه کردن نیرو به مدل صحیح (VillageTroop)
-                # در حالت پروداکشن واقعی، این رکورد باید به جدول "صف آموزش" برود و توسط Celery بعدا اضافه شود
-                village_troop, created = VillageTroop.objects.get_or_create(
-                    village=village,
-                    troop_type_id=troop_info.id,
-                    defaults={'count': 0}
-                )
-                village_troop.count += quantity
-                village_troop.save()
+                # نکته حیاتی: قبلا این View بلافاصله و بدون هیچ تاخیری نیرو را
+                # به VillageTroop اضافه می‌کرد، یعنی هیچ صف آموزش واقعی‌ای وجود
+                # نداشت (آموزش ۱۰۰۰ سرباز دقیقا هم‌زمان با آموزش ۱ سرباز تمام
+                # می‌شد). حالا از همان زیرساخت صف رویدادها که برای ارتقای
+                # ساختمان استفاده می‌شود (schedule_game_event) بهره می‌گیریم:
+                # زمان کل = مدت‌زمان پایه هر واحد ضرب در تعداد.
+                total_duration = troop_info.base_train_time * quantity
 
                 GameLog.objects.create(
                     village=village,
                     log_type='BUILDING',
-                    description=f"دستور آموزش {quantity} سرباز {troop_info.name} صادر شد."
+                    description=f"آموزش {quantity} سرباز {troop_info.name} در پادگان آغاز شد."
                 )
 
+                transaction.on_commit(lambda: schedule_game_event(
+                    village_id=village.id,
+                    event_type="TROOP_RECRUITMENT",
+                    base_duration_seconds=total_duration,
+                    details={"troop_id": troop_info.id, "count": quantity}
+                ))
+
             return Response({
-                "message": f"تعداد {quantity} {troop_info.name} با موفقیت به پادگان اضافه شدند!",
-                "troops_count": village_troop.count
+                "message": (
+                    f"آموزش {quantity} {troop_info.name} در صف پادگان قرار گرفت "
+                    f"و پس از اتمام، به‌طور خودکار به نیروهای دهکده اضافه می‌شود."
+                )
             })
 
         except Village.DoesNotExist:

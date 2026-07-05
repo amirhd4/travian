@@ -31,6 +31,13 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'server-9a323059-0fa0-48ce-8d98-278f8c1a7f99.ir-thr-fr1.arvancompute.ir,www.server-9a323059-0fa0-48ce-8d98-278f8c1a7f99.ir-thr-fr1.arvancompute.ir').split(',')
 
+# در حالت توسعه، همیشه localhost/127.0.0.1 را هم مجاز کن؛ وگرنه اجرای
+# runserver روی هاست دیگری غیر از دامنه پروداکشن با DisallowedHost خطا می‌دهد.
+if DEBUG:
+    for dev_host in ('localhost', '127.0.0.1'):
+        if dev_host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(dev_host)
+
 # Application definition
 INSTALLED_APPS = [
     "daphne",

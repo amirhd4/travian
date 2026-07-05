@@ -21,7 +21,19 @@ def create_starter_village_for_new_player(sender, instance, created, **kwargs):
         return
 
     # ایمپورت داخل تابع برای جلوگیری از circular import بین اپ‌های
-    # authentication و game_engine در زمان بارگذاری اولیه اپ‌ها
+    # authentication و game_engine / combat در زمان بارگذاری اولیه اپ‌ها
     from apps.game_engine.services import create_starter_village
+    from apps.combat.models import Hero, PlayerHeroItem, HeroItem
 
-    create_starter_village(instance)
+    village = create_starter_village(instance)
+
+    # قبل از این، هیچ Hero ای برای بازیکن ساخته نمی‌شد؛ صفحه قهرمان
+    # (Hero.jsx) برای هر بازیکن جدید ۴۰۴ یا داده خالی برمی‌گرداند.
+    hero, hero_created = Hero.objects.get_or_create(player=instance, defaults={"home_village": village})
+
+    if hero_created:
+        # هدیه شروع بازی: اگر کاتالوگ آیتم قهرمان از قبل seed شده باشد
+        # (python manage.py seed_game_data)، یک سلاح پایه به او بده.
+        starter_weapon = HeroItem.objects.filter(item_type="WEAPON").first()
+        if starter_weapon:
+            PlayerHeroItem.objects.create(hero=hero, item=starter_weapon, is_equipped=True)

@@ -1,22 +1,30 @@
 import { useEffect, useState, useRef } from 'react';
 import useGameStore from '../store/useGameStore';
 
-export function useGameWebSocket(userId) {
+// همان دلیل axiosConfig.js: باید با هاست‌نیم فرانت‌اند (localhost) یکی باشد
+const DEFAULT_WS_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+
+export function useGameWebSocket() {
     const [lastMessage, setLastMessage] = useState(null);
+    const accessToken = useGameStore((state) => state.accessToken);
 
     const wsRef = useRef(null);
     const reconnectTimeoutRef = useRef(null);
 
-    const wsURL = import.meta.env.VITE_WS_BASE_URL || 'ws://127.0.0.1:8000';
-
     useEffect(() => {
-        if (!userId) return;
+        // نکته مهم: قبلا این هوک پارامتر userId می‌گرفت و تا وقتی آن پاس
+        // داده نمی‌شد اتصال برقرار نمی‌کرد. اما هیچ‌جای پروژه (مثلا
+        // WorldWonder.jsx با useGameWebSocket() بدون آرگومان) آن را پاس
+        // نمی‌داد؛ یعنی سوکت هرگز وصل نمی‌شد و هیچ نوتیفیکیشن سرور
+        // (نتیجه نبرد، گزارش جاسوسی، رسیدن پشتیبان، افزایش طلا و ...)
+        // هیچ‌وقت به کاربر نمی‌رسید. احراز هویت سوکت از طریق همان JWT
+        // انجام می‌شود، پس فقط وجود accessToken برای اتصال کافی است.
+        if (!accessToken) return;
+
+        let isUnmounted = false;
 
         const connectWebSocket = () => {
-            // توکن از حافظه (Zustand) خونده می‌شه، نه از localStorage
-            const token = useGameStore.getState().accessToken;
-            const url = `${wsURL}/ws/game/?token=${token}`;
-
+            const url = `${DEFAULT_WS_URL}/ws/game/?token=${accessToken}`;
             const ws = new WebSocket(url);
             wsRef.current = ws;
 
@@ -36,7 +44,7 @@ export function useGameWebSocket(userId) {
             };
 
             ws.onclose = (event) => {
-                if (event.code !== 1000) {
+                if (!isUnmounted && event.code !== 1000) {
                     reconnectTimeoutRef.current = setTimeout(() => {
                         connectWebSocket();
                     }, 3000);
@@ -47,12 +55,13 @@ export function useGameWebSocket(userId) {
         connectWebSocket();
 
         return () => {
+            isUnmounted = true;
             if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
             if (wsRef.current) {
                 wsRef.current.close(1000);
             }
         };
-    }, [userId, wsURL]);
+    }, [accessToken]);
 
     const sendMessage = (messageObject) => {
         if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {

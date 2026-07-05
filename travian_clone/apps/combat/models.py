@@ -34,6 +34,10 @@ class TroopType(models.Model):
     # در دهکده مبدا نیاز است (services.found_new_village آن را مصرف می‌کند).
     is_settler = models.BooleanField(default=False)
 
+    # آیا این نیرو جاسوس (Scout) است؟ برای ماموریت‌های شناسایی (movement_type='SCOUT')
+    # استفاده می‌شود و همچنین به عنوان محافظ در برابر جاسوسی دشمن عمل می‌کند.
+    is_scout = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.name} ({self.tribe})"
 
@@ -57,6 +61,7 @@ class TroopMovement(models.Model):
         ('ATTACK', 'حمله عادی'),
         ('RAID', 'غارت'),
         ('REINFORCEMENT', 'پشتیبانی'),
+        ('SCOUT', 'شناسایی'),
         ('RETURN', 'بازگشت')
     ]
 

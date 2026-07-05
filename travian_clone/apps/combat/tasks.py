@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -88,6 +89,8 @@ def resolve_combat_movement(movement_id):
             return _resolve_reinforcement(movement)
         elif movement.movement_type == 'RETURN':
             return _resolve_return(movement)
+        elif movement.movement_type == 'SCOUT':
+            return _resolve_scout(movement)
         else:
             return _resolve_attack_or_raid(movement)
 
@@ -160,6 +163,71 @@ def _resolve_return(movement):
     _notify_player(home_village.player_id, "TROOPS_RETURNED", {
         "message": description, "village_id": home_village.id
     })
+    return description
+
+
+def _resolve_scout(movement):
+    """
+    ماموریت شناسایی. قبل از این تابع، سیستم جاسوسی اصلا وجود نداشت.
+
+    منطق ساده‌شده: اگر جمع جاسوس‌های دفاعی مستقر در دهکده هدف حداقل دو
+    برابر تعداد جاسوس‌های اعزامی باشد، ماموریت شکست می‌خورد و جاسوسان
+    مهاجم از بین می‌روند. در غیر این صورت، گزارش کاملی از منابع و نیروهای
+    دهکده هدف تهیه و برای مهاجم ارسال می‌شود و جاسوسان زنده به خانه برمی‌گردند.
+    """
+    source = movement.source_village
+    target = Village.objects.select_for_update().get(id=movement.target_village_id)
+
+    scout_qty_sent = sum(int(q) for q in movement.troops_payload.values())
+
+    defending_scouts = VillageTroop.objects.filter(
+        village=target, troop_type__is_scout=True
+    ).aggregate(total=Sum('count'))['total'] or 0
+
+    caught = defending_scouts >= scout_qty_sent * 2
+
+    movement.is_completed = True
+    movement.save()
+
+    if caught:
+        description = (
+            f"ماموریت شناسایی به دهکده {target.name} شکست خورد؛ "
+            f"جاسوسان شما توسط پدافند دشمن شکار شدند."
+        )
+        GameLog.objects.create(village=source, log_type='COMBAT', description=description)
+        _notify_player(source.player_id, "SCOUT_RESULT", {"message": description, "success": False})
+        return description
+
+    target_troops = list(VillageTroop.objects.filter(village=target).select_related('troop_type'))
+    troops_report = {vt.troop_type.name: vt.count for vt in target_troops if vt.count > 0}
+
+    report_lines = [
+        f"گزارش شناسایی از دهکده {target.name} ({target.x_coord}|{target.y_coord}):",
+        f"منابع: چوب {int(target.wood)} | خشت {int(target.clay)} | آهن {int(target.iron)} | گندم {int(target.crop)}",
+        "نیروهای مستقر: " + (
+            ", ".join(f"{name}: {count}" for name, count in troops_report.items())
+            if troops_report else "بدون نیرو"
+        ),
+    ]
+    description = "\n".join(report_lines)
+
+    GameLog.objects.create(village=source, log_type='COMBAT', description=description)
+    _notify_player(source.player_id, "SCOUT_RESULT", {"message": description, "success": True})
+
+    # بازگشت جاسوسان زنده به دهکده مبدا
+    travel_duration = movement.arrival_time - movement.start_time
+    return_arrival = timezone.now() + travel_duration
+    return_movement = TroopMovement.objects.create(
+        source_village=target,
+        target_village=source,
+        movement_type='RETURN',
+        troops_payload=movement.troops_payload,
+        arrival_time=return_arrival,
+    )
+    transaction.on_commit(lambda: resolve_combat_movement.apply_async(
+        args=[return_movement.id], eta=return_arrival
+    ))
+
     return description
 
 
