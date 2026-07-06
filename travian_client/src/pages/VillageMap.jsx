@@ -6,21 +6,58 @@ import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 
-const CATEGORY_COLORS = {
-    INFRASTRUCTURE: 0xb98c4a,
-    MILITARY: 0xa1332c,
-    WALL: 0x4b4b52,
-    RESOURCE: 0x4a7c1b,
+// ==========================================
+// 1. تنظیمات و مختصات اسلات‌ها (Slots Coordinates)
+// ==========================================
+// مختصات مزارع منابع (Dorf1)
+const DORF1_SLOTS = {
+    1: { x: 150, y: 100 }, 2: { x: 250, y: 70 }, 3: { x: 370, y: 70 }, 4: { x: 470, y: 100 }, // چوب‌بری‌ها
+    5: { x: 520, y: 180 }, 6: { x: 540, y: 280 }, 7: { x: 480, y: 360 }, 8: { x: 380, y: 400 }, // گودال‌های خشت
+    9: { x: 240, y: 400 }, 10: { x: 140, y: 360 }, 11: { x: 80, y: 280 }, 12: { x: 100, y: 180 }, // معادن آهن
+    13: { x: 210, y: 150 }, 14: { x: 310, y: 130 }, 15: { x: 410, y: 150 }, 16: { x: 430, y: 250 }, // گندم‌زارها
+    17: { x: 360, y: 320 }, 18: { x: 260, y: 320 }  // گندم‌زارها
 };
 
-const CATEGORY_ICONS = {
-    RESOURCE: { 'چوب‌بری': '🪵', 'گودال خاک رس': '🧱', 'معدن آهن': '⚒️', 'مزرعه گندم': '🌾' },
+// مختصات ساختمان‌های مرکز دهکده (Dorf2)
+const DORF2_SLOTS = {
+    19: { x: 310, y: 230 }, // مرکز (ساختمان اصلی)
+    20: { x: 210, y: 180 }, 21: { x: 260, y: 140 }, 22: { x: 360, y: 140 }, 23: { x: 410, y: 180 },
+    24: { x: 170, y: 240 }, 25: { x: 450, y: 240 }, 26: { x: 190, y: 310 }, 27: { x: 270, y: 330 },
+    28: { x: 350, y: 330 }, 29: { x: 430, y: 310 }, 30: { x: 130, y: 190 }, 31: { x: 490, y: 190 },
+    32: { x: 110, y: 270 }, 33: { x: 510, y: 270 }, 34: { x: 150, y: 360 }, 35: { x: 470, y: 360 },
+    36: { x: 230, y: 390 }, 37: { x: 390, y: 390 }, 38: { x: 310, y: 390 },
+    39: { x: 480, y: 140 }, // عمارت فرعی (Rally Point)
+    40: { x: 310, y: 440 }  // دیوار (Wall)
 };
 
-function resourceIcon(name) {
-    return CATEGORY_ICONS.RESOURCE[name] || '🌱';
-}
+// تولید نام فایل تصویر بر اساس نوع ساختمان
+const getAssetPath = (building, view) => {
+    if (building.level === 0 && !building.is_upgrading) {
+        return view === 'dorf1' ? null : '/assets/buildings/empty_slot.png';
+    }
 
+    // می‌توانید نام‌ها را دقیقاً با این فرمت در پوشه public/assets/ قرار دهید
+    // مثلا: woodcutter.png یا main_building.png
+    const nameMap = {
+        'چوب‌بری': 'woodcutter',
+        'گودال خاک رس': 'claypit',
+        'معدن آهن': 'ironmine',
+        'مزرعه گندم': 'cropland',
+        'ساختمان اصلی': 'main_building',
+        'انبار': 'warehouse',
+        'انبار غذا': 'granary',
+        'سربازخانه': 'barracks',
+        'دیوار': 'wall',
+        'اردوگاه': 'rally_point'
+    };
+
+    const engName = nameMap[building.name] || 'default_building';
+    return `/assets/buildings/${engName}.png`;
+};
+
+// ==========================================
+// 2. توابع کمکی زمان
+// ==========================================
 function formatDuration(totalSeconds) {
     if (totalSeconds <= 0) return '00:00:00';
     const h = Math.floor(totalSeconds / 3600);
@@ -34,20 +71,23 @@ function remainingSeconds(endTimeIso) {
     return Math.max(0, Math.round((new Date(endTimeIso).getTime() - Date.now()) / 1000));
 }
 
+// ==========================================
+// 3. کامپوننت اصلی
+// ==========================================
 export default function VillageMap() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const { lastMessage } = useGameWebSocket();
 
-    const pixiContainerRef = useRef(null);
-    const pixiAppRef = useRef(null);
-    const tickerFnRef = useRef(null);
-
+    const [view, setView] = useState('dorf1'); // 'dorf1' | 'dorf2'
     const [villageInfo, setVillageInfo] = useState(null);
     const [buildings, setBuildings] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selected, setSelected] = useState(null);
+    const [selectedSlot, setSelectedSlot] = useState(null);
     const [upgrading, setUpgrading] = useState(false);
     const [now, setNow] = useState(Date.now());
+
+    const pixiContainerRef = useRef(null);
+    const pixiAppRef = useRef(null);
 
     const fetchBuildings = useCallback(async () => {
         if (!activeVillageId) return;
@@ -56,7 +96,7 @@ export default function VillageMap() {
             setVillageInfo(data.village);
             setBuildings(data.buildings);
         } catch (error) {
-            console.error("خطا در دریافت اطلاعات ساختمان‌های دهکده", error);
+            console.error("خطا در دریافت اطلاعات دهکده", error);
         } finally {
             setLoading(false);
         }
@@ -67,41 +107,34 @@ export default function VillageMap() {
         fetchBuildings();
     }, [fetchBuildings]);
 
-    // به محض این‌که سرور بگه ارتقای یک ساختمان تمام شده، بلافاصله رفرش کن
-    // (قبلا هیچ اتصال وب‌سوکت فعالی وجود نداشت که این پیام‌ها را دریافت کند)
     useEffect(() => {
-        if (lastMessage?.type === 'building_completed') {
-            fetchBuildings();
-        }
+        if (lastMessage?.type === 'building_completed') fetchBuildings();
     }, [lastMessage, fetchBuildings]);
 
-    // شبکه اطمینان: هر ۳۰ ثانیه هم مستقل از وب‌سوکت دوباره همگام‌سازی کن
     useEffect(() => {
         const interval = setInterval(fetchBuildings, 30000);
         return () => clearInterval(interval);
     }, [fetchBuildings]);
 
-    // تیک هر ثانیه فقط برای محاسبه شمارش معکوس‌های محلی، بدون درخواست جدید به سرور
     useEffect(() => {
         const interval = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(interval);
     }, []);
 
-    const centerBuildings = buildings.filter((b) => b.category !== 'RESOURCE');
-    const resourceFields = buildings.filter((b) => b.category === 'RESOURCE');
-
-    // ---------- راه‌اندازی صحنه PixiJS (یک‌بار) ----------
+    // ==========================================
+    // 4. موتور رندر PixiJS برای نقشه‌های Dorf1 و Dorf2
+    // ==========================================
     useEffect(() => {
-        if (pixiAppRef.current) return;
-        let isMounted = true;
-        let app = null;
+        if (loading || !pixiContainerRef.current) return;
 
-        async function setupPixi() {
-            app = new PIXI.Application();
+        let isMounted = true;
+        const app = new PIXI.Application();
+
+        async function initPixi() {
             await app.init({
                 width: 620,
                 height: 460,
-                backgroundColor: 0x2f4a12,
+                backgroundColor: 0x000000,
                 resolution: window.devicePixelRatio || 1,
                 autoDensity: true,
                 antialias: true,
@@ -113,130 +146,113 @@ export default function VillageMap() {
             }
 
             pixiAppRef.current = app;
-            if (pixiContainerRef.current) {
-                pixiContainerRef.current.appendChild(app.canvas);
-            }
+            pixiContainerRef.current.innerHTML = '';
+            pixiContainerRef.current.appendChild(app.canvas);
+
+            renderScene(app);
         }
 
-        setupPixi();
+        async function renderScene(app) {
+            app.stage.removeChildren();
+
+            // 1. بارگذاری پس‌زمینه بر اساس نوع تب
+            const bgPath = view === 'dorf1' ? '/assets/map/dorf1_bg.png' : '/assets/map/dorf2_bg.png';
+            try {
+                const bgTexture = await PIXI.Assets.load(bgPath);
+                const bgSprite = new PIXI.Sprite(bgTexture);
+                bgSprite.width = app.screen.width;
+                bgSprite.height = app.screen.height;
+                app.stage.addChild(bgSprite);
+            } catch (e) {
+                console.warn('تصویر پس‌زمینه یافت نشد، از رنگ ساده استفاده می‌شود.');
+                const fallbackBg = new PIXI.Graphics();
+                fallbackBg.rect(0,0, app.screen.width, app.screen.height).fill({color: view === 'dorf1' ? 0x8ab961 : 0x769b50});
+                app.stage.addChild(fallbackBg);
+            }
+
+            // 2. فیلتر کردن ساختمان‌ها بر اساس نمای فعلی
+            const activeSlots = view === 'dorf1' ? DORF1_SLOTS : DORF2_SLOTS;
+            const activeBuildings = buildings.filter(b => activeSlots[b.position]);
+
+            // 3. رندر کردن ساختمان‌ها در مختصات
+            activeBuildings.forEach((b) => {
+                const coords = activeSlots[b.position];
+                const container = new PIXI.Container();
+                container.x = coords.x;
+                container.y = coords.y;
+
+                const assetPath = getAssetPath(b, view);
+                if (assetPath) {
+                    const sprite = PIXI.Sprite.from(assetPath);
+                    sprite.anchor.set(0.5);
+                    sprite.width = view === 'dorf1' ? 60 : 70; // اندازه‌های متفاوت برای منابع و ساختمان‌ها
+                    sprite.height = view === 'dorf1' ? 60 : 70;
+                    container.addChild(sprite);
+                } else if (view === 'dorf1') {
+                    // پالی‌بک برای مزارع اگر عکس نبود
+                    const circle = new PIXI.Graphics();
+                    circle.circle(0, 0, 25).fill({color: 0xffffff, alpha: 0.3}).stroke({width:2, color: 0x000000});
+                    container.addChild(circle);
+                }
+
+                // بج سطح (Level Badge) سبک تراوین
+                if (b.level > 0 || b.is_upgrading) {
+                    const badge = new PIXI.Graphics();
+                    badge.circle(0, 0, 12).fill({color: 0xffcc00}).stroke({width: 2, color: 0x000000});
+                    badge.x = 20; badge.y = 20;
+
+                    const lvlText = new PIXI.Text({
+                        text: b.level.toString(),
+                        style: { fontFamily: 'Tahoma', fontSize: 12, fill: 0x000000, fontWeight: 'bold' }
+                    });
+                    lvlText.anchor.set(0.5);
+                    lvlText.x = 20; lvlText.y = 20;
+
+                    container.addChild(badge, lvlText);
+                }
+
+                // آیکون در حال ساخت
+                if (b.is_upgrading) {
+                    const buildIcon = PIXI.Sprite.from('/assets/ui/hammer.png');
+                    buildIcon.anchor.set(0.5);
+                    buildIcon.x = -20; buildIcon.y = -20;
+                    buildIcon.width = 20; buildIcon.height = 20;
+                    container.addChild(buildIcon);
+                }
+
+                container.eventMode = 'static';
+                container.cursor = 'pointer';
+                container.on('pointerover', () => { container.scale.set(1.05); });
+                container.on('pointerout', () => { container.scale.set(1); });
+                container.on('pointerdown', () => setSelectedSlot(b));
+
+                app.stage.addChild(container);
+            });
+        }
+
+        initPixi();
 
         return () => {
             isMounted = false;
             if (pixiAppRef.current) {
-                if (tickerFnRef.current) {
-                    pixiAppRef.current.ticker.remove(tickerFnRef.current);
-                }
                 pixiAppRef.current.destroy(true, { children: true });
                 pixiAppRef.current = null;
             }
         };
-    }, []);
+    }, [loading, buildings, view]); // وقتی دیتا یا تب عوض شد، دوباره رندر کن
 
-    // ---------- بازترسیم ساختمان‌های مرکزی هر بار که داده تغییر می‌کند ----------
-    useEffect(() => {
-        const app = pixiAppRef.current;
-        if (!app || centerBuildings.length === 0) return;
-
-        app.stage.removeChildren();
-        if (tickerFnRef.current) {
-            app.ticker.remove(tickerFnRef.current);
-            tickerFnRef.current = null;
-        }
-
-        const centerX = app.screen.width / 2;
-        const centerY = app.screen.height / 2;
-        const radius = 160;
-
-        // هاب مرکزی تزئینی دهکده
-        const hub = new PIXI.Graphics();
-        hub.circle(0, 0, 46);
-        hub.fill({ color: 0x2b1d10 });
-        hub.stroke({ width: 4, color: 0xffcc00 });
-        hub.x = centerX;
-        hub.y = centerY;
-        app.stage.addChild(hub);
-
-        const hubLabel = new PIXI.Text({
-            text: villageInfo?.is_capital ? `👑\n${villageInfo?.name || ''}` : (villageInfo?.name || ''),
-            style: { fontFamily: 'Tahoma, Arial', fontSize: 12, fill: 0xffcc00, align: 'center', fontWeight: 'bold' },
-        });
-        hubLabel.anchor.set(0.5);
-        hubLabel.x = centerX;
-        hubLabel.y = centerY;
-        app.stage.addChild(hubLabel);
-
-        const glowRings = [];
-
-        centerBuildings.forEach((b, i) => {
-            const angle = (i / centerBuildings.length) * Math.PI * 2 - Math.PI / 2;
-            const x = centerX + radius * Math.cos(angle);
-            const y = centerY + radius * Math.sin(angle);
-
-            const container = new PIXI.Container();
-            container.x = x;
-            container.y = y;
-            container.eventMode = 'static';
-            container.cursor = 'pointer';
-
-            const color = CATEGORY_COLORS[b.category] ?? 0x8899aa;
-
-            const circle = new PIXI.Graphics();
-            circle.circle(0, 0, 48);
-            circle.fill({ color });
-            circle.stroke({ width: 3, color: 0x1a1a1a });
-            container.addChild(circle);
-
-            if (b.is_upgrading) {
-                const ring = new PIXI.Graphics();
-                ring.circle(0, 0, 56);
-                ring.stroke({ width: 3, color: 0xffd54a });
-                container.addChild(ring);
-                glowRings.push(ring);
-            }
-
-            const nameText = new PIXI.Text({
-                text: b.name,
-                style: { fontFamily: 'Tahoma, Arial', fontSize: 11, fill: 0xffffff, align: 'center', fontWeight: 'bold', wordWrap: true, wordWrapWidth: 84 },
-            });
-            nameText.anchor.set(0.5, 1);
-            nameText.y = -6;
-            container.addChild(nameText);
-
-            const levelText = new PIXI.Text({
-                text: `Lv.${b.level}`,
-                style: { fontFamily: 'Tahoma, Arial', fontSize: 14, fill: 0xffcc00, fontWeight: 'bold' },
-            });
-            levelText.anchor.set(0.5, 0);
-            levelText.y = 4;
-            container.addChild(levelText);
-
-            container.on('pointerover', () => { container.alpha = 0.85; container.scale.set(1.05); });
-            container.on('pointerout', () => { container.alpha = 1; container.scale.set(1); });
-            container.on('pointerdown', () => setSelected(b));
-
-            app.stage.addChild(container);
-        });
-
-        if (glowRings.length > 0) {
-            const tickerFn = () => {
-                const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 220);
-                glowRings.forEach((ring) => { ring.alpha = 0.4 + pulse * 0.6; });
-            };
-            tickerFnRef.current = tickerFn;
-            app.ticker.add(tickerFn);
-        }
-    }, [centerBuildings, villageInfo]);
-
+    // ==========================================
+    // 5. هندلرهای کاربر و UI
+    // ==========================================
     const handleUpgrade = async () => {
-        if (!selected || !activeVillageId) return;
+        if (!selectedSlot || !activeVillageId) return;
         setUpgrading(true);
         try {
             const response = await api.post('game/upgrade-building/', {
                 village_id: activeVillageId,
-                position: selected.position,
+                position: selectedSlot.position,
             });
-            alert(response.data.message);
-            setSelected(null);
+            setSelectedSlot(null);
             fetchBuildings();
         } catch (error) {
             alert(error.response?.data?.error || "خطا در ارتقای ساختمان");
@@ -252,86 +268,112 @@ export default function VillageMap() {
         return r.wood >= c.wood && r.clay >= c.clay && r.iron >= c.iron && r.crop >= c.crop;
     };
 
+    const upgradingBuildings = buildings.filter(b => b.is_upgrading).sort((a,b) => new Date(a.upgrade_end_time) - new Date(b.upgrade_end_time));
+
     return (
-        <div className="w-full min-h-screen bg-[#c2d69b] flex flex-col items-center pt-32 pb-10">
+        <div className="w-full min-h-screen bg-[#c2d69b] flex flex-col items-center pt-32 pb-10 font-tahoma">
             <ResourceBar />
             <Navbar />
 
             {loading ? (
                 <p className="font-bold text-[#3d2b1a] mt-10">در حال بارگذاری دهکده...</p>
             ) : (
-                <>
+                <div className="flex flex-col items-center w-full max-w-4xl">
+
+                    {/* تب‌های انتخاب نمای منابع و ساختمان */}
+                    <div className="flex gap-1 mb-2">
+                        <button
+                            onClick={() => setView('dorf1')}
+                            className={`px-6 py-2 rounded-t-lg font-bold border-2 border-b-0 ${view === 'dorf1' ? 'bg-[#f4ebd0] border-[#593d2b] text-[#593d2b]' : 'bg-[#e0d6b8] border-gray-400 text-gray-500'}`}
+                        >
+                            🌾 منابع (Dorf1)
+                        </button>
+                        <button
+                            onClick={() => setView('dorf2')}
+                            className={`px-6 py-2 rounded-t-lg font-bold border-2 border-b-0 ${view === 'dorf2' ? 'bg-[#f4ebd0] border-[#593d2b] text-[#593d2b]' : 'bg-[#e0d6b8] border-gray-400 text-gray-500'}`}
+                        >
+                            🏛 ساختمان‌ها (Dorf2)
+                        </button>
+                    </div>
+
+                    {/* بوم نقاشی بازی */}
                     <div
-                        className="shadow-2xl border-[12px] border-[#593d2b] rounded-lg overflow-hidden relative bg-black"
+                        className="shadow-2xl border-8 border-[#593d2b] rounded-b-lg rounded-tr-lg overflow-hidden relative bg-black"
                         ref={pixiContainerRef}
-                        style={{ width: '620px', height: '460px', maxWidth: '95vw' }}
+                        style={{ width: '620px', height: '460px', maxWidth: '100%' }}
                     />
 
-                    <div className="bg-[#f4ebd0] border-4 border-[#593d2b] rounded-lg shadow-xl mt-6 p-4 max-w-3xl w-full">
-                        <h3 className="font-bold text-[#593d2b] mb-3 text-center">🌾 مزارع منابع</h3>
-                        <div className="grid grid-cols-6 gap-2">
-                            {resourceFields.map((field) => (
-                                <button
-                                    key={field.id}
-                                    onClick={() => setSelected(field)}
-                                    className={`relative flex flex-col items-center justify-center h-16 rounded border-2 transition
-                                        ${field.is_upgrading ? 'border-yellow-500 bg-yellow-100 animate-pulse' : 'border-[#a9835a] bg-[#e9d9b8] hover:bg-[#dfc89e]'}`}
-                                >
-                                    <span className="text-lg">{resourceIcon(field.name)}</span>
-                                    <span className="text-[10px] font-bold text-[#593d2b]">Lv.{field.level}</span>
-                                </button>
-                            ))}
+                    {/* صف ساخت‌وساز تراوین (Construction Queue) */}
+                    {upgradingBuildings.length > 0 && (
+                        <div className="bg-[#f4ebd0] border-4 border-[#593d2b] rounded-lg shadow-xl mt-6 p-4 w-[620px] max-w-full">
+                            <h3 className="font-bold text-[#593d2b] mb-3 border-b-2 border-[#d9c49a] pb-1">🔨 صف ساخت‌وساز</h3>
+                            <ul className="text-sm">
+                                {upgradingBuildings.map((b, idx) => (
+                                    <li key={b.id} className="flex justify-between items-center py-1 border-b border-dashed border-gray-300 last:border-0">
+                                        <span className="font-bold text-[#3d2b1a]">{b.name} (سطح {b.level + 1})</span>
+                                        <span className="font-mono text-red-600 font-bold" dir="ltr">
+                                            {formatDuration(remainingSeconds(b.upgrade_end_time) - Math.floor((now - now) / 1000))}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                    </div>
-                </>
+                    )}
+                </div>
             )}
 
-            {selected && (
+            {/* پاپ‌آپ ارتقا */}
+            {selectedSlot && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] p-4">
-                    <div className="bg-[#f4ebd0] border-4 border-[#593d2b] rounded-xl shadow-2xl max-w-sm w-full p-6">
-                        <h3 className="text-xl font-bold text-[#593d2b] mb-1">
-                            {resourceIcon(selected.name)} {selected.name}
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-4">سطح فعلی: <span className="font-bold">{selected.level}</span></p>
+                    <div className="bg-[#f4ebd0] border-4 border-[#593d2b] rounded-xl shadow-2xl max-w-sm w-full p-6 relative">
+                        <button onClick={() => setSelectedSlot(null)} className="absolute top-2 right-3 text-2xl font-bold text-red-700">×</button>
 
-                        {selected.is_upgrading ? (
+                        <h3 className="text-xl font-bold text-[#593d2b] mb-1">
+                            {selectedSlot.level > 0 ? selectedSlot.name : 'زمین خالی'}
+                        </h3>
+                        <p className="text-sm text-gray-600 mb-4">سطح فعلی: <span className="font-bold">{selectedSlot.level}</span></p>
+
+                        {selectedSlot.is_upgrading ? (
                             <div className="bg-yellow-100 border border-yellow-400 rounded p-3 text-center mb-4">
                                 <p className="text-sm font-bold text-yellow-800 mb-1">در حال ارتقا...</p>
-                                <p className="font-mono text-lg font-bold text-yellow-900" dir="ltr">
-                                    {formatDuration(remainingSeconds(selected.upgrade_end_time) - Math.floor((now - now) / 1000))}
-                                </p>
                             </div>
                         ) : (
-                            <div className="bg-white/60 rounded border p-3 mb-4 text-sm">
-                                <p className="font-bold text-[#593d2b] mb-2">هزینه ارتقا به سطح {selected.level + 1}:</p>
-                                <div className="grid grid-cols-2 gap-1 text-xs font-bold">
-                                    <span>🪵 چوب: {selected.next_level_cost.wood}</span>
-                                    <span>🧱 خشت: {selected.next_level_cost.clay}</span>
-                                    <span>⚒️ آهن: {selected.next_level_cost.iron}</span>
-                                    <span>🌾 گندم: {selected.next_level_cost.crop}</span>
+                            <div className="bg-white/60 rounded border border-[#d9c49a] p-3 mb-4 text-sm">
+                                <p className="font-bold text-[#593d2b] mb-2">هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
+                                <div className="grid grid-cols-2 gap-2 text-xs font-bold mb-3">
+                                    <span className="flex items-center gap-1">
+                                        {/*<img src="/assets/ui/wood.png" className="w-4 h-4" alt=""/>*/}
+                                        🪵
+                                        {selectedSlot.next_level_cost.wood}</span>
+                                    <span className="flex items-center gap-1">
+                                        {/*<img src="/assets/ui/clay.png" className="w-4 h-4" alt=""/>*/}
+                                        🧱
+                                        {selectedSlot.next_level_cost.clay}</span>
+                                    <span className="flex items-center gap-1">
+                                        🧲
+                                        {/*<img src="/assets/ui/iron.png" className="w-4 h-4" alt=""/> */}
+                                        {selectedSlot.next_level_cost.iron}</span>
+                                    <span className="flex items-center gap-1">
+                                        🌾
+                                        {/*<img src="/assets/ui/crop.png" className="w-4 h-4" alt=""/>*/}
+                                        {selectedSlot.next_level_cost.crop}</span>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2">
-                                    زمان ساخت: {formatDuration(selected.next_level_time_seconds)}
+                                <p className="text-xs text-gray-700 flex items-center gap-1">
+                                    ⏱ زمان ساخت: {formatDuration(selectedSlot.next_level_time_seconds)}
                                 </p>
-                                {!canAfford(selected) && (
-                                    <p className="text-xs text-red-600 font-bold mt-2">منابع کافی برای این ارتقا ندارید.</p>
+                                {!canAfford(selectedSlot) && (
+                                    <p className="text-xs text-red-600 font-bold mt-3">منابع کافی برای این ارتقا ندارید.</p>
                                 )}
                             </div>
                         )}
 
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setSelected(null)}
-                                className="flex-1 bg-gray-300 text-gray-800 p-2 rounded font-bold hover:bg-gray-400"
-                            >
-                                بستن
-                            </button>
+                        <div className="flex justify-center">
                             <button
                                 onClick={handleUpgrade}
-                                disabled={selected.is_upgrading || upgrading || !canAfford(selected)}
-                                className="flex-1 bg-[#593d2b] text-white p-2 rounded font-bold hover:bg-[#4a3224] disabled:bg-gray-400"
+                                disabled={selectedSlot.is_upgrading || upgrading || !canAfford(selectedSlot)}
+                                className="bg-[#593d2b] text-[#f4ebd0] px-8 py-2 rounded-full font-bold hover:bg-[#4a3224] disabled:bg-gray-400 disabled:text-gray-200 transition-colors shadow-md"
                             >
-                                {upgrading ? "..." : "ارتقا 🔨"}
+                                {upgrading ? "صبر کنید..." : "ارتقا به سطح " + (selectedSlot.level + 1)}
                             </button>
                         </div>
                     </div>

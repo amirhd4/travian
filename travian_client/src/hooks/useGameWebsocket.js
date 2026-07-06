@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import useGameStore from '../store/useGameStore';
 
 // همان دلیل axiosConfig.js: باید با هاست‌نیم فرانت‌اند (localhost) یکی باشد
-const DEFAULT_WS_URL = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+const DEFAULT_WS_URL = import.meta.env.VITE_WS_BASE_URL;
 
 export function useGameWebSocket() {
     const [lastMessage, setLastMessage] = useState(null);
