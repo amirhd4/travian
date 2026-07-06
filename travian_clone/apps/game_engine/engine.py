@@ -31,6 +31,7 @@ def execute_immediate_event(village_id, event_type, details):
             building = VillageBuilding.objects.get(id=building_id)
             building.level = next_level
             building.is_upgrading = False
+            building.upgrade_end_time = None
             building.save()
 
             # ثبت سیستم لاگ برای ارتقای ساختمان
@@ -45,6 +46,7 @@ def execute_immediate_event(village_id, event_type, details):
     elif event_type == "TROOP_RECRUITMENT":
         troop_id = details.get('troop_id')
         count = details.get('count')
+        queue_id = details.get('queue_id')
         try:
             troop_type = TroopType.objects.get(id=troop_id)
             village_troop, _ = VillageTroop.objects.get_or_create(village=village, troop_type=troop_type)
@@ -57,5 +59,9 @@ def execute_immediate_event(village_id, event_type, details):
                 log_type='SYSTEM',
                 description=f"تعداد {count} نیروی {troop_type.name} در دهکده ساخته شد."
             )
+
+            if queue_id:
+                from apps.combat.models import TrainingQueue
+                TrainingQueue.objects.filter(id=queue_id).update(is_completed=True)
         except TroopType.DoesNotExist:
             pass

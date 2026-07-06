@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axiosConfig';
 import Navbar from '../components/Navbar';
 import ResourceBar from '../components/ResourceBar';
+import useGameStore from '../store/useGameStore';
 
 export default function Embassy() {
     const [embassyData, setEmbassyData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [createForm, setCreateForm] = useState({ name: '', tag: '' });
+    const currentUser = useGameStore((state) => state.user);
 
-    const fetchEmbassyData = async () => {
+    const fetchEmbassyData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get('game/embassy/');
@@ -18,32 +20,52 @@ export default function Embassy() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchEmbassyData();
-    }, []);
+    }, [fetchEmbassyData]);
+
+    const runAction = async (payload, confirmMessage) => {
+        if (confirmMessage && !window.confirm(confirmMessage)) return;
+        try {
+            const response = await api.post('game/embassy/', payload);
+            alert(response.data.message);
+            fetchEmbassyData();
+        } catch (error) {
+            alert(error.response?.data?.error || "خطا در انجام عملیات");
+        }
+    };
 
     const handleCreateAlliance = async (e) => {
         e.preventDefault();
-        try {
-            await api.post('game/embassy/', { action: 'create', ...createForm });
-            alert("اتحاد تاسیس شد!");
-            fetchEmbassyData();
-        } catch (error) {
-            alert(error.response?.data?.error || "خطا در تاسیس اتحاد");
-        }
+        await runAction({ action: 'create', ...createForm });
     };
 
     const handleJoinAlliance = async (id) => {
-        try {
-            await api.post('game/embassy/', { action: 'join', alliance_id: id });
-            alert("به اتحاد پیوستید!");
-            fetchEmbassyData();
-        } catch (error) {
-            alert(error.response?.data?.error || "خطا در پیوستن به اتحاد");
-        }
+        await runAction({ action: 'join', alliance_id: id });
     };
+
+    const handleLeave = async () => {
+        await runAction({ action: 'leave' }, "آیا مطمئنید می‌خواهید اتحاد را ترک کنید؟");
+    };
+
+    const handleKick = async (targetPlayerId, targetName) => {
+        await runAction(
+            { action: 'kick', target_player_id: targetPlayerId },
+            `آیا مطمئنید می‌خواهید ${targetName} را اخراج کنید؟`
+        );
+    };
+
+    const handlePromote = async (targetPlayerId, role) => {
+        await runAction({ action: 'promote', target_player_id: targetPlayerId, role });
+    };
+
+    const handleDisband = async () => {
+        await runAction({ action: 'disband' }, "این عملیات اتحاد را برای همیشه منحل می‌کند. ادامه می‌دهید؟");
+    };
+
+    const isLeader = embassyData?.alliance_data?.role === 'Leader';
 
     return (
         <div className="w-full min-h-screen bg-stone-200 pt-28 flex flex-col items-center pb-10">
@@ -58,24 +80,74 @@ export default function Embassy() {
                 ) : embassyData?.has_alliance ? (
                     <div>
                         <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6 text-center">
-                            <h3 className="text-xl font-bold text-blue-900">اتحاد: {embassyData.alliance_data.name} [{embassyData.alliance_data.tag}]</h3>
+                            <h3 className="text-xl font-bold text-blue-900">
+                                اتحاد: {embassyData.alliance_data.name} [{embassyData.alliance_data.tag}]
+                            </h3>
                             <p className="text-sm font-bold text-blue-700 mt-2">مقام شما: {embassyData.alliance_data.role}</p>
                         </div>
 
                         <h4 className="font-bold mb-2">لیست اعضا:</h4>
-                        <table className="w-full border-collapse text-center">
+                        <table className="w-full border-collapse text-center mb-6">
                             <thead>
-                                <tr className="bg-gray-100"><th className="p-2 border">بازیکن</th><th className="p-2 border">نقش</th></tr>
+                                <tr className="bg-gray-100">
+                                    <th className="p-2 border">بازیکن</th>
+                                    <th className="p-2 border">نقش</th>
+                                    {isLeader && <th className="p-2 border">مدیریت</th>}
+                                </tr>
                             </thead>
                             <tbody>
-                                {embassyData.alliance_data.members.map((m, i) => (
-                                    <tr key={i} className="hover:bg-gray-50">
-                                        <td className="p-2 border font-bold text-gray-700">{m.player__email.split('@')[0]}</td>
-                                        <td className="p-2 border text-sm">{m.role}</td>
-                                    </tr>
-                                ))}
+                                {embassyData.alliance_data.members.map((m, i) => {
+                                    const isSelf = currentUser && m.player_id === currentUser.id;
+                                    return (
+                                        <tr key={i} className="hover:bg-gray-50">
+                                            <td className="p-2 border font-bold text-gray-700">
+                                                {m.player__email.split('@')[0]}{isSelf ? ' (شما)' : ''}
+                                            </td>
+                                            <td className="p-2 border text-sm">{m.role}</td>
+                                            {isLeader && (
+                                                <td className="p-2 border">
+                                                    {!isSelf && (
+                                                        <div className="flex gap-2 justify-center">
+                                                            {m.role !== 'Diplomat' && (
+                                                                <button
+                                                                    onClick={() => handlePromote(m.player_id, 'Diplomat')}
+                                                                    className="text-xs bg-purple-600 text-white px-2 py-1 rounded font-bold hover:bg-purple-700"
+                                                                >
+                                                                    دیپلمات
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => handleKick(m.player_id, m.player__email.split('@')[0])}
+                                                                className="text-xs bg-red-600 text-white px-2 py-1 rounded font-bold hover:bg-red-700"
+                                                            >
+                                                                اخراج
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            )}
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
+
+                        <div className="flex gap-3 justify-center">
+                            <button
+                                onClick={handleLeave}
+                                className="bg-gray-600 text-white px-4 py-2 rounded font-bold hover:bg-gray-700"
+                            >
+                                🚪 ترک اتحاد
+                            </button>
+                            {isLeader && (
+                                <button
+                                    onClick={handleDisband}
+                                    className="bg-red-700 text-white px-4 py-2 rounded font-bold hover:bg-red-800"
+                                >
+                                    💥 انحلال اتحاد
+                                </button>
+                            )}
+                        </div>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

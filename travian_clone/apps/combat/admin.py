@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     TroopType, VillageTroop, TroopMovement,
-    Hero, PlayerHeroItem, HeroItem, Animal, VillageAnimal,
+    Hero, PlayerHeroItem, HeroItem, Animal, VillageAnimal, TrainingQueue,
 )
 
 
@@ -24,3 +24,9 @@ admin.site.register(PlayerHeroItem)
 admin.site.register(HeroItem)
 admin.site.register(Animal)
 admin.site.register(VillageAnimal)
+
+
+@admin.register(TrainingQueue)
+class TrainingQueueAdmin(admin.ModelAdmin):
+    list_display = ('village', 'troop_type', 'count', 'started_at', 'finishes_at', 'is_completed')
+    list_filter = ('is_completed',)

@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
 import datetime
-from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal
+from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal, TrainingQueue
 from .utils import calculate_travel_seconds
 from .tasks import resolve_combat_movement
 from apps.game_engine.models import Village, GameLog
@@ -141,10 +141,18 @@ class BarracksTrainView(APIView):
                 # نکته حیاتی: قبلا این View بلافاصله و بدون هیچ تاخیری نیرو را
                 # به VillageTroop اضافه می‌کرد، یعنی هیچ صف آموزش واقعی‌ای وجود
                 # نداشت (آموزش ۱۰۰۰ سرباز دقیقا هم‌زمان با آموزش ۱ سرباز تمام
-                # می‌شد). حالا از همان زیرساخت صف رویدادها که برای ارتقای
-                # ساختمان استفاده می‌شود (schedule_game_event) بهره می‌گیریم:
-                # زمان کل = مدت‌زمان پایه هر واحد ضرب در تعداد.
+                # می‌شد) و هیچ رکورد قابل مشاهده‌ای از «الان چه چیزی در حال
+                # آموزش است» وجود نداشت. حالا یک ردیف TrainingQueue واقعی
+                # ساخته می‌شود که فرانت‌اند می‌تواند با شمارش معکوس نمایش دهد.
                 total_duration = troop_info.base_train_time * quantity
+                finishes_at = timezone.now() + datetime.timedelta(seconds=total_duration)
+
+                queue_item = TrainingQueue.objects.create(
+                    village=village,
+                    troop_type=troop_info,
+                    count=quantity,
+                    finishes_at=finishes_at,
+                )
 
                 GameLog.objects.create(
                     village=village,
@@ -156,7 +164,7 @@ class BarracksTrainView(APIView):
                     village_id=village.id,
                     event_type="TROOP_RECRUITMENT",
                     base_duration_seconds=total_duration,
-                    details={"troop_id": troop_info.id, "count": quantity}
+                    details={"troop_id": troop_info.id, "count": quantity, "queue_id": queue_item.id}
                 ))
 
             return Response({
@@ -168,6 +176,94 @@ class BarracksTrainView(APIView):
 
         except Village.DoesNotExist:
             return Response({"error": "دهکده مورد نظر یافت نشد یا متعلق به شما نیست."}, status=404)
+
+
+class TroopTypeCatalogView(APIView):
+    """
+    فهرست همه نیروهای قابل آموزش با هزینه و زمان واقعی از دیتابیس.
+
+    قبل از این ویو، Barracks.jsx فقط دو واحد را با هزینه‌های هاردکد در
+    خود فایل React نمایش می‌داد؛ یعنی نیروهای مهاجر/کاراگاه که بعدا اضافه
+    شدند اصلا در پادگان قابل آموزش نبودند، و اگر ادمین هزینه یک نیرو را
+    در پنل مدیریت تغییر می‌داد، فرانت‌اند همچنان عدد قدیمی را نشان می‌داد.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        troop_types = TroopType.objects.all().order_by('id')
+        return Response([
+            {
+                "id": t.id,
+                "name": t.name,
+                "tribe": t.tribe,
+                "attack_power": t.attack_power,
+                "defense_infantry": t.defense_infantry,
+                "defense_cavalry": t.defense_cavalry,
+                "speed": t.speed,
+                "carry_capacity": t.carry_capacity,
+                "is_siege_weapon": t.is_siege_weapon,
+                "is_settler": t.is_settler,
+                "is_scout": t.is_scout,
+                "costs": {
+                    "wood": t.wood_cost,
+                    "clay": t.clay_cost,
+                    "iron": t.iron_cost,
+                    "crop": t.crop_cost,
+                },
+                "crop_upkeep": t.crop_upkeep,
+                "base_train_time": t.base_train_time,
+            }
+            for t in troop_types
+        ])
+
+
+class VillageTroopListView(APIView):
+    """نیروهای واقعی مستقر در یک دهکده مشخص (برای پر کردن فرم‌های اعزام نیرو)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        troops = VillageTroop.objects.filter(village=village, count__gt=0).select_related('troop_type')
+        return Response([
+            {
+                "troop_type_id": vt.troop_type.id,
+                "name": vt.troop_type.name,
+                "count": vt.count,
+                "is_scout": vt.troop_type.is_scout,
+                "is_settler": vt.troop_type.is_settler,
+            }
+            for vt in troops
+        ])
+
+
+class TrainingQueueView(APIView):
+    """صف آموزش فعال یک دهکده مشخص، به همراه زمان باقی‌مانده هر بچ."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        queue = TrainingQueue.objects.filter(village=village, is_completed=False).select_related('troop_type')
+        now = timezone.now()
+        return Response([
+            {
+                "id": q.id,
+                "troop_name": q.troop_type.name,
+                "count": q.count,
+                "finishes_at": q.finishes_at,
+                "remaining_seconds": max(0, int((q.finishes_at - now).total_seconds())),
+            }
+            for q in queue
+        ])
 
 
 class HeroView(APIView):

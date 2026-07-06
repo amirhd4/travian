@@ -73,6 +73,17 @@ class BuildingType(models.Model):
     # می‌تواند دیوار دهکده را با یک کوئری ساده پیدا کند.
     provides_wall_defense = models.BooleanField(default=False)
 
+    # دسته‌بندی ساختمان برای رندر بصری متفاوت در فرانت‌اند (به‌جای تطبیق روی
+    # رشته نام که شکننده است). RESOURCE = مزارع منابع، MILITARY = پادگان/اصطبل،
+    # INFRASTRUCTURE = ساختمان اصلی/انبار/سیلو/محل گردهمایی، WALL = دیوار.
+    CATEGORY_CHOICES = [
+        ('RESOURCE', 'منبع'),
+        ('INFRASTRUCTURE', 'زیرساخت'),
+        ('MILITARY', 'نظامی'),
+        ('WALL', 'دیوار'),
+    ]
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='INFRASTRUCTURE')
+
     def __str__(self):
         return self.name
 

@@ -148,3 +148,26 @@ class VillageAnimal(models.Model):
 
     def __str__(self):
         return f"{self.village.name} - {self.animal.name}: {self.count}"
+
+
+class TrainingQueue(models.Model):
+    """
+    صف واقعی آموزش نیرو در پادگان.
+
+    قبل از این مدل، آموزش نیرو یا کاملا آنی بود (بدون هیچ زمان انتظاری) یا
+    فقط از طریق یک تسک Celery «شلیک و فراموش» بدون هیچ رکورد قابل مشاهده‌ای
+    زمان‌بندی می‌شد؛ یعنی هیچ راهی برای فرانت‌اند وجود نداشت که به کاربر نشان
+    دهد الان دقیقا چه چیزی و با چه زمان باقی‌مانده‌ای در حال آموزش است.
+    """
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='training_queue')
+    troop_type = models.ForeignKey(TroopType, on_delete=models.CASCADE)
+    count = models.IntegerField()
+    started_at = models.DateTimeField(auto_now_add=True)
+    finishes_at = models.DateTimeField()
+    is_completed = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['finishes_at']
+
+    def __str__(self):
+        return f"{self.village.name} - {self.count}x {self.troop_type.name} (تا {self.finishes_at})"

@@ -49,6 +49,7 @@ def process_game_event(village_id, event_type, details):
             building = VillageBuilding.objects.get(id=building_id)
             building.level = next_level
             building.is_upgrading = False
+            building.upgrade_end_time = None
             building.save()
 
             # ثبت لاگ اتمام ساخت‌وساز زمان‌دار
@@ -80,16 +81,20 @@ def process_game_event(village_id, event_type, details):
         # طبیعی بود (نه حالت نجومی)، BarracksTrainView این ایونت را به صف
         # Celery می‌فرستاد اما هیچ‌کس آن را پردازش نمی‌کرد - منابع کسر
         # می‌شدند ولی نیروی آموزش‌دیده هرگز به دهکده اضافه نمی‌شد.
-        from apps.combat.models import TroopType, VillageTroop
+        from apps.combat.models import TroopType, VillageTroop, TrainingQueue
 
         troop_id = details.get('troop_id')
         count = details.get('count')
+        queue_id = details.get('queue_id')
 
         try:
             troop_type = TroopType.objects.get(id=troop_id)
             village_troop, _ = VillageTroop.objects.get_or_create(village=village, troop_type=troop_type)
             village_troop.count += count
             village_troop.save()
+
+            if queue_id:
+                TrainingQueue.objects.filter(id=queue_id).update(is_completed=True)
 
             GameLog.objects.create(
                 village=village,

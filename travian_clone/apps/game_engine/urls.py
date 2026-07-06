@@ -2,12 +2,13 @@ from django.urls import path
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
     InboxView, MessageReadView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
-    FoundVillageView,
+    FoundVillageView, VillageBuildingsView,
 )
 
 urlpatterns = [
     path('villages/', VillageListView.as_view(), name='village_list'),
     path('villages/<int:village_id>/', VillageDetailView.as_view(), name='village_detail'),
+    path('villages/<int:village_id>/buildings/', VillageBuildingsView.as_view(), name='village_buildings'),
     path('world-map/', WorldMapView.as_view(), name='world_map'),
     path('found-village/', FoundVillageView.as_view(), name='found_village'),
     path('upgrade-building/', UpgradeBuildingView.as_view(), name='upgrade_building'),

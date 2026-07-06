@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 
 from django.utils import timezone
+import datetime
 
 from .models import Village, VillageBuilding, ServerSetting
 from .engine import schedule_game_event
@@ -96,6 +97,64 @@ class VillageDetailView(APIView):
             },
             "max_storage": village.max_storage,
             "max_granary": village.max_granary,
+        })
+
+
+class VillageBuildingsView(APIView):
+    """
+    فهرست کامل ساختمان‌های یک دهکده به همراه هزینه و زمان ارتقای سطح بعدی.
+
+    قبل از این ویو، VillageMap.jsx به هیچ داده واقعی‌ای متصل نبود؛ چیدمان
+    ساختمان‌ها، نام‌ها و سطوح همگی مستقیما در کد React هاردکد شده بودند و
+    کلیک روی هر ساختمان فقط یک alert نمایش می‌داد (بدون هیچ ارتقای واقعی).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, village_id):
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        update_village_resources(village)
+
+        buildings = VillageBuilding.objects.filter(village=village).select_related('building_type').order_by('position')
+
+        data = []
+        for b in buildings:
+            multiplier = 1.5 ** b.level
+            time_multiplier = 1.2 ** b.level
+            data.append({
+                "id": b.id,
+                "position": b.position,
+                "name": b.building_type.name,
+                "category": b.building_type.category,
+                "level": b.level,
+                "is_upgrading": b.is_upgrading,
+                "upgrade_end_time": b.upgrade_end_time,
+                "provides_wall_defense": b.building_type.provides_wall_defense,
+                "next_level_cost": {
+                    "wood": int(b.building_type.base_wood_cost * multiplier),
+                    "clay": int(b.building_type.base_clay_cost * multiplier),
+                    "iron": int(b.building_type.base_iron_cost * multiplier),
+                    "crop": int(b.building_type.base_crop_cost * multiplier),
+                },
+                "next_level_time_seconds": int(b.building_type.base_build_time * time_multiplier),
+            })
+
+        return Response({
+            "village": {
+                "id": village.id,
+                "name": village.name,
+                "is_capital": village.is_capital,
+                "resources": {
+                    "wood": village.wood,
+                    "clay": village.clay,
+                    "iron": village.iron,
+                    "crop": village.crop,
+                },
+            },
+            "buildings": data,
         })
 
 
@@ -233,6 +292,7 @@ class UpgradeBuildingView(APIView):
             # ۴. علامت‌گذاری ساختمان به عنوان در حال ارتقا
             base_time = building.building_type.base_build_time * (1.2 ** building.level)
             building.is_upgrading = True
+            building.upgrade_end_time = timezone.now() + datetime.timedelta(seconds=base_time)
             building.save()
 
             # ارسال به صف Celery فقط بعد از commit موفق تراکنش انجام می‌شه
@@ -495,7 +555,9 @@ class EmbassyView(APIView):
         try:
             membership = AllianceMember.objects.get(player=request.user)
             alliance = membership.alliance
-            members = AllianceMember.objects.filter(alliance=alliance).values('player__email', 'role')
+            members = AllianceMember.objects.filter(alliance=alliance).values(
+                'player_id', 'player__email', 'role'
+            )
             return Response({
                 "has_alliance": True,
                 "alliance_data": {
@@ -503,6 +565,7 @@ class EmbassyView(APIView):
                     "name": alliance.name,
                     "tag": alliance.tag,
                     "role": membership.role,
+                    "founder_id": alliance.founder_id,
                     "members": list(members)
                 }
             })
@@ -515,22 +578,25 @@ class EmbassyView(APIView):
             })
 
     def post(self, request):
-        # تاسیس اتحاد جدید
         action = request.data.get('action')
 
-        if AllianceMember.objects.filter(player=request.user).exists():
-            return Response({"error": "شما از قبل عضو یک اتحاد هستید."}, status=400)
+        # نکته مهم: قبلا بررسی «شما از قبل عضو یک اتحاد هستید» به صورت
+        # بی‌قید و شرط برای هر اکشنی اجرا می‌شد؛ یعنی حتی اگر کاربر می‌خواست
+        # اتحاد را ترک کند یا عضوی را اخراج کند (که ذاتا نیازمند عضویت است)،
+        # همین ابتدا با خطا رد می‌شد. این بررسی الان فقط برای create/join است.
+        if action in ('create', 'join'):
+            if AllianceMember.objects.filter(player=request.user).exists():
+                return Response({"error": "شما از قبل عضو یک اتحاد هستید."}, status=400)
 
-        if action == 'create':
-            name = request.data.get('name')
-            tag = request.data.get('tag')
+            if action == 'create':
+                name = request.data.get('name')
+                tag = request.data.get('tag')
 
-            with transaction.atomic():
-                alliance = Alliance.objects.create(name=name, tag=tag, founder=request.user)
-                AllianceMember.objects.create(alliance=alliance, player=request.user, role='Leader')
-            return Response({"message": f"اتحاد {name} با موفقیت تاسیس شد!"})
+                with transaction.atomic():
+                    alliance = Alliance.objects.create(name=name, tag=tag, founder=request.user)
+                    AllianceMember.objects.create(alliance=alliance, player=request.user, role='Leader')
+                return Response({"message": f"اتحاد {name} با موفقیت تاسیس شد!"})
 
-        elif action == 'join':
             alliance_id = request.data.get('alliance_id')
             try:
                 alliance = Alliance.objects.get(id=alliance_id)
@@ -538,5 +604,88 @@ class EmbassyView(APIView):
                 return Response({"message": f"شما با موفقیت به اتحاد {alliance.tag} پیوستید."})
             except Alliance.DoesNotExist:
                 return Response({"error": "اتحاد مورد نظر یافت نشد."}, status=404)
+
+        # --- اکشن‌های زیر همگی نیازمند عضویت فعلی در یک اتحاد هستند ---
+        try:
+            membership = AllianceMember.objects.select_related('alliance').get(player=request.user)
+        except AllianceMember.DoesNotExist:
+            return Response({"error": "شما عضو هیچ اتحادی نیستید."}, status=400)
+
+        alliance = membership.alliance
+
+        if action == 'leave':
+            with transaction.atomic():
+                if membership.role == 'Leader':
+                    other_members = AllianceMember.objects.filter(
+                        alliance=alliance
+                    ).exclude(player=request.user).order_by('joined_at')
+
+                    if other_members.exists():
+                        # رهبری به قدیمی‌ترین عضو باقی‌مانده منتقل می‌شود تا
+                        # اتحاد بدون رهبر باقی نماند
+                        successor = other_members.first()
+                        successor.role = 'Leader'
+                        successor.save()
+                        membership.delete()
+                        return Response({
+                            "message": f"شما اتحاد را ترک کردید. رهبری به {successor.player.username} منتقل شد."
+                        })
+                    else:
+                        # رهبر آخرین عضو باقی‌مانده است؛ ترک کردن یعنی انحلال اتحاد
+                        alliance_name = alliance.name
+                        alliance.delete()
+                        return Response({"message": f"شما آخرین عضو بودید؛ اتحاد {alliance_name} منحل شد."})
+                else:
+                    membership.delete()
+                    return Response({"message": f"شما اتحاد {alliance.tag} را ترک کردید."})
+
+        elif action == 'kick':
+            if membership.role != 'Leader':
+                return Response({"error": "فقط رهبر اتحاد می‌تواند عضوی را اخراج کند."}, status=403)
+
+            target_player_id = request.data.get('target_player_id')
+            if str(target_player_id) == str(request.user.id):
+                return Response({"error": "برای خروج خودتان از گزینه «ترک اتحاد» استفاده کنید."}, status=400)
+
+            try:
+                target_membership = AllianceMember.objects.get(alliance=alliance, player_id=target_player_id)
+            except AllianceMember.DoesNotExist:
+                return Response({"error": "این بازیکن عضو اتحاد شما نیست."}, status=404)
+
+            target_username = target_membership.player.username
+            target_membership.delete()
+            return Response({"message": f"{target_username} از اتحاد اخراج شد."})
+
+        elif action == 'promote':
+            if membership.role != 'Leader':
+                return Response({"error": "فقط رهبر اتحاد می‌تواند نقش اعضا را تغییر دهد."}, status=403)
+
+            target_player_id = request.data.get('target_player_id')
+            new_role = request.data.get('role', 'Member')
+            if new_role not in ('Member', 'Diplomat', 'Leader'):
+                return Response({"error": "نقش نامعتبر است."}, status=400)
+
+            try:
+                target_membership = AllianceMember.objects.get(alliance=alliance, player_id=target_player_id)
+            except AllianceMember.DoesNotExist:
+                return Response({"error": "این بازیکن عضو اتحاد شما نیست."}, status=404)
+
+            with transaction.atomic():
+                if new_role == 'Leader':
+                    # فقط یک رهبر می‌تواند وجود داشته باشد؛ رهبر فعلی به دیپلمات تنزل می‌کند
+                    membership.role = 'Diplomat'
+                    membership.save()
+                target_membership.role = new_role
+                target_membership.save()
+
+            return Response({"message": f"نقش {target_membership.player.username} به {new_role} تغییر یافت."})
+
+        elif action == 'disband':
+            if membership.role != 'Leader':
+                return Response({"error": "فقط رهبر اتحاد می‌تواند اتحاد را منحل کند."}, status=403)
+
+            alliance_name = alliance.name
+            alliance.delete()  # AllianceMember ها با CASCADE حذف می‌شوند
+            return Response({"message": f"اتحاد {alliance_name} منحل شد."})
 
         return Response({"error": "عملیات نامعتبر"}, status=400)
