@@ -80,8 +80,44 @@ class TroopMovement(models.Model):
 
     is_completed = models.BooleanField(default=False)
 
+    farm_list_entry = models.ForeignKey(
+        'FarmListEntry', on_delete=models.SET_NULL, null=True, blank=True, related_name='movements'
+    )
+
     def __str__(self):
         return f"{self.movement_type} from {self.source_village.name} to {self.target_village.name}"
+
+
+class FarmListEntry(models.Model):
+    """
+    یک ردیف ثابت در «لیست مزرعه»: یک دهکده مبدا، یک دهکده هدف، و ترکیب
+    ثابتی از نیرو که با یک کلیک (یا اجرای کل لیست) دوباره قابل ارسال است.
+
+    قبل از این مدل، برای هر غارت تکراری باید هر بار به‌صورت دستی از صفحه
+    نقشه جهان روی هدف کلیک می‌شد و فرم SendTroops پر می‌شد - که برای
+    غارت روزانه‌ی چند ده هدف عملا غیرممکن بود.
+    """
+    player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='farm_list_entries')
+    source_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='farm_list_entries')
+    target_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='+')
+
+    troops_payload = models.JSONField(default=dict)  # مثلا {"1": 50, "2": 10}
+
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    last_run_status = models.CharField(
+        max_length=20,
+        choices=[('SUCCESS', 'موفق'), ('FAILED', 'ناموفق'), ('NEVER', 'هنوز اجرا نشده')],
+        default='NEVER',
+    )
+    last_loot_summary = models.CharField(max_length=255, blank=True, default='')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"FarmList: {self.source_village.name} -> {self.target_village.name}"
 
 
 class HeroItem(models.Model):

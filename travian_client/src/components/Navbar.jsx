@@ -83,6 +83,9 @@ export default function Navbar() {
             <button onClick={() => navigate('/colonize')} className={getBtnClass('/colonize')}>
                 🏕️ تاسیس دهکده
             </button>
+            <button onClick={() => navigate('/farm-list')} className={getBtnClass('/farm-list')}>
+                🌾 لیست مزرعه
+            </button>
             <button onClick={handleLogout} className="text-red-400 hover:text-red-500 hover:bg-red-900/30 font-bold px-3 py-1.5 rounded transition absolute left-4">
                 🚪 خروج
             </button>

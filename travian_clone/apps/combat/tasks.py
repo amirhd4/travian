@@ -389,6 +389,16 @@ def _resolve_attack_or_raid(movement):
             args=[return_movement.id], eta=return_arrival
         ))
 
+    # اگر این حمله از طریق لیست مزرعه اعزام شده، نتیجه را روی خود ردیف ثبت کن
+    if movement.farm_list_entry_id:
+        entry = movement.farm_list_entry
+        entry.last_run_at = timezone.now()
+        entry.last_run_status = 'SUCCESS' if victory == 'attacker' else 'FAILED'
+        if any(loot.values()):
+            entry.last_loot_summary = f"🪵{loot['wood']} 🧱{loot['clay']} ⚒️{loot['iron']} 🌾{loot['crop']}"
+        else:
+            entry.last_loot_summary = "بدون غنیمت" if victory == 'attacker' else "شکست در نبرد"
+        entry.save()
     return log_msg
 
 

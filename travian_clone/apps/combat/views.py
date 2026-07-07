@@ -4,13 +4,12 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
 import datetime
-from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal, TrainingQueue, Adventure
-from .utils import calculate_travel_seconds
-from .tasks import resolve_combat_movement, resolve_hero_adventure
+from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal, TrainingQueue, Adventure, FarmListEntry
+from .movement_utils import dispatch_troop_movement
+from .tasks import resolve_hero_adventure
 from apps.game_engine.models import Village, GameLog
 from apps.game_engine.engine import schedule_game_event
 from .hero_utils import sync_hero_health, calculate_travel_seconds_to_point, DIFFICULTY_SETTINGS
-
 
 class SendTroopsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -21,78 +20,17 @@ class SendTroopsView(APIView):
         movement_type = request.data.get('movement_type', 'ATTACK')
         payload = request.data.get('troops_payload', {})
 
-        valid_types = dict(TroopMovement.MOVEMENT_TYPES)
-        if movement_type not in valid_types:
-            return Response({"error": "نوع عملیات تاکتیکی نامعتبر است."}, status=400)
-
-        if not payload or not any(int(v or 0) > 0 for v in payload.values()):
-            return Response({"error": "هیچ نیرویی برای ارسال انتخاب نشده است."}, status=400)
-
         try:
             source_village = Village.objects.get(id=source_id, player=request.user)
             target_village = Village.objects.get(id=target_id)
         except Village.DoesNotExist:
             return Response({"error": "مبدا یا مقصد یافت نشد."}, status=404)
 
-        if movement_type == 'ATTACK' and source_village.id == target_village.id:
-            return Response({"error": "نمی‌توانید به دهکده خودتان حمله کنید."}, status=400)
-
-        sent_troop_ids = [int(tid) for tid, qty in payload.items() if int(qty or 0) > 0]
-        troop_types = {t.id: t for t in TroopType.objects.filter(id__in=sent_troop_ids)}
-        missing_ids = set(sent_troop_ids) - set(troop_types.keys())
-        if missing_ids:
-            return Response({"error": f"نوع نیروی نامعتبر: {sorted(missing_ids)}"}, status=400)
-
-        # کندترین نیرو سرعت کل ستون را تعیین می‌کند
-        slowest_speed = min(t.speed for t in troop_types.values())
-
-        with transaction.atomic():
-            for troop_id_str, count_to_send in payload.items():
-                count_to_send = int(count_to_send or 0)
-                if count_to_send <= 0:
-                    continue
-
-                try:
-                    # قفل‌گذاری و کسر نیرو
-                    village_troop = VillageTroop.objects.select_for_update().get(
-                        village=source_village,
-                        troop_type_id=int(troop_id_str)
-                    )
-
-                    if village_troop.count < count_to_send:
-                        return Response({"error": f"نیروی کافی برای شناسه {troop_id_str} ندارید."}, status=400)
-
-                    village_troop.count -= count_to_send
-                    village_troop.save()
-
-                except VillageTroop.DoesNotExist:
-                    return Response({"error": f"شما این نوع نیرو (شناسه {troop_id_str}) را در دهکده ندارید."}, status=400)
-
-            # محاسبه زمان رسیدن واقعی بر اساس فاصله دو دهکده و سرعت کندترین نیرو
-            # (قبلا این عدد همیشه ثابت و ۱۰ دقیقه بود)
-            travel_seconds = calculate_travel_seconds(source_village, target_village, slowest_speed)
-            arrival_time = timezone.now() + datetime.timedelta(seconds=travel_seconds)
-
-            movement = TroopMovement.objects.create(
-                source_village=source_village,
-                target_village=target_village,
-                movement_type=movement_type,
-                troops_payload=payload,
-                arrival_time=arrival_time,
-            )
-
-            GameLog.objects.create(
-                village=source_village,
-                log_type='COMBAT',
-                description=f"اعزام نیرو ({movement.get_movement_type_display()}) به سمت دهکده {target_village.name} انجام شد."
-            )
-
-            # نکته حیاتی: قبلا اینجا هیچ تسکی زمان‌بندی نمی‌شد، پس هیچ
-            # حمله‌ای هیچ‌وقت به نتیجه نمی‌رسید. حالا دقیقا در لحظه رسیدن
-            # نیروها (arrival_time)، resolve_combat_movement اجرا می‌شود.
-            transaction.on_commit(lambda: resolve_combat_movement.apply_async(
-                args=[movement.id], eta=arrival_time
-            ))
+        success, result = dispatch_troop_movement(
+            request.user, source_village, target_village, movement_type, payload
+        )
+        if not success:
+            return Response({"error": result}, status=400)
 
         return Response({"message": "نیروها با موفقیت اعزام شدند و در زمان مقرر به مقصد می‌رسند."})
 
@@ -529,4 +467,102 @@ class VillageMovementsView(APIView):
         return Response({
             "outgoing": [serialize_outgoing(m) for m in outgoing],
             "incoming": [serialize_incoming(m) for m in incoming],
+        })
+
+
+class FarmListView(APIView):
+    """فهرست کامل و ایجاد ردیف جدید در لیست مزرعه."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        entries = FarmListEntry.objects.filter(player=request.user).select_related('source_village', 'target_village')
+        return Response([
+            {
+                "id": e.id,
+                "source_village_id": e.source_village_id,
+                "source_name": e.source_village.name,
+                "target_village_id": e.target_village_id,
+                "target_name": e.target_village.name,
+                "target_coords": f"{e.target_village.x_coord}|{e.target_village.y_coord}",
+                "troops_payload": e.troops_payload,
+                "last_run_at": e.last_run_at,
+                "last_run_status": e.last_run_status,
+                "last_loot_summary": e.last_loot_summary,
+            }
+            for e in entries
+        ])
+
+    def post(self, request):
+        source_id = request.data.get('source_village_id')
+        target_id = request.data.get('target_village_id')
+        troops_payload = request.data.get('troops_payload', {})
+
+        if not troops_payload or not any(int(v or 0) > 0 for v in troops_payload.values()):
+            return Response({"error": "حداقل یک نوع نیرو برای این ردیف مشخص کنید."}, status=400)
+
+        try:
+            source_village = Village.objects.get(id=source_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده مبدا یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        try:
+            target_village = Village.objects.get(id=target_id)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده مقصد یافت نشد."}, status=404)
+
+        if source_village.id == target_village.id:
+            return Response({"error": "نمی‌توانید دهکده خودتان را هدف مزرعه قرار دهید."}, status=400)
+
+        entry = FarmListEntry.objects.create(
+            player=request.user,
+            source_village=source_village,
+            target_village=target_village,
+            troops_payload=troops_payload,
+        )
+        return Response({"message": "ردیف جدید به لیست مزرعه اضافه شد.", "id": entry.id}, status=201)
+
+
+class FarmListEntryDetailView(APIView):
+    """حذف یک ردیف از لیست مزرعه."""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, entry_id):
+        deleted, _ = FarmListEntry.objects.filter(id=entry_id, player=request.user).delete()
+        if not deleted:
+            return Response({"error": "ردیف مورد نظر یافت نشد."}, status=404)
+        return Response({"message": "ردیف از لیست مزرعه حذف شد."})
+
+
+class FarmListRunView(APIView):
+    """اجرای یک ردیف مشخص (entry_id) یا کل لیست مزرعه (run_all) با یک کلیک."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        entry_id = request.data.get('entry_id')
+        run_all = request.data.get('run_all', False)
+
+        if not entry_id and not run_all:
+            return Response({"error": "باید entry_id یا run_all مشخص شود."}, status=400)
+
+        entries_qs = FarmListEntry.objects.filter(player=request.user).select_related('source_village', 'target_village')
+        if entry_id:
+            entries_qs = entries_qs.filter(id=entry_id)
+
+        results = []
+        for entry in entries_qs:
+            success, result = dispatch_troop_movement(
+                request.user, entry.source_village, entry.target_village,
+                'RAID', entry.troops_payload, farm_list_entry=entry,
+            )
+            results.append({
+                "entry_id": entry.id,
+                "target_name": entry.target_village.name,
+                "success": success,
+                "message": "اعزام شد" if success else result,
+            })
+
+        dispatched_count = sum(1 for r in results if r["success"])
+        return Response({
+            "message": f"{dispatched_count} از {len(results)} ردیف با موفقیت اعزام شد.",
+            "results": results,
         })

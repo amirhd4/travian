@@ -17,6 +17,7 @@ import api from "./api/axiosConfig.js";
 import Movements from "./pages/Movements.jsx";
 import Hero from "./pages/Herro.jsx";
 import Colonize from "./pages/Colonize.jsx";
+import FarmList from "./pages/FarmList.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -102,6 +103,7 @@ function App() {
                 <Route path="/movements" element={<PrivateRoute><Movements /></PrivateRoute>} />
                 <Route path="/hero" element={<PrivateRoute><Hero /></PrivateRoute>} />
                 <Route path="/colonize" element={<PrivateRoute><Colonize /></PrivateRoute>} />
+                <Route path="/farm-list" element={<PrivateRoute><FarmList /></PrivateRoute>} />
             </Routes>
         </Router>
     );

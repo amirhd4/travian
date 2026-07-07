@@ -5,6 +5,7 @@ from .views import (
     AnimalCatalogView, VillageAnimalBuyView,
     TroopTypeCatalogView, VillageTroopListView, TrainingQueueView,
     VillageMovementsView, AdventureListView, StartAdventureView,
+    FarmListView, FarmListEntryDetailView, FarmListRunView,
 )
 
 urlpatterns = [
@@ -20,4 +21,7 @@ urlpatterns = [
     path('hero/adventures/start/', StartAdventureView.as_view(), name='start_adventure'),
     path('animals/', AnimalCatalogView.as_view(), name='animal_catalog'),
     path('animals/buy/', VillageAnimalBuyView.as_view(), name='animal_buy'),
+    path('farm-list/', FarmListView.as_view(), name='farm_list'),
+    path('farm-list/<int:entry_id>/', FarmListEntryDetailView.as_view(), name='farm_list_entry_detail'),
+    path('farm-list/run/', FarmListRunView.as_view(), name='farm_list_run'),
 ]
