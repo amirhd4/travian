@@ -1,6 +1,8 @@
 from django.contrib import admin
-from .models import ServerSetting, Village, BuildingType, VillageBuilding, GameLog
+from .models import ServerSetting, Village, BuildingType, VillageBuilding, GameLog, QuestDefinition, PlayerQuestProgress
 
+admin.site.register(QuestDefinition)
+admin.site.register(PlayerQuestProgress)
 
 @admin.register(ServerSetting)
 class ServerSettingAdmin(admin.ModelAdmin):

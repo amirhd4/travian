@@ -22,6 +22,8 @@ from .serializers import MessageSerializer
 from .models import Alliance, AllianceMember, ResourceTrade
 from .market_utils import get_total_merchants, get_available_merchants, calculate_merchant_travel_seconds, MERCHANT_CAPACITY
 from .tasks.game_tasks import deliver_trade_resources
+from .quest_utils import sync_quest_progress, claim_quest_reward
+
 
 Player = get_user_model()
 
@@ -806,3 +808,42 @@ class ServerStatusView(APIView):
             data["winner_alliance_tag"] = active_server.winner_alliance.tag if active_server.winner_alliance else None
 
         return Response(data)
+
+
+class QuestListView(APIView):
+    """فهرست کوئست‌های تیوتوریال + وضعیت پیشرفت بازیکن در هر کدام."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        results = sync_quest_progress(request.user)
+        return Response([
+            {
+                "id": quest.id,
+                "order": quest.order,
+                "title": quest.title,
+                "description": quest.description,
+                "condition_target": quest.condition_target,
+                "current_value": min(current_value, quest.condition_target),
+                "is_completed": progress.is_completed,
+                "is_reward_claimed": progress.is_reward_claimed,
+                "reward": {
+                    "wood": quest.reward_wood,
+                    "clay": quest.reward_clay,
+                    "iron": quest.reward_iron,
+                    "crop": quest.reward_crop,
+                    "gold": quest.reward_gold,
+                },
+            }
+            for quest, progress, current_value in results
+        ])
+
+
+class ClaimQuestRewardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        quest_id = request.data.get('quest_id')
+        success, message = claim_quest_reward(request.user, quest_id)
+        if not success:
+            return Response({"error": message}, status=400)
+        return Response({"message": message})

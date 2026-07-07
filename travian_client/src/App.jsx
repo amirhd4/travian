@@ -19,6 +19,7 @@ import Hero from "./pages/Herro.jsx";
 import Colonize from "./pages/Colonize.jsx";
 import FarmList from "./pages/FarmList.jsx";
 import ServerStatusBanner from "./components/ServerStatusBanner.jsx";
+import Quests from "./pages/Quests.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -106,6 +107,7 @@ function App() {
                 <Route path="/hero" element={<PrivateRoute><Hero /></PrivateRoute>} />
                 <Route path="/colonize" element={<PrivateRoute><Colonize /></PrivateRoute>} />
                 <Route path="/farm-list" element={<PrivateRoute><FarmList /></PrivateRoute>} />
+                <Route path="/quests" element={<PrivateRoute><Quests /></PrivateRoute>} />
             </Routes>
         </Router>
     );

@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
     InboxView, MessageReadView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
-    FoundVillageView, VillageBuildingsView, ServerStatusView,
+    FoundVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
 )
 
 urlpatterns = [
@@ -20,4 +20,6 @@ urlpatterns = [
     path('messages/<int:pk>/read/', MessageReadView.as_view(), name='read_message'),
     path('embassy/', EmbassyView.as_view(), name='embassy'),
     path('server-status/', ServerStatusView.as_view(), name='server_status'),
+    path('quests/', QuestListView.as_view(), name='quest_list'),
+    path('quests/claim/', ClaimQuestRewardView.as_view(), name='claim_quest_reward'),
 ]

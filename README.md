@@ -24,6 +24,7 @@ docker compose up --build -d
 python manage.py makemigrations
 python manage.py migrate
 python manage.py seed_game_data
+python manage.py seed_quests
 
 # for next time
 python mange.py runserver

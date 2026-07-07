@@ -229,3 +229,64 @@ class AllianceMember(models.Model):
 
     def __str__(self):
         return f"{self.player} in {self.alliance.tag}"
+
+
+class QuestDefinition(models.Model):
+    """
+    تعریف یک کوئست تیوتوریال (مثل «ارتقای ساختمان اصلی به سطح ۳»). این
+    مدل قالب کوئست است، نه پیشرفت شخصی هر بازیکن.
+
+    قبل از این مدل، هیچ سیستم کوئست/تیوتوریالی وجود نداشت؛ بازیکن تازه‌وارد
+    بعد از ثبت‌نام فقط یک دهکده خالی می‌دید و هیچ راهنمایی گام‌به‌گامی
+    دریافت نمی‌کرد.
+    """
+    CONDITION_CHOICES = [
+        ('MAIN_BUILDING_LEVEL', 'سطح ساختمان اصلی'),
+        ('WAREHOUSE_LEVEL', 'سطح انبار'),
+        ('GRANARY_LEVEL', 'سطح سیلوی غله'),
+        ('RESOURCE_FIELD_LEVEL', 'سطح یکی از مزارع منابع'),
+        ('RALLY_POINT_LEVEL', 'سطح محل گردهمایی'),
+        ('BARRACKS_LEVEL', 'سطح پادگان'),
+        ('MARKETPLACE_LEVEL', 'سطح بازارچه'),
+        ('WALL_LEVEL', 'سطح دیوار'),
+        ('TROOP_COUNT', 'تعداد کل نیروی آموزش‌دیده'),
+        ('TRADE_SENT', 'ارسال حداقل یک محموله تجاری'),
+        ('MOVEMENT_SENT', 'اعزام حداقل یک نیرو نظامی'),
+        ('SECOND_VILLAGE', 'تاسیس دومین دهکده'),
+        ('HERO_ADVENTURE', 'تکمیل حداقل یک ماجراجویی قهرمان'),
+    ]
+
+    order = models.PositiveIntegerField(unique=True)
+    title = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    condition_type = models.CharField(max_length=30, choices=CONDITION_CHOICES)
+    condition_target = models.PositiveIntegerField(default=1)
+
+    reward_wood = models.PositiveIntegerField(default=0)
+    reward_clay = models.PositiveIntegerField(default=0)
+    reward_iron = models.PositiveIntegerField(default=0)
+    reward_crop = models.PositiveIntegerField(default=0)
+    reward_gold = models.PositiveIntegerField(default=0)
+
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return f"#{self.order} - {self.title}"
+
+
+class PlayerQuestProgress(models.Model):
+    """پیشرفت شخصی هر بازیکن در هر کوئست."""
+    player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='quest_progress')
+    quest = models.ForeignKey(QuestDefinition, on_delete=models.CASCADE, related_name='+')
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    is_reward_claimed = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('player', 'quest')
+
+    def __str__(self):
+        return f"{self.player.username} - {self.quest.title}"

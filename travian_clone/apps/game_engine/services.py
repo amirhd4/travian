@@ -74,7 +74,7 @@ def _find_free_coordinates(near_x=None, near_y=None, search_radius=20):
     )
 
 
-def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20):
+def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20, category='INFRASTRUCTURE'):
     building_type, _ = BuildingType.objects.get_or_create(
         name=name,
         defaults={
@@ -87,6 +87,7 @@ def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20
             "crop_upkeep": 1,
             "provides_wall_defense": provides_wall_defense,
             "max_level": max_level,
+            "category": category,
         },
     )
     return building_type
@@ -96,7 +97,13 @@ def _create_default_buildings(village):
     """چیدمان استاندارد ساختمان‌های یک دهکده تازه (چه دهکده اول، چه کلونی جدید)."""
     position = 1
     for type_name, level, is_wall in _CENTER_BUILDING_DEFS:
-        building_type = _get_or_create_building_type(type_name, provides_wall_defense=is_wall)
+        if is_wall:
+            category = 'WALL'
+        elif type_name == "پادگان":
+            category = 'MILITARY'
+        else:
+            category = 'INFRASTRUCTURE'
+        building_type = _get_or_create_building_type(type_name, provides_wall_defense=is_wall, category=category)
         VillageBuilding.objects.create(
             village=village,
             building_type=building_type,
@@ -106,7 +113,7 @@ def _create_default_buildings(village):
         position += 1
 
     for type_name, count in _RESOURCE_FIELD_DEFS:
-        building_type = _get_or_create_building_type(type_name)
+        building_type = _get_or_create_building_type(type_name, category='RESOURCE')
         for _ in range(count):
             VillageBuilding.objects.create(
                 village=village,
