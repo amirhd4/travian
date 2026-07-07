@@ -1,9 +1,10 @@
 from django.contrib import admin
 from .models import (
     TroopType, VillageTroop, TroopMovement,
-    Hero, PlayerHeroItem, HeroItem, Animal, VillageAnimal, TrainingQueue,
+    Hero, PlayerHeroItem, HeroItem, Animal, VillageAnimal, TrainingQueue, Adventure
 )
 
+admin.site.register(Adventure)
 
 @admin.register(TroopType)
 class TroopTypeAdmin(admin.ModelAdmin):

@@ -111,17 +111,22 @@ class Hero(models.Model):
     قهرمان هر بازیکن. قبل از این مدل، HeroItem صرفا یک جدول کاتالوگ بدون استفاده بود
     و هیچ منطقی برای مالکیت/تجهیز/تاثیرگذاری روی نبرد وجود نداشت.
 
-    ساده‌سازی عمدی: این جایگزین کامل سیستم ماجراجویی/فروشگاه قهرمان تراوین اصلی
-    نیست، بلکه یک نسخه ساده و در عین حال واقعا اثرگذار روی نبردهاست.
+    فیلدهای is_on_adventure / adventure_returns_at / last_health_update برای
+    سیستم ماجراجویی اضافه شده‌اند؛ قبلا هیچ راهی برای اعزام قهرمان به ماجراجویی
+    و کسب تجربه/آیتم مستقل از نبرد وجود نداشت، و health هم هیچ‌وقت به‌صورت
+    خودکار ترمیم نمی‌شد.
     """
     player = models.OneToOneField('authentication.Player', on_delete=models.CASCADE, related_name='hero')
     level = models.IntegerField(default=1)
     experience = models.IntegerField(default=0)
-    health = models.IntegerField(default=100)
+    health = models.FloatField(default=100)
     is_alive = models.BooleanField(default=True)
 
-    # دهکده‌ای که قهرمان در آن مستقر است و از آن دفاع می‌کند
     home_village = models.ForeignKey(Village, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+
+    is_on_adventure = models.BooleanField(default=False)
+    adventure_returns_at = models.DateTimeField(null=True, blank=True)
+    last_health_update = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Hero of {self.player.username} (Lvl {self.level})"
@@ -171,3 +176,27 @@ class TrainingQueue(models.Model):
 
     def __str__(self):
         return f"{self.village.name} - {self.count}x {self.troop_type.name} (تا {self.finishes_at})"
+
+
+class Adventure(models.Model):
+    """
+    نقاط ماجراجویی که به‌صورت دوره‌ای نزدیک دهکده هر بازیکن ظاهر می‌شوند.
+    قبل از این مدل، تنها راه کسب تجربه/آیتم برای قهرمان، نبردهای عادی بود؛
+    که هسته‌ی اصلی رشد قهرمان در تراوین واقعی (ماجراجویی) را نداشت.
+    """
+    DIFFICULTY_CHOICES = [
+        ('EASY', 'آسان'),
+        ('NORMAL', 'متوسط'),
+        ('HARD', 'سخت'),
+    ]
+
+    player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='adventures')
+    x_coord = models.IntegerField()
+    y_coord = models.IntegerField()
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default='NORMAL')
+    is_completed = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Adventure ({self.x_coord}|{self.y_coord}) - {self.difficulty} for {self.player.username}"

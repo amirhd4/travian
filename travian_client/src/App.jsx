@@ -14,6 +14,8 @@ import Register from "./pages/Register.jsx";
 import useGameStore from "./store/useGameStore.js";
 import { useEffect } from "react";
 import api from "./api/axiosConfig.js";
+import Movements from "./pages/Movements.jsx";
+import Hero from "./pages/Herro.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -39,8 +41,6 @@ function App() {
     const setActiveVillageId = useGameStore((state) => state.setActiveVillageId);
 
     useEffect(() => {
-        // با استفاده از httpOnly cookie رفرش توکن (که سرور موقع لاگین ست کرده)
-        // بدون نیاز به localStorage یک access token جدید می‌گیریم
         const bootstrap = async () => {
             try {
                 const { data } = await api.post('auth/token/refresh/');
@@ -48,10 +48,6 @@ function App() {
 
                 const me = await api.get('auth/me/');
                 setUser(me.data);
-
-                // دریافت لیست واقعی دهکده‌های بازیکن و انتخاب دهکده فعال.
-                // قبلا این مرحله اصلا وجود نداشت و همه‌جا village_id: 1
-                // هاردکد شده بود؛ حالا اولین دهکده (ترجیحا پایتخت) انتخاب می‌شود.
                 try {
                     const villagesRes = await api.get('game/villages/');
                     setVillages(villagesRes.data);
@@ -60,12 +56,9 @@ function App() {
                         setActiveVillageId(capital.id);
                     }
                 } catch (villageError) {
-                    // اگر دریافت لیست دهکده‌ها fail بشه، کاربر همچنان لاگین می‌مونه
-                    // ولی صفحاتی که به دهکده فعال نیاز دارن پیام مناسب نشون می‌دن
                     console.error("خطا در دریافت لیست دهکده‌ها", villageError);
                 }
             } catch (error) {
-                // نشست معتبری وجود نداره؛ کاربر باید دوباره لاگین کنه
             } finally {
                 setHydrated(true);
             }
@@ -77,7 +70,6 @@ function App() {
     return (
         <Router>
             <Routes>
-
                 <Route path="/" element={<Navigate to="/login" />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
@@ -106,6 +98,8 @@ function App() {
                 <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
                 <Route path="/barracks" element={<PrivateRoute><Barracks /></PrivateRoute>} />
                 <Route path="/embassy" element={<PrivateRoute><Embassy /></PrivateRoute>} />
+                <Route path="/movements" element={<PrivateRoute><Movements /></PrivateRoute>} />
+                <Route path="/hero" element={<PrivateRoute><Hero /></PrivateRoute>} />
             </Routes>
         </Router>
     );

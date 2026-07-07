@@ -197,3 +197,17 @@ AUTHENTICATION_BACKENDS = [
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS", ""
 ).split(",")
+
+
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+    "check-server-timeline-hourly": {
+        "task": "apps.world_wonder.tasks.check_server_timeline",
+        "schedule": crontab(minute=0),
+    },
+    "generate-hero-adventures": {
+        "task": "apps.combat.tasks.generate_adventures_for_all_players",
+        "schedule": crontab(minute=0, hour="*/6"),  # هر ۶ ساعت
+    },
+}

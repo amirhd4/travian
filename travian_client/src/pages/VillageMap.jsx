@@ -5,6 +5,7 @@ import ResourceBar from '../components/ResourceBar';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
+import {formatDuration} from "../utils/formatter.js";
 
 // ==========================================
 // 1. تنظیمات و مختصات اسلات‌ها (Slots Coordinates)
@@ -58,13 +59,7 @@ const getAssetPath = (building, view) => {
 // ==========================================
 // 2. توابع کمکی زمان
 // ==========================================
-function formatDuration(totalSeconds) {
-    if (totalSeconds <= 0) return '00:00:00';
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = Math.floor(totalSeconds % 60);
-    return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':');
-}
+
 
 function remainingSeconds(endTimeIso) {
     if (!endTimeIso) return 0;

@@ -6,9 +6,9 @@ from channels.layers import get_channel_layer
 
 from travian_core.celery import app
 from apps.game_engine.models import Village, GameLog, VillageBuilding
-from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal
+from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal, Adventure
 from .engine import calculate_combat, calculate_catapult_damage
-
+from .hero_utils import resolve_adventure, generate_adventures_for_player
 
 def _notify_player(player_id, update_type, payload):
     """ارسال آپدیت زنده به کاربر از طریق وب‌سوکت (در صورت وجود channel layer)."""
@@ -390,3 +390,38 @@ def _resolve_attack_or_raid(movement):
         ))
 
     return log_msg
+
+
+@app.task
+def resolve_hero_adventure(hero_id, adventure_id):
+    """نتیجه‌گیری ماجراجویی قهرمان در لحظه‌ی بازگشت (زمان‌بندی‌شده از StartAdventureView)."""
+    try:
+        hero = Hero.objects.select_for_update().get(id=hero_id)
+        adventure = Adventure.objects.get(id=adventure_id, is_completed=False)
+    except (Hero.DoesNotExist, Adventure.DoesNotExist):
+        return "ماجراجویی یافت نشد یا قبلا پردازش شده است."
+
+    with transaction.atomic():
+        result = resolve_adventure(hero, adventure)
+
+    if result["success"]:
+        message = f"قهرمان شما با موفقیت از ماجراجویی بازگشت و {result['xp_gained']} تجربه کسب کرد."
+        if result["found_item"]:
+            message += f" آیتم «{result['found_item']}» پیدا شد! 🎁"
+    else:
+        message = f"قهرمان شما در ماجراجویی شکست خورد و {result['damage_taken']} آسیب دید."
+    if result.get("hero_died"):
+        message += " ⚠️ قهرمان از پای درآمد و نیاز به استراحت طولانی برای احیا دارد."
+
+    _notify_player(hero.player_id, "ADVENTURE_RESULT", {"message": message, **result})
+    return message
+
+
+@app.task
+def generate_adventures_for_all_players():
+    """هر چند ساعت یک‌بار (طبق CELERY_BEAT_SCHEDULE) برای هر بازیکن ماجراجویی جدید می‌سازد."""
+    from apps.authentication.models import Player
+    for player in Player.objects.filter(is_active=True).exclude(username="Natars"):
+        hero = Hero.objects.filter(player=player).select_related('home_village').first()
+        if hero and hero.home_village:
+            generate_adventures_for_player(player, hero.home_village, count=2)

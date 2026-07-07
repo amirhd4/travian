@@ -75,6 +75,15 @@ class VillageDetailView(APIView):
         # همگام‌سازی منابع تا این لحظه (همون منطقی که هنگام ارتقای ساختمان اجرا می‌شه)
         update_village_resources(village)
 
+        # ۱.۵. محدودیت صف ساخت‌وساز: در تراوین اصلی فقط یک ساختمان در هر
+        # لحظه می‌تواند در حال ارتقا باشد (بدون Plus). قبلا این بررسی اصلا
+        # وجود نداشت و بازیکن می‌توانست روی همه‌ی ۴۰ جایگاه هم‌زمان ارتقا بزند.
+        if VillageBuilding.objects.filter(village=village, is_upgrading=True).exists():
+            return Response(
+                {"error": "در هر لحظه فقط یک ساختمان می‌تواند در حال ارتقا باشد. صبر کنید تا ساخت فعلی تمام شود."},
+                status=400
+            )
+
         net_crop_production = village.prod_crop - calculate_crop_upkeep(village)
 
         return Response({
