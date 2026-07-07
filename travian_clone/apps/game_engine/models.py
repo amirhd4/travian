@@ -150,6 +150,39 @@ class GameLog(models.Model):
         return f"{self.get_log_type_display()} - {self.village.name} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
 
 
+class ResourceTrade(models.Model):
+    """
+    محموله‌ی تجاری بین دو دهکده که با تعداد مشخصی تاجر (Merchant) و در طول
+    زمان واقعی سفر جابه‌جا می‌شود.
+
+    قبل از این مدل، MarketplaceView منابع را به‌صورت آنی و بدون هیچ زمان
+    سفر یا محدودیت ظرفیت تاجر منتقل می‌کرد؛ یعنی عملا هیچ «بازارچه»ی
+    واقعی وجود نداشت.
+    """
+    source_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='outgoing_trades')
+    target_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='incoming_trades')
+
+    wood = models.PositiveIntegerField(default=0)
+    clay = models.PositiveIntegerField(default=0)
+    iron = models.PositiveIntegerField(default=0)
+    crop = models.PositiveIntegerField(default=0)
+
+    merchants_used = models.PositiveIntegerField(default=1)
+
+    dispatched_at = models.DateTimeField(auto_now_add=True)
+    delivery_time = models.DateTimeField()          # زمان رسیدن منابع به مقصد
+    merchants_return_time = models.DateTimeField()  # زمان بازگشت تاجرها به مبدا (آزاد شدن ظرفیت)
+
+    is_delivered = models.BooleanField(default=False)
+    is_completed = models.BooleanField(default=False)  # یعنی تاجرها هم برگشتند
+
+    def total_resources(self):
+        return self.wood + self.clay + self.iron + self.crop
+
+    def __str__(self):
+        return f"Trade {self.source_village.name} -> {self.target_village.name} ({self.total_resources()})"
+
+
 class Message(models.Model):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='received_messages', on_delete=models.CASCADE)

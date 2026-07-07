@@ -42,6 +42,7 @@ _CENTER_BUILDING_DEFS = (
     ("سیلوی غله", 1, False),
     ("محل گردهمایی", 1, False),
     ("پادگان", 0, False),
+    ("بازارچه", 0, False),
     ("دیوار (Wall)", 0, True),
 )
 

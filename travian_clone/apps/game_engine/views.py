@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 
 from django.utils import timezone
 import datetime
+import math
 
 from .models import Village, VillageBuilding, ServerSetting
 from .engine import schedule_game_event
@@ -19,8 +20,9 @@ from .models import Transaction, Discount, GameLog
 from .serializers import GameLogSerializer
 from .models import Message
 from .serializers import MessageSerializer
-from .models import Alliance, AllianceMember
-
+from .models import Alliance, AllianceMember, ResourceTrade
+from .market_utils import get_total_merchants, get_available_merchants, calculate_merchant_travel_seconds, MERCHANT_CAPACITY
+from .tasks.game_tasks import deliver_trade_resources
 
 Player = get_user_model()
 
@@ -453,64 +455,141 @@ class LeaderboardView(APIView):
 
 
 class MarketplaceView(APIView):
+    """
+    ارسال منابع بین دهکده‌ها با تاجرهای واقعی، محدود به ظرفیت حمل و زمان
+    سفر. قبل از این ویو، منابع به‌صورت آنی و بدون هیچ محدودیتی منتقل
+    می‌شدند - یعنی عملا هیچ «بازارچه»ی واقعی وجود نداشت.
+    """
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        now = timezone.now()
+
+        outgoing = ResourceTrade.objects.filter(
+            source_village=village, is_completed=False
+        ).select_related('target_village').order_by('delivery_time')
+
+        incoming = ResourceTrade.objects.filter(
+            target_village=village, is_delivered=False
+        ).select_related('source_village').order_by('delivery_time')
+
+        def ser_out(t):
+            return {
+                "id": t.id,
+                "target_name": t.target_village.name,
+                "resources": {"wood": t.wood, "clay": t.clay, "iron": t.iron, "crop": t.crop},
+                "merchants_used": t.merchants_used,
+                "is_delivered": t.is_delivered,
+                "delivery_remaining_seconds": max(0, int((t.delivery_time - now).total_seconds())),
+                "merchants_return_remaining_seconds": max(0, int((t.merchants_return_time - now).total_seconds())),
+            }
+
+        def ser_in(t):
+            return {
+                "id": t.id,
+                "source_name": t.source_village.name,
+                "resources": {"wood": t.wood, "clay": t.clay, "iron": t.iron, "crop": t.crop},
+                "delivery_remaining_seconds": max(0, int((t.delivery_time - now).total_seconds())),
+            }
+
+        return Response({
+            "total_merchants": get_total_merchants(village),
+            "available_merchants": get_available_merchants(village),
+            "merchant_capacity": MERCHANT_CAPACITY,
+            "outgoing_trades": [ser_out(t) for t in outgoing],
+            "incoming_trades": [ser_in(t) for t in incoming],
+        })
 
     def post(self, request):
         source_id = request.data.get('source_village_id')
         target_id = request.data.get('target_village_id')
         resources = request.data.get('resources', {'wood': 0, 'clay': 0, 'iron': 0, 'crop': 0})
 
-        try:
-            source_village = Village.objects.get(id=source_id, player=request.user)
-            target_village = Village.objects.get(id=target_id)
-        except Village.DoesNotExist:
-            return Response({"error": "دهکده مبدا یا مقصد یافت نشد."}, status=404)
-
-        wood = int(resources.get('wood', 0))
-        clay = int(resources.get('clay', 0))
-        iron = int(resources.get('iron', 0))
-        crop = int(resources.get('crop', 0))
+        wood = int(resources.get('wood', 0) or 0)
+        clay = int(resources.get('clay', 0) or 0)
+        iron = int(resources.get('iron', 0) or 0)
+        crop = int(resources.get('crop', 0) or 0)
         total_resources = wood + clay + iron + crop
 
         if total_resources <= 0:
             return Response({"error": "مقدار منابع ارسالی باید بیشتر از صفر باشد."}, status=400)
 
-        with transaction.atomic():
-            # قفل‌گذاری روی دهکده مبدا
-            source = Village.objects.select_for_update().get(id=source_id)
+        if str(target_id) == str(source_id):
+            return Response({"error": "نمی‌توانید به همان دهکده منابع ارسال کنید."}, status=400)
 
-            # بررسی موجودی
+        try:
+            target_village = Village.objects.get(id=target_id)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده مقصد یافت نشد."}, status=404)
+
+        with transaction.atomic():
+            try:
+                source = Village.objects.select_for_update().get(id=source_id, player=request.user)
+            except (Village.DoesNotExist, ValueError, TypeError):
+                return Response({"error": "دهکده مبدا یافت نشد یا متعلق به شما نیست."}, status=404)
+
+            update_village_resources(source)
+
             if source.wood < wood or source.clay < clay or source.iron < iron or source.crop < crop:
                 return Response({"error": "منابع کافی در دهکده وجود ندارد."}, status=400)
 
-            # کسر از مبدا
+            merchants_needed = max(1, math.ceil(total_resources / MERCHANT_CAPACITY))
+            available_merchants = get_available_merchants(source)
+
+            if merchants_needed > available_merchants:
+                return Response({
+                    "error": (
+                        f"تاجر کافی موجود نیست. این محموله به {merchants_needed} تاجر نیاز دارد "
+                        f"ولی فقط {available_merchants} تاجر آزاد در دسترس است. سطح بازارچه را ارتقا دهید "
+                        f"یا صبر کنید تا تاجرهای در سفر برگردند."
+                    )
+                }, status=400)
+
+            # کسر منابع از مبدا همین الان انجام می‌شود (سرمایه‌گذاری برای تجارت)
             source.wood -= wood
             source.clay -= clay
             source.iron -= iron
             source.crop -= crop
             source.save()
 
-            # قفل‌گذاری و واریز به مقصد (در سیستم واقعی با تاخیر زمانی و توسط تجار انجام می‌شود)
-            target = Village.objects.select_for_update().get(id=target_id)
-            target.wood += wood
-            target.clay += clay
-            target.iron += iron
-            target.crop += crop
-            target.save()
+            travel_seconds = calculate_merchant_travel_seconds(source, target_village)
+            now = timezone.now()
+            delivery_time = now + datetime.timedelta(seconds=travel_seconds)
+            return_time = delivery_time + datetime.timedelta(seconds=travel_seconds)
 
-            # ثبت لاگ تجارت
+            trade = ResourceTrade.objects.create(
+                source_village=source,
+                target_village=target_village,
+                wood=wood, clay=clay, iron=iron, crop=crop,
+                merchants_used=merchants_needed,
+                delivery_time=delivery_time,
+                merchants_return_time=return_time,
+            )
+
             GameLog.objects.create(
                 village=source,
                 log_type='TRADE',
-                description=f"ارسال {total_resources} منبع به دهکده {target.name} انجام شد."
-            )
-            GameLog.objects.create(
-                village=target,
-                log_type='TRADE',
-                description=f"دریافت {total_resources} منبع از دهکده {source.name}."
+                description=(
+                    f"{merchants_needed} تاجر با {total_resources} واحد منبع به سمت دهکده "
+                    f"{target_village.name} اعزام شدند. زمان رسیدن: {round(travel_seconds/60)} دقیقه دیگر."
+                )
             )
 
-        return Response({"message": "تجار با موفقیت منابع را تحویل دادند."})
+            transaction.on_commit(lambda: deliver_trade_resources.apply_async(
+                args=[trade.id], eta=delivery_time
+            ))
+
+        return Response({
+            "message": f"{merchants_needed} تاجر با محموله به سمت {target_village.name} اعزام شدند.",
+            "delivery_time": delivery_time,
+            "merchants_used": merchants_needed,
+        })
 
 
 class InboxView(APIView):

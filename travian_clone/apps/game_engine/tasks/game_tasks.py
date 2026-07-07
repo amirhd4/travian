@@ -1,11 +1,10 @@
 from travian_core.celery import app
-from apps.game_engine.models import Village, VillageBuilding, GameLog
+from apps.game_engine.models import Village, VillageBuilding, GameLog, ResourceTrade
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 import random
 from django.core.cache import cache
 from django.core.mail import send_mail
-
 
 @app.task
 def send_sms_task(phone_number, message):
@@ -118,3 +117,54 @@ def process_game_event(village_id, event_type, details):
             )
         except TroopType.DoesNotExist:
             pass
+
+
+@app.task
+def deliver_trade_resources(trade_id):
+    """
+    رسیدن محموله‌ی تجاری به دهکده مقصد. منابع در سقف انبار/سیلوی مقصد
+    قرار می‌گیرند و بازگشت تاجرها (آزاد شدن ظرفیت مبدا) جداگانه زمان‌بندی
+    می‌شود - دقیقا مثل نحوه‌ی بازگشت نیرو بعد از حمله در apps.combat.tasks.
+    """
+    try:
+        trade = ResourceTrade.objects.select_related('target_village', 'source_village').get(
+            id=trade_id, is_delivered=False
+        )
+    except ResourceTrade.DoesNotExist:
+        return "این محموله قبلا تحویل داده شده یا یافت نشد."
+
+    target = trade.target_village
+    target.wood = min(target.max_storage, target.wood + trade.wood)
+    target.clay = min(target.max_storage, target.clay + trade.clay)
+    target.iron = min(target.max_storage, target.iron + trade.iron)
+    target.crop = min(target.max_granary, target.crop + trade.crop)
+    target.save()
+
+    trade.is_delivered = True
+    trade.save()
+
+    total = trade.total_resources()
+    description = f"محموله‌ای شامل {total} واحد منبع از دهکده {trade.source_village.name} به این دهکده رسید."
+    GameLog.objects.create(village=target, log_type='TRADE', description=description)
+
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        async_to_sync(channel_layer.group_send)(
+            f"player_{target.player_id}",
+            {
+                "type": "send_game_update",
+                "update_type": "TRADE_DELIVERED",
+                "payload": {"message": description, "village_id": target.id},
+            }
+        )
+
+    # زمان‌بندی آزاد شدن تاجرها؛ تا آن لحظه ظرفیت تاجر مبدا اشغال باقی می‌ماند
+    complete_trade_return.apply_async(args=[trade.id], eta=trade.merchants_return_time)
+    return description
+
+
+@app.task
+def complete_trade_return(trade_id):
+    """بازگشت تاجرها به دهکده مبدا؛ از این لحظه ظرفیت تاجر مبدا دوباره آزاد می‌شود."""
+    ResourceTrade.objects.filter(id=trade_id).update(is_completed=True)
+    return f"تاجرهای محموله #{trade_id} به مبدا بازگشتند."
