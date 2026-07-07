@@ -16,6 +16,7 @@ import { useEffect } from "react";
 import api from "./api/axiosConfig.js";
 import Movements from "./pages/Movements.jsx";
 import Hero from "./pages/Herro.jsx";
+import Colonize from "./pages/Colonize.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -100,6 +101,7 @@ function App() {
                 <Route path="/embassy" element={<PrivateRoute><Embassy /></PrivateRoute>} />
                 <Route path="/movements" element={<PrivateRoute><Movements /></PrivateRoute>} />
                 <Route path="/hero" element={<PrivateRoute><Hero /></PrivateRoute>} />
+                <Route path="/colonize" element={<PrivateRoute><Colonize /></PrivateRoute>} />
             </Routes>
         </Router>
     );

@@ -46,8 +46,23 @@ _CENTER_BUILDING_DEFS = (
 )
 
 
-def _find_free_coordinates():
-    """یک مختصات (x, y) آزاد روی نقشه پیدا می‌کند."""
+def _find_free_coordinates(near_x=None, near_y=None, search_radius=20):
+    """
+    یک مختصات (x, y) آزاد روی نقشه پیدا می‌کند.
+
+    اگر near_x/near_y داده شود، ابتدا در شعاع نزدیک آن مختصات جستجو می‌کند
+    (برای تاسیس دهکده جدید نزدیک دهکده مبدا - قبلا این تابع کاملا تصادفی
+    در کل نقشه ۲۰۰×۲۰۰ جستجو می‌کرد و دهکده جدید ممکن بود صدها خانه با
+    دهکده مبدا فاصله داشته باشد)؛ در غیر این صورت به جستجوی کاملا تصادفی
+    در کل نقشه برمی‌گردد (رفتار قبلی، برای اولین دهکده بازیکن تازه‌وارد).
+    """
+    if near_x is not None and near_y is not None:
+        for _ in range(MAX_COORDINATE_ATTEMPTS):
+            x = near_x + random.randint(-search_radius, search_radius)
+            y = near_y + random.randint(-search_radius, search_radius)
+            if not Village.objects.filter(x_coord=x, y_coord=y).exists():
+                return x, y
+
     for _ in range(MAX_COORDINATE_ATTEMPTS):
         x = random.randint(-MAP_SEARCH_RADIUS, MAP_SEARCH_RADIUS)
         y = random.randint(-MAP_SEARCH_RADIUS, MAP_SEARCH_RADIUS)
@@ -166,7 +181,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
             raise ValidationError("این مختصات قبلا توسط دهکده دیگری اشغال شده است.")
         x, y = target_x, target_y
     else:
-        x, y = _find_free_coordinates()
+        x, y = _find_free_coordinates(near_x=source_village.x_coord, near_y=source_village.y_coord)
 
     # کسر مهاجرها از دهکده مبدا (به ترتیب از گروه‌های موجود مصرف می‌شود)
     remaining_to_deduct = SETTLERS_REQUIRED
