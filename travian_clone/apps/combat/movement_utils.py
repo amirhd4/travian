@@ -15,6 +15,10 @@ def dispatch_troop_movement(player, source_village, target_village, movement_typ
 
     خروجی: (موفق: bool, پیام خطا یا شیء TroopMovement)
     """
+    from apps.game_engine.utils import is_server_finished
+    if is_server_finished():
+        return False, "این سرور به پایان رسیده و دیگر امکان اعزام نیرو وجود ندارد."
+
     valid_types = dict(TroopMovement.MOVEMENT_TYPES)
     if movement_type not in valid_types:
         return False, "نوع عملیات تاکتیکی نامعتبر است."

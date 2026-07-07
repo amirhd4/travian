@@ -18,6 +18,7 @@ import Movements from "./pages/Movements.jsx";
 import Hero from "./pages/Herro.jsx";
 import Colonize from "./pages/Colonize.jsx";
 import FarmList from "./pages/FarmList.jsx";
+import ServerStatusBanner from "./components/ServerStatusBanner.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -71,6 +72,7 @@ function App() {
 
     return (
         <Router>
+            <ServerStatusBanner />
             <Routes>
                 <Route path="/" element={<Navigate to="/login" />} />
                 <Route path="/login" element={<Login />} />

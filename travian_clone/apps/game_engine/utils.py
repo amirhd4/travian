@@ -139,3 +139,9 @@ def update_village_resources(village):
     village.crop = max(0, min(village.max_granary, raw_new_crop))
     village.last_update = now
     village.save()
+
+
+def is_server_finished():
+    """آیا سرور فعال به پایان رسیده (برنده اعلام شده) است؟"""
+    active_server = ServerSetting.objects.filter(is_active=True).first()
+    return bool(active_server and active_server.is_finished)

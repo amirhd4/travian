@@ -39,6 +39,10 @@ class BarracksTrainView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        from apps.game_engine.utils import is_server_finished
+        if is_server_finished():
+            return Response({"error": "این سرور به پایان رسیده و دیگر امکان آموزش نیرو وجود ندارد."}, status=400)
+
         village_id = request.data.get('village_id')
         troop_type_id = request.data.get('troop_type')
         quantity = int(request.data.get('quantity', 0))

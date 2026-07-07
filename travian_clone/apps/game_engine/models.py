@@ -13,6 +13,18 @@ class ServerSetting(models.Model):
     start_date = models.DateTimeField(auto_now_add=True)
     ww_unlocked = models.BooleanField(default=False)
 
+    # وضعیت پایان بازی. قبل از این فیلدها، هیچ راهی برای اعلام برنده یا
+    # بستن سرور وقتی شگفتی جهان به سطح ۱۰۰ می‌رسید وجود نداشت - سرور
+    # می‌توانست تا ابد بدون هیچ نتیجه‌ی رسمی ادامه پیدا کند.
+    is_finished = models.BooleanField(default=False)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    winner_player = models.ForeignKey(
+        'authentication.Player', on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
+    )
+    winner_alliance = models.ForeignKey(
+        'Alliance', on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
+    )
+
 
 class Village(models.Model):
     player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='villages')

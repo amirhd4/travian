@@ -3,18 +3,26 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.game_engine.models import Village
 from .services import validate_ww_upgrade
-from .models import WorldWonder
+from apps.game_engine.models import Village, ServerSetting, WorldWonder
+
 
 class UpgradeWWView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        active_server = ServerSetting.objects.filter(is_active=True).first()
+        if active_server and active_server.is_finished:
+            return Response({"error": "این سرور به پایان رسیده و دیگر ارتقای شگفتی جهان ممکن نیست."}, status=400)
+
         try:
             village = Village.objects.get(player=request.user, id=request.data.get('village_id'))
         except Village.DoesNotExist:
             return Response({"error": "دهکده یافت نشد."}, status=404)
 
         ww, created = WorldWonder.objects.get_or_create(village=village)
+
+        if ww.level >= 100:
+            return Response({"error": "این شگفتی جهان به حداکثر سطح (۱۰۰) رسیده است."}, status=400)
 
         try:
             # بررسی پیش‌نیازها (مثل داشتن نقشه‌های ساخت دوم در اتحاد)

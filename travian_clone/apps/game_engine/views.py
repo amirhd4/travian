@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from asgiref.sync import async_to_sync
 from django.db import transaction
 from django.core.exceptions import ValidationError
@@ -12,7 +12,7 @@ import math
 
 from .models import Village, VillageBuilding, ServerSetting
 from .engine import schedule_game_event
-from .utils import update_village_resources, calculate_crop_upkeep, calculate_building_population, calculate_village_population
+from .utils import update_village_resources, calculate_crop_upkeep, calculate_building_population, calculate_village_population, is_server_finished
 from .services import found_new_village
 from channels.layers import get_channel_layer
 from .models import Transaction, Discount, GameLog
@@ -253,6 +253,9 @@ class UpgradeBuildingView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        if is_server_finished():
+            return Response({"error": "این سرور به پایان رسیده و دیگر امکان ساخت‌وساز وجود ندارد."}, status=400)
+
         village_id = request.data.get('village_id')
         position = request.data.get('position')
 
@@ -778,3 +781,28 @@ class EmbassyView(APIView):
             return Response({"message": f"اتحاد {alliance_name} منحل شد."})
 
         return Response({"error": "عملیات نامعتبر"}, status=400)
+
+
+class ServerStatusView(APIView):
+    """
+    وضعیت کلی سرور (فعال/پایان‌یافته + برنده). عمدا بدون نیاز به احراز
+    هویت است تا حتی در صفحه‌ی ورود/ثبت‌نام هم اعلام برنده نمایش داده شود.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        active_server = ServerSetting.objects.filter(is_active=True).first()
+        if not active_server:
+            return Response({"is_finished": False})
+
+        data = {
+            "is_finished": active_server.is_finished,
+            "duration_days": active_server.duration_days,
+            "start_date": active_server.start_date,
+        }
+        if active_server.is_finished:
+            data["finished_at"] = active_server.finished_at
+            data["winner_username"] = active_server.winner_player.username if active_server.winner_player else None
+            data["winner_alliance_tag"] = active_server.winner_alliance.tag if active_server.winner_alliance else None
+
+        return Response(data)
