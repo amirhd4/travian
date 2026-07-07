@@ -3,7 +3,6 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from asgiref.sync import async_to_sync
 from django.db import transaction
-from django.db.models import Sum
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 
@@ -13,7 +12,7 @@ import math
 
 from .models import Village, VillageBuilding, ServerSetting
 from .engine import schedule_game_event
-from .utils import update_village_resources, calculate_crop_upkeep
+from .utils import update_village_resources, calculate_crop_upkeep, calculate_building_population, calculate_village_population
 from .services import found_new_village
 from channels.layers import get_channel_layer
 from .models import Transaction, Discount, GameLog
@@ -112,13 +111,6 @@ class VillageDetailView(APIView):
 
 
 class VillageBuildingsView(APIView):
-    """
-    فهرست کامل ساختمان‌های یک دهکده به همراه هزینه و زمان ارتقای سطح بعدی.
-
-    قبل از این ویو، VillageMap.jsx به هیچ داده واقعی‌ای متصل نبود؛ چیدمان
-    ساختمان‌ها، نام‌ها و سطوح همگی مستقیما در کد React هاردکد شده بودند و
-    کلیک روی هر ساختمان فقط یک alert نمایش می‌داد (بدون هیچ ارتقای واقعی).
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, village_id):
@@ -135,22 +127,25 @@ class VillageBuildingsView(APIView):
         for b in buildings:
             multiplier = 1.5 ** b.level
             time_multiplier = 1.2 ** b.level
+            is_max_level = b.level >= b.building_type.max_level
             data.append({
                 "id": b.id,
                 "position": b.position,
                 "name": b.building_type.name,
                 "category": b.building_type.category,
                 "level": b.level,
+                "max_level": b.building_type.max_level,
+                "is_max_level": is_max_level,
                 "is_upgrading": b.is_upgrading,
                 "upgrade_end_time": b.upgrade_end_time,
                 "provides_wall_defense": b.building_type.provides_wall_defense,
-                "next_level_cost": {
+                "next_level_cost": None if is_max_level else {
                     "wood": int(b.building_type.base_wood_cost * multiplier),
                     "clay": int(b.building_type.base_clay_cost * multiplier),
                     "iron": int(b.building_type.base_iron_cost * multiplier),
                     "crop": int(b.building_type.base_crop_cost * multiplier),
                 },
-                "next_level_time_seconds": int(b.building_type.base_build_time * time_multiplier),
+                "next_level_time_seconds": None if is_max_level else int(b.building_type.base_build_time * time_multiplier),
             })
 
         return Response({
@@ -158,6 +153,7 @@ class VillageBuildingsView(APIView):
                 "id": village.id,
                 "name": village.name,
                 "is_capital": village.is_capital,
+                "population": calculate_village_population(village),
                 "resources": {
                     "wood": village.wood,
                     "clay": village.clay,
@@ -167,7 +163,6 @@ class VillageBuildingsView(APIView):
             },
             "buildings": data,
         })
-
 
 class WorldMapView(APIView):
     """
@@ -263,17 +258,20 @@ class UpgradeBuildingView(APIView):
 
         with transaction.atomic():
             try:
-                # قفل‌گذاری روی ردیف دهکده تا پایان تراکنش (جلوگیری از race condition)
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
             except Village.DoesNotExist:
                 return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=403)
 
-            # ۱. به‌روزرسانی منابع در لحظه (Lazy Evaluation)
             update_village_resources(village)
 
+            # محدودیت صف ساخت‌وساز: در هر لحظه فقط یک ساختمان می‌تواند در حال ارتقا باشد
+            if VillageBuilding.objects.filter(village=village, is_upgrading=True).exists():
+                return Response(
+                    {"error": "در هر لحظه فقط یک ساختمان می‌تواند در حال ارتقا باشد. صبر کنید تا ساخت فعلی تمام شود."},
+                    status=400
+                )
+
             try:
-                # قفل روی خود ساختمان هم لازمه، وگرنه دو درخواست هم‌زمان
-                # هر دو از روی is_upgrading=False رد می‌شن
                 building = VillageBuilding.objects.select_for_update().get(village=village, position=position)
             except VillageBuilding.DoesNotExist:
                 return Response({"error": "ساختمانی در این جایگاه یافت نشد."}, status=404)
@@ -281,7 +279,14 @@ class UpgradeBuildingView(APIView):
             if building.is_upgrading:
                 return Response({"error": "این ساختمان در حال حاضر در حال ارتقا است."}, status=400)
 
-            # محاسبه هزینه ارتقا برای سطح بعدی (فرمول تصاعدی ساده: هزینه پایه * 1.5 ^ سطح فعلی)
+            # سقف سطح: قبل از این بررسی، ساختمان‌ها بدون هیچ محدودیتی تا بی‌نهایت
+            # قابل ارتقا بودند
+            if building.level >= building.building_type.max_level:
+                return Response(
+                    {"error": f"این ساختمان به حداکثر سطح مجاز ({building.building_type.max_level}) رسیده است."},
+                    status=400
+                )
+
             next_level = building.level + 1
             multiplier = 1.5 ** building.level
             req_wood = int(building.building_type.base_wood_cost * multiplier)
@@ -289,25 +294,20 @@ class UpgradeBuildingView(APIView):
             req_iron = int(building.building_type.base_iron_cost * multiplier)
             req_crop = int(building.building_type.base_crop_cost * multiplier)
 
-            # ۲. بررسی کفایت منابع
             if village.wood < req_wood or village.clay < req_clay or village.iron < req_iron or village.crop < req_crop:
                 return Response({"error": "منابع کافی نیست."}, status=400)
 
-            # ۳. کسر منابع
             village.wood -= req_wood
             village.clay -= req_clay
             village.iron -= req_iron
             village.crop -= req_crop
             village.save()
 
-            # ۴. علامت‌گذاری ساختمان به عنوان در حال ارتقا
             base_time = building.building_type.base_build_time * (1.2 ** building.level)
             building.is_upgrading = True
             building.upgrade_end_time = timezone.now() + datetime.timedelta(seconds=base_time)
             building.save()
 
-            # ارسال به صف Celery فقط بعد از commit موفق تراکنش انجام می‌شه
-            # (اگه تراکنش rollback بشه، تسکی برای رویدادی که هرگز commit نشده زمان‌بندی نمی‌شه)
             transaction.on_commit(lambda: schedule_game_event(
                 village_id=village.id,
                 event_type="BUILDING_UPGRADE",
@@ -392,15 +392,16 @@ class LeaderboardView(APIView):
         from apps.world_wonder.models import WorldWonder
         from apps.combat.models import TroopMovement
 
-        # --- جمعیت واقعی هر بازیکن: مجموع سطح تمام ساختمان‌های تمام دهکده‌هایش ---
-        # (این یک تقریب ساده‌شده از فرمول جمعیت واقعی تراوین است، نه محاسبه دقیق
-        # هزینه هر سطح ساختمان، اما بر خلاف قبل واقعا از دیتابیس می‌آید)
-        population_by_player = {
-            row['village__player_id']: row['total']
-            for row in VillageBuilding.objects.filter(level__gt=0)
-            .values('village__player_id')
-            .annotate(total=Sum('level'))
-        }
+        # --- جمعیت واقعی هر بازیکن: بر اساس مجموع منابع صرف‌شده در تمام سطوح
+        # تمام ساختمان‌های تمام دهکده‌هایش (فرمول واقعی‌تر؛ قبلا این فقط جمع
+        # سطح‌ها بود و هیچ تناسبی با هزینه‌ی واقعی ساخت‌وساز نداشت) ---
+        population_by_player = {}
+        for b in VillageBuilding.objects.filter(level__gt=0).select_related('building_type', 'village'):
+            player_id = b.village.player_id
+            population_by_player[player_id] = (
+                    population_by_player.get(player_id, 0) + calculate_building_population(b.building_type, b.level)
+            )
+        population_by_player = {pid: int(round(pop)) for pid, pop in population_by_player.items()}
 
         # --- نام اتحاد واقعی هر بازیکن (در صورت عضویت) ---
         alliance_by_player = {

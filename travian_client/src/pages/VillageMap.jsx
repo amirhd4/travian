@@ -257,7 +257,7 @@ export default function VillageMap() {
     };
 
     const canAfford = (building) => {
-        if (!villageInfo) return false;
+        if (!villageInfo || !building.next_level_cost) return false;
         const r = villageInfo.resources;
         const c = building.next_level_cost;
         return r.wood >= c.wood && r.clay >= c.clay && r.iron >= c.iron && r.crop >= c.crop;
@@ -276,6 +276,11 @@ export default function VillageMap() {
                 <div className="flex flex-col items-center w-full max-w-4xl">
 
                     {/* تب‌های انتخاب نمای منابع و ساختمان */}
+                    {villageInfo && (
+                        <p className="text-xs font-bold text-[#3d2b1a] bg-[#f4ebd0] px-3 py-1 rounded-full mb-2 border-2 border-[#593d2b]">
+                            👥 جمعیت: {villageInfo.population?.toLocaleString() ?? '—'}
+                        </p>
+                    )}
                     <div className="flex gap-1 mb-2">
                         <button
                             onClick={() => setView('dorf1')}
@@ -331,6 +336,12 @@ export default function VillageMap() {
                         {selectedSlot.is_upgrading ? (
                             <div className="bg-yellow-100 border border-yellow-400 rounded p-3 text-center mb-4">
                                 <p className="text-sm font-bold text-yellow-800 mb-1">در حال ارتقا...</p>
+                            </div>
+                        ) : selectedSlot.is_max_level ? (
+                            <div className="bg-green-100 border border-green-500 rounded p-3 text-center mb-4">
+                                <p className="text-sm font-bold text-green-800">
+                                    🏆 این ساختمان به حداکثر سطح ({selectedSlot.max_level}) رسیده است.
+                                </p>
                             </div>
                         ) : (
                             <div className="bg-white/60 rounded border border-[#d9c49a] p-3 mb-4 text-sm">

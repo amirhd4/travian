@@ -74,7 +74,7 @@ def _find_free_coordinates(near_x=None, near_y=None, search_radius=20):
     )
 
 
-def _get_or_create_building_type(name, provides_wall_defense=False):
+def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20):
     building_type, _ = BuildingType.objects.get_or_create(
         name=name,
         defaults={
@@ -86,6 +86,7 @@ def _get_or_create_building_type(name, provides_wall_defense=False):
             "base_build_time": 120,
             "crop_upkeep": 1,
             "provides_wall_defense": provides_wall_defense,
+            "max_level": max_level,
         },
     )
     return building_type

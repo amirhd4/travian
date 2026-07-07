@@ -84,6 +84,10 @@ class BuildingType(models.Model):
     ]
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='INFRASTRUCTURE')
 
+    # سقف سطح این نوع ساختمان. قبل از این فیلد، ساختمان‌ها بدون هیچ محدودیتی
+    # تا بی‌نهایت قابل ارتقا بودند.
+    max_level = models.IntegerField(default=20)
+
     def __str__(self):
         return self.name
 

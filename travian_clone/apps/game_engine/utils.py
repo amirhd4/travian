@@ -5,20 +5,16 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import ServerSetting, GameLog
 
-# درصد تلفات نیرو در هر ساعتِ مستمرِ قحطی. عمدا قابل تنظیم گذاشته شده
-# چون بالانس دقیق آن به سرعت سرور و سبک بازی شما بستگی دارد.
+# درصد تلفات نیرو در هر ساعتِ مستمرِ قحطی.
 STARVATION_LOSS_PERCENT_PER_HOUR = 10
+
+# هر چند واحد منبعِ صرف‌شده در ساخت‌وساز معادل ۱ نفر جمعیت است. این عدد
+# صرفا یک ثابت بالانسی است و می‌توانید برای تنظیم دقیق‌تر آن را تغییر دهید.
+POPULATION_RESOURCE_DIVISOR = 100
 
 
 def calculate_crop_upkeep(village):
-    """
-    مجموع مصرف گندم (upkeep) تمام نیروهای مستقر و ساختمان‌های ساخته‌شده
-    در این دهکده.
-
-    ایمپورت apps.combat.models به صورت محلی انجام می‌شود تا وابستگی چرخه‌ای
-    بین اپ game_engine و combat (که خودش از game_engine.models وارد می‌کند)
-    ایجاد نشود.
-    """
+    """مجموع مصرف گندم (upkeep) تمام نیروهای مستقر و ساختمان‌های ساخته‌شده در این دهکده."""
     from apps.combat.models import VillageTroop
     from .models import VillageBuilding
 
@@ -33,21 +29,35 @@ def calculate_crop_upkeep(village):
     return troop_upkeep + building_upkeep
 
 
+def calculate_building_population(building_type, level):
+    """
+    جمعیتی که یک ساختمان تا سطح فعلی‌اش ایجاد کرده، بر اساس مجموع منابعی
+    که صرف رسیدن به این سطح شده (همان فرمول تصاعدی 1.5^level که در محاسبه‌ی
+    هزینه‌ی ارتقا هم استفاده می‌شود).
+
+    قبل از این تابع، جمعیت در LeaderboardView صرفا «مجموع سطح همه‌ی
+    ساختمان‌ها» بود که هیچ ربطی به فرمول واقعی تراوین (جمعیت متناسب با
+    منابع سرمایه‌گذاری‌شده) نداشت.
+    """
+    if level <= 0:
+        return 0
+    base_total_cost = (
+        building_type.base_wood_cost + building_type.base_clay_cost +
+        building_type.base_iron_cost + building_type.base_crop_cost
+    )
+    total_cost = sum(base_total_cost * (1.5 ** lvl) for lvl in range(level))
+    return total_cost / POPULATION_RESOURCE_DIVISOR
+
+
+def calculate_village_population(village):
+    """جمعیت کل یک دهکده: مجموع جمعیت تمام ساختمان‌های ساخته‌شده‌اش."""
+    from .models import VillageBuilding
+    buildings = VillageBuilding.objects.filter(village=village, level__gt=0).select_related('building_type')
+    return int(round(sum(calculate_building_population(b.building_type, b.level) for b in buildings)))
+
+
 def _apply_starvation(village, elapsed_hours):
-    """
-    وقتی گندم دهکده به صفر رسیده و نرخ تولید خالص همچنان منفی است، بخشی از
-    نیروهای مستقر به‌طور تصادفی از گشنگی می‌میرند - دقیقا مثل مکانیک قحطی
-    (Famine) در تراوین اصلی.
-
-    قبل از این تابع، crop فقط در صفر clamp می‌شد و هیچ پیامدی برای بازیکن
-    نداشت؛ یعنی می‌شد نامحدود سرباز ساخت بدون هیچ نگرانی از تامین غذا.
-
-    توجه: این پیاده‌سازی عمدا ساده و «شدید» است (تناسب مستقیم با ساعت‌های
-    سپری‌شده در قحطی)؛ اگر یک بازیکن مدت طولانی آنلاین نشود و قحطی ادامه‌دار
-    باشد، ممکن است کل ارتش را از دست بدهد. برای بالانس ملایم‌تر،
-    STARVATION_LOSS_PERCENT_PER_HOUR را کم کنید یا یک سقف حداکثر تلفات در
-    هر فراخوانی اضافه کنید.
-    """
+    """وقتی گندم دهکده به صفر رسیده و نرخ تولید خالص همچنان منفی است، بخشی از نیروها می‌میرند."""
     from apps.combat.models import VillageTroop
 
     total_lost = 0
@@ -119,7 +129,6 @@ def update_village_resources(village):
     raw_new_crop = village.crop + (net_crop_rate * delta_seconds * speed / 3600)
 
     if raw_new_crop < 0 and net_crop_rate < 0:
-        # قحطی: گندم منفی می‌شود؛ نیروها گرسنگی می‌کشند و بخشی می‌میرند
         elapsed_hours = (delta_seconds * speed) / 3600
         village.crop = 0
         village.last_update = now
