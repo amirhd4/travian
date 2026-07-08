@@ -37,6 +37,7 @@ class TroopType(models.Model):
     # آیا این نیرو جاسوس (Scout) است؟ برای ماموریت‌های شناسایی (movement_type='SCOUT')
     # استفاده می‌شود و همچنین به عنوان محافظ در برابر جاسوسی دشمن عمل می‌کند.
     is_scout = models.BooleanField(default=False)
+    is_chief = models.BooleanField(default=False)
     is_cavalry = models.BooleanField(default=False)
 
     def __str__(self):
@@ -80,6 +81,7 @@ class TroopMovement(models.Model):
     arrival_time = models.DateTimeField()
 
     is_completed = models.BooleanField(default=False)
+    hero_participating = models.BooleanField(default=False)
 
     farm_list_entry = models.ForeignKey(
         'FarmListEntry', on_delete=models.SET_NULL, null=True, blank=True, related_name='movements'

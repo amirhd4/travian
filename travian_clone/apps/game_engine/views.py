@@ -53,6 +53,7 @@ class VillageListView(APIView):
                 "clay": v.clay,
                 "iron": v.iron,
                 "crop": v.crop,
+                "has_world_wonder": hasattr(v, 'world_wonder'),
             }
             for v in villages
         ]
@@ -198,6 +199,8 @@ class WorldMapView(APIView):
                 "y_coord": v.y_coord,
                 "owner": v.player.username,
                 "is_natar": v.player.username == "Natars",
+                "is_natar_ww_site": v.is_natar_ww_site,
+                "is_natar_plan_guard": v.is_natar_plan_guard,
             }
             for v in villages
         ]
@@ -289,6 +292,12 @@ class UpgradeBuildingView(APIView):
             if building.level >= building.building_type.max_level:
                 return Response(
                     {"error": f"این ساختمان به حداکثر سطح مجاز ({building.building_type.max_level}) رسیده است."},
+                    status=400
+                )
+
+            if building.building_type.name == "شگفتی جهان":
+                return Response(
+                    {"error": "ارتقای شگفتی جهان فقط از طریق صفحه‌ی مخصوص «شگفتی جهان» انجام می‌شود."},
                     status=400
                 )
 

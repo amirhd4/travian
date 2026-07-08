@@ -258,3 +258,14 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
     _create_default_buildings(new_village)
 
     return new_village
+
+
+def _create_resource_fields_only(village):
+    """فقط مزارع منابع (بدون هیچ ساختمان مرکزی) می‌سازد - برای دهکده‌های
+    ویرانه‌ی ناتار که بعدا محل شگفتی جهان می‌شوند."""
+    position = 1
+    for type_name, count in _RESOURCE_FIELD_DEFS:
+        building_type = _get_or_create_building_type(type_name, category='RESOURCE')
+        for _ in range(count):
+            VillageBuilding.objects.create(village=village, building_type=building_type, position=position, level=1)
+            position += 1

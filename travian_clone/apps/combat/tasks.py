@@ -4,6 +4,8 @@ from django.utils import timezone
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
+import random
+
 from travian_core.celery import app
 from apps.game_engine.models import Village, GameLog, VillageBuilding
 from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal, Adventure
@@ -238,6 +240,9 @@ def _resolve_attack_or_raid(movement):
     source = movement.source_village
     target = Village.objects.select_for_update().get(id=movement.target_village_id)
 
+    original_defender_player = target.player
+    original_defender_player_id = target.player_id
+
     # ------- قدرت مهاجم بر اساس اطلاعات واقعی TroopType از دیتابیس -------
     troop_type_cache = {
         t.id: t for t in TroopType.objects.filter(
@@ -352,6 +357,51 @@ def _resolve_attack_or_raid(movement):
                 setattr(target, res_name, getattr(target, res_name) - int(share))
             target.save()
 
+    conquered = False
+    if victory == "attacker":
+        chief_ids_sent = [
+            int(tid) for tid, qty in movement.troops_payload.items()
+            if int(qty) > 0 and troop_type_cache.get(int(tid)) and troop_type_cache[int(tid)].is_chief
+        ]
+        if chief_ids_sent:
+            loyalty_reduction = len(chief_ids_sent) * random.randint(20, 35)
+            target.loyalty = max(0, target.loyalty - loyalty_reduction)
+
+            # نیروهای سناتور اعزامی مصرف می‌شوند (چه تسخیر کامل شود چه نه)
+            for tid in chief_ids_sent:
+                attacker_survivors[tid] = 0
+
+            if target.loyalty <= 0:
+                target.player = source.player
+                target.loyalty = random.randint(20, 35)
+                conquered = True
+
+            target.save()
+
+            if conquered and target.is_natar_ww_site:
+                _convert_to_ww_site(target)
+
+    plan_message = ""
+    if victory == "attacker" and movement.hero_participating:
+        from apps.world_wonder.models import WWBuildingPlan
+
+        all_defenders_dead = not VillageTroop.objects.filter(village=target, count__gt=0).exists()
+        available_plan = WWBuildingPlan.objects.filter(holder_village=target).first()
+
+        if all_defenders_dead and catapult_units_sent > 0 and available_plan:
+            attacker_hero = Hero.objects.filter(player=source.player).first()
+            thief_treasury_ok = bool(
+                attacker_hero and attacker_hero.home_village and VillageBuilding.objects.filter(
+                    village=attacker_hero.home_village, building_type__name="خزانه‌داری", level__gte=10
+                ).exists()
+            )
+            if thief_treasury_ok:
+                available_plan.holder_village = attacker_hero.home_village
+                available_plan.save()
+                plan_message = f" 🗺️ نقشه‌ی ساخت شگفتی جهان با موفقیت به دهکده {attacker_hero.home_village.name} منتقل شد!"
+            else:
+                plan_message = " ⚠️ نقشه‌ی ساخت پیدا شد اما خزانه‌داری مقصد (سطح ۱۰ یا بالاتر در دهکده‌ی خانگی قهرمان) آماده نبود، پس نقشه برداشته نشد."
+
     winner_label = "مهاجم" if victory == "attacker" else "مدافع"
     log_msg = (
         f"نبرد در دهکده {target.name} پایان یافت.\n"
@@ -363,6 +413,13 @@ def _resolve_attack_or_raid(movement):
         log_msg += f"\nدیوار دهکده به سطح {wall_building.level} تخریب شد."
     if any(loot.values()):
         log_msg += f"\nمنابع غارت شده: {loot}"
+    if victory == "attacker" and any(
+            troop_type_cache.get(int(tid), None) and troop_type_cache[int(tid)].is_chief for tid in
+            movement.troops_payload):
+        log_msg += f"\n👑 وفاداری دهکده هدف اکنون {target.loyalty:.0f} است."
+    if conquered:
+        log_msg += f"\n🏆 دهکده {target.name} با موفقیت تسخیر شد و اکنون متعلق به شماست!"
+    log_msg += plan_message
 
     GameLog.objects.create(village=source, log_type='COMBAT', description=log_msg)
     GameLog.objects.create(village=target, log_type='COMBAT', description=log_msg)
@@ -370,18 +427,16 @@ def _resolve_attack_or_raid(movement):
     movement.is_completed = True
     movement.save()
 
-    # تجربه ساده برای قهرمان‌های دو طرف (برنده بیشتر، بازنده کمتر)
     _grant_hero_experience(source.player, 10 if victory == "attacker" else 3)
-    _grant_hero_experience(target.player, 10 if victory == "defender" else 3)
+    _grant_hero_experience(original_defender_player, 10 if victory == "defender" else 3)
 
-    _notify_player(target.player_id, "COMBAT_RESULT", {
+    _notify_player(original_defender_player_id, "COMBAT_RESULT", {
         "message": log_msg, "winner": winner_label, "combat": combat_result
     })
     _notify_player(source.player_id, "COMBAT_RESULT", {
         "message": log_msg, "winner": winner_label, "combat": combat_result
     })
 
-    # ------- زمان‌بندی بازگشت بازماندگان (و غنائم) به دهکده مبدا -------
     survivors_payload = {str(tid): qty for tid, qty in attacker_survivors.items() if qty > 0}
     if survivors_payload:
         travel_duration = movement.arrival_time - movement.start_time
@@ -399,17 +454,28 @@ def _resolve_attack_or_raid(movement):
             args=[return_movement.id], eta=return_arrival
         ))
 
-    # اگر این حمله از طریق لیست مزرعه اعزام شده، نتیجه را روی خود ردیف ثبت کن
-    if movement.farm_list_entry_id:
-        entry = movement.farm_list_entry
-        entry.last_run_at = timezone.now()
-        entry.last_run_status = 'SUCCESS' if victory == 'attacker' else 'FAILED'
-        if any(loot.values()):
-            entry.last_loot_summary = f"🪵{loot['wood']} 🧱{loot['clay']} ⚒️{loot['iron']} 🌾{loot['crop']}"
-        else:
-            entry.last_loot_summary = "بدون غنیمت" if victory == 'attacker' else "شکست در نبرد"
-        entry.save()
     return log_msg
+
+
+def _convert_to_ww_site(village):
+    """
+    تبدیل یک دهکده‌ی تازه‌تسخیرشده‌ی ناتار به سایت شگفتی جهان: تمام
+    ساختمان‌های غیرمزرعه حذف می‌شوند و به‌جایشان یک ساختمان «شگفتی جهان»
+    در جایگاه ۱۹ قرار می‌گیرد؛ رکورد WorldWonder هم ساخته می‌شود.
+    """
+    from apps.game_engine.models import VillageBuilding
+    from apps.game_engine.services import _get_or_create_building_type
+    from apps.world_wonder.models import WorldWonder
+
+    VillageBuilding.objects.filter(village=village).exclude(building_type__category='RESOURCE').delete()
+
+    ww_building_type = _get_or_create_building_type("شگفتی جهان", category='INFRASTRUCTURE', max_level=100)
+    VillageBuilding.objects.create(village=village, building_type=ww_building_type, position=19, level=0)
+    WorldWonder.objects.get_or_create(village=village)
+
+    village.is_natar_ww_site = False
+    village.name = f"شگفتی جهان ({village.x_coord}|{village.y_coord})"
+    village.save()
 
 
 @app.task

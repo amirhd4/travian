@@ -54,6 +54,8 @@ export default function WorldMap() {
                 isNatar: found ? found.is_natar : false,
                 isMine: found ? found.id === activeVillageId : false,
                 id: found ? found.id : null,
+                isWwSite: found ? found.is_natar_ww_site : false,
+                isPlanGuard: found ? found.is_natar_plan_guard : false,
             });
         }
     }
@@ -84,6 +86,8 @@ export default function WorldMap() {
                                 onClick={() => handleCellClick(cell)}
                                 className={`h-24 flex flex-col items-center justify-center border text-xs p-1 rounded font-sans transition select-none
                                     ${cell.isMine ? 'bg-blue-200 border-blue-600 text-blue-900 font-bold' :
+                                      cell.isWwSite ? 'bg-purple-300 border-purple-700 text-purple-900 font-bold cursor-pointer animate-pulse' :
+                                      cell.isPlanGuard ? 'bg-orange-300 border-orange-700 text-orange-900 font-bold cursor-pointer' :
                                       cell.isNatar ? 'bg-red-300 border-red-600 text-red-900 font-bold cursor-pointer' :
                                       cell.hasVillage ? 'bg-green-200 border-green-500 text-green-900 hover:bg-green-300 cursor-pointer' :
                                       'bg-yellow-50 border-yellow-300 text-gray-400'}`}

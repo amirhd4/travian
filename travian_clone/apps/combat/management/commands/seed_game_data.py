@@ -112,6 +112,15 @@ class Command(BaseCommand):
                 "crop_upkeep": 3, "base_train_time": 3000,
                 "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
             },
+            {
+                "name": "سناتور",
+                "tribe": "ROMAN",
+                "attack_power": 50, "defense_infantry": 40, "defense_cavalry": 30,
+                "speed": 4, "carry_capacity": 0,
+                "wood_cost": 30750, "clay_cost": 27200, "iron_cost": 45000, "crop_cost": 37500,
+                "crop_upkeep": 4, "base_train_time": 5400,
+                "is_siege_weapon": False, "is_settler": False, "is_cavalry": False, "is_chief": True,
+            },
         ]
 
         for data in troop_defaults_list:

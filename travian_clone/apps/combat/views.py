@@ -22,6 +22,7 @@ class SendTroopsView(APIView):
         target_id = request.data.get('target_village_id')
         movement_type = request.data.get('movement_type', 'ATTACK')
         payload = request.data.get('troops_payload', {})
+        send_hero = bool(request.data.get('send_hero', False))
 
         try:
             source_village = Village.objects.get(id=source_id, player=request.user)
@@ -30,13 +31,12 @@ class SendTroopsView(APIView):
             return Response({"error": "مبدا یا مقصد یافت نشد."}, status=404)
 
         success, result = dispatch_troop_movement(
-            request.user, source_village, target_village, movement_type, payload
+            request.user, source_village, target_village, movement_type, payload, send_hero=send_hero
         )
         if not success:
             return Response({"error": result}, status=400)
 
         return Response({"message": "نیروها با موفقیت اعزام شدند و در زمان مقرر به مقصد می‌رسند."})
-
 
 class BarracksTrainView(APIView):
     permission_classes = [IsAuthenticated]

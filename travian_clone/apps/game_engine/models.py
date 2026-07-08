@@ -55,6 +55,10 @@ class Village(models.Model):
     # زمان آخرین آپدیت برای محاسبه دلتای منابع
     last_update = models.DateTimeField(auto_now_add=True)
 
+    loyalty = models.FloatField(default=100)
+    is_natar_ww_site = models.BooleanField(default=False)
+    is_natar_plan_guard = models.BooleanField(default=False)
+
     class Meta:
         unique_together = ('x_coord', 'y_coord')
         indexes = [models.Index(fields=['x_coord', 'y_coord'])]

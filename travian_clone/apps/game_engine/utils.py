@@ -121,6 +121,9 @@ def update_village_resources(village):
     speed = settings.server_speed
 
     net_crop_rate = village.prod_crop - calculate_crop_upkeep(village)
+    if village.loyalty < 100:
+        elapsed_hours_loyalty = (delta_seconds * speed) / 3600
+        village.loyalty = min(100.0, village.loyalty + elapsed_hours_loyalty * 1)  # +۱ در هر ساعت
 
     village.wood = min(village.max_storage, village.wood + (village.prod_wood * delta_seconds * speed / 3600))
     village.clay = min(village.max_storage, village.clay + (village.prod_clay * delta_seconds * speed / 3600))
