@@ -10,6 +10,9 @@ from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem
 from .engine import calculate_combat, calculate_catapult_damage
 from .hero_utils import resolve_adventure, generate_adventures_for_player
 
+
+CRANNY_PROTECTION_PER_LEVEL = 100  # هر سطح مخفیگاه، این مقدار از هر نوع منبع را از غارت محافظت می‌کند
+
 def _notify_player(player_id, update_type, payload):
     """ارسال آپدیت زنده به کاربر از طریق وب‌سوکت (در صورت وجود channel layer)."""
     channel_layer = get_channel_layer()
@@ -324,13 +327,20 @@ def _resolve_attack_or_raid(movement):
     # ------- غارت منابع در صورت پیروزی مهاجم در حرکت از نوع RAID -------
     loot = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
     if movement.movement_type == "RAID" and victory == "attacker":
+        cranny_levels_sum = VillageBuilding.objects.filter(
+            village=target, building_type__name="مخفیگاه"
+        ).aggregate(total=Sum('level'))['total'] or 0
+        protected_amount = cranny_levels_sum * CRANNY_PROTECTION_PER_LEVEL
+
         total_capacity = sum(
             qty * troop_type_cache[tid].carry_capacity
             for tid, qty in attacker_survivors.items() if tid in troop_type_cache
         )
         available = {
-            "wood": target.wood, "clay": target.clay,
-            "iron": target.iron, "crop": target.crop,
+            "wood": max(0, target.wood - protected_amount),
+            "clay": max(0, target.clay - protected_amount),
+            "iron": max(0, target.iron - protected_amount),
+            "crop": max(0, target.crop - protected_amount),
         }
         total_available = sum(available.values())
         if total_available > 0 and total_capacity > 0:
@@ -339,7 +349,7 @@ def _resolve_attack_or_raid(movement):
                 share = (res_amount / total_available) * take_total
                 share = min(res_amount, share)
                 loot[res_name] = int(share)
-                setattr(target, res_name, res_amount - int(share))
+                setattr(target, res_name, getattr(target, res_name) - int(share))
             target.save()
 
     winner_label = "مهاجم" if victory == "attacker" else "مدافع"

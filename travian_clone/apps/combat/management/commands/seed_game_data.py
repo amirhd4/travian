@@ -82,6 +82,36 @@ class Command(BaseCommand):
                 "is_settler": False,
                 "is_scout": True,
             },
+            {
+                "name": "شوالیه سوار",
+                "tribe": "ROMAN",
+                "attack_power": 120,
+                "defense_infantry": 65,
+                "defense_cavalry": 50,
+                "speed": 14,
+                "carry_capacity": 100,
+                "wood_cost": 550, "clay_cost": 440, "iron_cost": 320, "crop_cost": 100,
+                "crop_upkeep": 3, "base_train_time": 1200,
+                "is_siege_weapon": False, "is_settler": False, "is_cavalry": True,
+            },
+            {
+                "name": "قوچ آهنین",
+                "tribe": "ROMAN",
+                "attack_power": 60, "defense_infantry": 30, "defense_cavalry": 45,
+                "speed": 4, "carry_capacity": 0,
+                "wood_cost": 950, "clay_cost": 555, "iron_cost": 330, "crop_cost": 220,
+                "crop_upkeep": 3, "base_train_time": 2400,
+                "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
+            },
+            {
+                "name": "منجنیق",
+                "tribe": "ROMAN",
+                "attack_power": 75, "defense_infantry": 60, "defense_cavalry": 10,
+                "speed": 3, "carry_capacity": 0,
+                "wood_cost": 950, "clay_cost": 1350, "iron_cost": 600, "crop_cost": 180,
+                "crop_upkeep": 3, "base_train_time": 3000,
+                "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
+            },
         ]
 
         for data in troop_defaults_list:

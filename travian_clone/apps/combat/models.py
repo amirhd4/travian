@@ -37,6 +37,7 @@ class TroopType(models.Model):
     # آیا این نیرو جاسوس (Scout) است؟ برای ماموریت‌های شناسایی (movement_type='SCOUT')
     # استفاده می‌شود و همچنین به عنوان محافظ در برابر جاسوسی دشمن عمل می‌کند.
     is_scout = models.BooleanField(default=False)
+    is_cavalry = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name} ({self.tribe})"

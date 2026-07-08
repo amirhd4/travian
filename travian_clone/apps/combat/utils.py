@@ -28,3 +28,17 @@ def calculate_travel_seconds(source_village, target_village, slowest_speed_tiles
 
     # حتی در حالت سرعت نجومی سرور، حداقل چند ثانیه فاصله زمانی باقی می‌ماند
     return max(10, seconds)
+
+
+def get_required_training_building(troop_type):
+    """
+    ساختمانی که برای آموزش این نوع نیرو لازم است. قبل از این تابع، همه‌ی
+    نیروها بدون توجه به این‌که چه ساختمانی در دهکده ساخته شده، از طریق
+    همان یک BarracksTrainView قابل آموزش بودند - یعنی اصطبل و کارگاه هیچ
+    کاربرد واقعی نداشتند.
+    """
+    if troop_type.is_siege_weapon:
+        return "کارگاه"
+    if troop_type.is_cavalry:
+        return "اصطبل"
+    return "پادگان"

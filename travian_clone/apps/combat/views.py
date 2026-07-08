@@ -10,6 +10,9 @@ from .tasks import resolve_hero_adventure
 from apps.game_engine.models import Village, GameLog
 from apps.game_engine.engine import schedule_game_event
 from .hero_utils import sync_hero_health, calculate_travel_seconds_to_point, DIFFICULTY_SETTINGS
+from apps.game_engine.models import Village, GameLog, VillageBuilding
+from .utils import calculate_travel_seconds, get_required_training_building
+
 
 class SendTroopsView(APIView):
     permission_classes = [IsAuthenticated]
@@ -66,6 +69,16 @@ class BarracksTrainView(APIView):
         try:
             with transaction.atomic():
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+
+                required_building_name = get_required_training_building(troop_info)
+                if not VillageBuilding.objects.filter(
+                        village=village, building_type__name=required_building_name, level__gt=0
+                ).exists():
+                    return Response(
+                        {
+                            "error": f"برای آموزش {troop_info.name} ابتدا باید یک «{required_building_name}» در این دهکده بسازید."},
+                        status=400
+                    )
 
                 # بررسی دقیق موجودی
                 if (village.wood < total_cost['wood'] or
@@ -155,6 +168,8 @@ class TroopTypeCatalogView(APIView):
                 },
                 "crop_upkeep": t.crop_upkeep,
                 "base_train_time": t.base_train_time,
+                "is_cavalry": t.is_cavalry,
+                "required_building": get_required_training_building(t),
             }
             for t in troop_types
         ])

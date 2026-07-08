@@ -35,16 +35,37 @@ _RESOURCE_FIELD_DEFS = (
     ("مزرعه گندم", 6),
 )
 
-# (نام ساختمان, سطح اولیه, آیا نقش دیوار دفاعی دارد)
-_CENTER_BUILDING_DEFS = (
-    ("ساختمان اصلی", 1, False),
-    ("انبار", 1, False),
-    ("سیلوی غله", 1, False),
-    ("محل گردهمایی", 1, False),
-    ("پادگان", 0, False),
-    ("بازارچه", 0, False),
-    ("دیوار (Wall)", 0, True),
+# ساختمان‌های داخل شهر (Dorf2) که در جایگاه‌های ۱۹ تا ۳۸ قرار می‌گیرند.
+# قبل از این لیست، فقط ۷ ساختمان تعریف شده بود و ۱۳ جایگاه از این ۲۰ تا
+# (که VillageMap.jsx از قبل مختصاتشان را رزرو کرده بود) اصلا هیچ رکوردی
+# در دیتابیس نداشتند - یعنی برای بازیکن حتی قابل مشاهده هم نبودند.
+_CITY_BUILDING_DEFS = (
+    ("ساختمان اصلی", 1, 'INFRASTRUCTURE'),
+    ("انبار", 1, 'INFRASTRUCTURE'),
+    ("سیلوی غله", 1, 'INFRASTRUCTURE'),
+    ("پادگان", 0, 'MILITARY'),
+    ("اصطبل", 0, 'MILITARY'),
+    ("کارگاه", 0, 'MILITARY'),
+    ("بازارچه", 0, 'INFRASTRUCTURE'),
+    ("سفارتخانه", 0, 'INFRASTRUCTURE'),
+    ("خزانه‌داری", 0, 'INFRASTRUCTURE'),
+    ("آکادمی", 0, 'MILITARY'),
+    ("عمارت اقامتی", 0, 'INFRASTRUCTURE'),
+    ("تالار شهر", 0, 'INFRASTRUCTURE'),
+    ("مخفیگاه", 0, 'INFRASTRUCTURE'),
+    ("مخفیگاه", 0, 'INFRASTRUCTURE'),
+    ("مخفیگاه", 0, 'INFRASTRUCTURE'),
+    ("کارگاه سنگ‌تراشی", 0, 'INFRASTRUCTURE'),
+    ("عمارت قهرمان", 0, 'INFRASTRUCTURE'),
+    ("آبشخور اسب", 0, 'MILITARY'),
+    ("اداره تجارت", 0, 'INFRASTRUCTURE'),
+    ("پادگان بزرگ", 0, 'MILITARY'),
 )
+
+# این دو جایگاه ثابت و ویژه‌اند (دقیقا مثل تراوین اصلی): محل گردهمایی
+# همیشه جایگاه ۳۹ و دیوار همیشه جایگاه ۴۰ است.
+_RALLY_POINT_DEF = ("محل گردهمایی", 1, 'INFRASTRUCTURE')
+_WALL_DEF = ("دیوار (Wall)", 0, 'WALL')
 
 
 def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=None):
@@ -107,34 +128,40 @@ def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20
 
 
 def _create_default_buildings(village):
-    """چیدمان استاندارد ساختمان‌های یک دهکده تازه (چه دهکده اول، چه کلونی جدید)."""
-    position = 1
-    for type_name, level, is_wall in _CENTER_BUILDING_DEFS:
-        if is_wall:
-            category = 'WALL'
-        elif type_name == "پادگان":
-            category = 'MILITARY'
-        else:
-            category = 'INFRASTRUCTURE'
-        building_type = _get_or_create_building_type(type_name, provides_wall_defense=is_wall, category=category)
-        VillageBuilding.objects.create(
-            village=village,
-            building_type=building_type,
-            position=position,
-            level=level,
-        )
-        position += 1
+    """
+    چیدمان استاندارد ساختمان‌های یک دهکده تازه (چه دهکده اول، چه کلونی جدید).
 
+    جایگاه ۱ تا ۱۸: مزارع منابع (Dorf1).
+    جایگاه ۱۹ تا ۳۸: ساختمان‌های داخل شهر (Dorf2).
+    جایگاه ۳۹: محل گردهمایی (رزرو ثابت).
+    جایگاه ۴۰: دیوار (رزرو ثابت).
+    این چیدمان دقیقا با مختصات تعریف‌شده در VillageMap.jsx (DORF1_SLOTS و
+    DORF2_SLOTS) هماهنگ است.
+    """
+    position = 1
     for type_name, count in _RESOURCE_FIELD_DEFS:
         building_type = _get_or_create_building_type(type_name, category='RESOURCE')
         for _ in range(count):
             VillageBuilding.objects.create(
-                village=village,
-                building_type=building_type,
-                position=position,
-                level=1,
+                village=village, building_type=building_type, position=position, level=1,
             )
             position += 1
+
+    position = 19
+    for type_name, level, category in _CITY_BUILDING_DEFS:
+        building_type = _get_or_create_building_type(type_name, category=category)
+        VillageBuilding.objects.create(
+            village=village, building_type=building_type, position=position, level=level,
+        )
+        position += 1
+
+    rally_name, rally_level, rally_category = _RALLY_POINT_DEF
+    rally_type = _get_or_create_building_type(rally_name, category=rally_category)
+    VillageBuilding.objects.create(village=village, building_type=rally_type, position=39, level=rally_level)
+
+    wall_name, wall_level, wall_category = _WALL_DEF
+    wall_type = _get_or_create_building_type(wall_name, provides_wall_defense=True, category=wall_category)
+    VillageBuilding.objects.create(village=village, building_type=wall_type, position=40, level=wall_level)
 
 
 @transaction.atomic

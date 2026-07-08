@@ -38,6 +38,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         min_length=8,
         style={'input_type': 'password'}
     )
+    phone_number = serializers.CharField(required=True, max_length=15)
 
     # فیلدهای غیرمدلی مخصوص فرآیند ثبت‌نام
     starting_location = serializers.ChoiceField(

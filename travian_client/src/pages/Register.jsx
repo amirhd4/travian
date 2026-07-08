@@ -22,6 +22,7 @@ export default function Register() {
     const [formData, setFormData] = useState({
         username: "",
         email: "",
+        phone_number: "",
         password: "",
         tribe: "ROMAN",
         starting_location: "RANDOM",
@@ -136,6 +137,15 @@ export default function Register() {
                                 <input
                                     type="email" name="email" value={formData.email}
                                     onChange={handleChange} required
+                                    className="w-full p-2 border rounded"
+                                />
+                            </div>
+                            <div>
+                                <label className="block font-bold mb-1 text-sm">شماره موبایل:</label>
+                                <input
+                                    type="tel" name="phone_number" value={formData.phone_number}
+                                    onChange={handleChange} required
+                                    placeholder="09xxxxxxxxx"
                                     className="w-full p-2 border rounded"
                                 />
                             </div>

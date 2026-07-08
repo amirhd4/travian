@@ -9,6 +9,7 @@ function unitIcon(unit) {
     if (unit.is_settler) return '🧑‍🌾';
     if (unit.is_scout) return '🔍';
     if (unit.is_siege_weapon) return '🎯';
+    if (unit.is_cavalry) return '🐎';
     if (unit.defense_cavalry > unit.defense_infantry) return '🛡️';
     return '🚷';
 }
@@ -149,6 +150,9 @@ export default function Barracks() {
                                     </h3>
                                     <p className="text-xs text-gray-500 mt-1">
                                         حمله: {unit.attack_power} | دفاع پیاده: {unit.defense_infantry} | دفاع سواره: {unit.defense_cavalry} | زمان هر واحد: {formatDuration(perUnitSeconds)}
+                                    </p>
+                                    <p className="text-[10px] text-purple-700 font-bold mt-1">
+                                        🏗️ نیازمند: {unit.required_building}
                                     </p>
                                     <div className="flex gap-3 mt-3 text-xs font-bold text-gray-600">
                                         <span>🪵 {unit.costs.wood}</span>
