@@ -164,6 +164,7 @@ class Hero(models.Model):
     home_village = models.ForeignKey(Village, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
 
     is_on_adventure = models.BooleanField(default=False)
+    is_away = models.BooleanField(default=False)
     adventure_returns_at = models.DateTimeField(null=True, blank=True)
     last_health_update = models.DateTimeField(auto_now_add=True)
 

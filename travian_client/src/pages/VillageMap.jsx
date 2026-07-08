@@ -6,6 +6,7 @@ import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import {formatDuration} from "../utils/formatter.js";
+import WoodSign from '../components/WoodSign';
 
 // ==========================================
 // 1. تنظیمات و مختصات اسلات‌ها (Slots Coordinates)
@@ -70,6 +71,8 @@ function remainingSeconds(endTimeIso) {
 // 3. کامپوننت اصلی
 // ==========================================
 export default function VillageMap() {
+    const villages = useGameStore((state) => state.villages);
+    const user = useGameStore((state) => state.user);
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const { lastMessage } = useGameWebSocket();
 
@@ -266,9 +269,35 @@ export default function VillageMap() {
     const upgradingBuildings = buildings.filter(b => b.is_upgrading).sort((a,b) => new Date(a.upgrade_end_time) - new Date(b.upgrade_end_time));
 
     return (
-        <div className="w-full min-h-screen bg-[#c2d69b] flex flex-col items-center pt-32 pb-10 font-tahoma">
+        <div className="w-full min-h-screen game-sky-bg flex flex-col items-center pt-32 pb-10 font-tahoma relative">
             <ResourceBar />
             <Navbar />
+
+            {/* تابلوی چوبی سمت راست: اطلاعات بازیکن + لیست دهکده‌ها (فقط دسکتاپ بزرگ) */}
+            <div className="hidden xl:block fixed top-40 right-4 w-52 z-20">
+                <WoodSign title={`👤 ${user?.username || ''}`}>
+                    <p className="text-xs font-bold text-wood mb-1">🏘️ دهکده‌ها:</p>
+                    <ul className="text-xs text-wood-dark space-y-1">
+                        {villages.map((v) => (
+                            <li key={v.id} className={v.id === activeVillageId ? 'font-bold text-amber-700' : ''}>
+                                {v.is_capital ? '👑' : '🏘️'} {v.name}
+                            </li>
+                        ))}
+                    </ul>
+                </WoodSign>
+            </div>
+
+            {/* تابلوی چوبی سمت چپ: دهکده فعال + وفاداری + جمعیت */}
+            <div className="hidden xl:block fixed top-40 left-4 w-52 z-20">
+                <WoodSign title={villageInfo?.name}>
+                    <p className="text-xs text-center font-bold text-green-700">
+                        وفاداری: {villageInfo?.loyalty ?? 100}٪
+                    </p>
+                    <p className="text-xs text-center font-bold text-amber-700 mt-1">
+                        👥 جمعیت: {villageInfo?.population?.toLocaleString() ?? '—'}
+                    </p>
+                </WoodSign>
+            </div>
 
             {loading ? (
                 <p className="font-bold text-[#3d2b1a] mt-10">در حال بارگذاری دهکده...</p>

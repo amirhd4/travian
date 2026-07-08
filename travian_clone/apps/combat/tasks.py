@@ -44,9 +44,13 @@ def _hero_attack_bonus(player):
 
 
 def _hero_defense_bonus(player, village):
-    """امتیاز دفاعی قهرمان، فقط وقتی که قهرمان دقیقا در همین دهکده مستقر است."""
+    """امتیاز دفاعی قهرمان؛ فقط وقتی قهرمان دقیقا در همین دهکده مستقر است
+    و هم‌اکنون در ماموریت نظامی دیگر یا ماجراجویی نیست."""
     try:
-        hero = Hero.objects.get(player=player, is_alive=True, home_village=village)
+        hero = Hero.objects.get(
+            player=player, is_alive=True, home_village=village,
+            is_away=False, is_on_adventure=False,
+        )
     except Hero.DoesNotExist:
         return 0
     return hero.level * 40
@@ -208,6 +212,7 @@ def _resolve_scout(movement):
 
     report_lines = [
         f"گزارش شناسایی از دهکده {target.name} ({target.x_coord}|{target.y_coord}):",
+        f"وفاداری: {target.loyalty:.0f}٪",
         f"منابع: چوب {int(target.wood)} | خشت {int(target.clay)} | آهن {int(target.iron)} | گندم {int(target.crop)}",
         "نیروهای مستقر: " + (
             ", ".join(f"{name}: {count}" for name, count in troops_report.items())
@@ -267,7 +272,17 @@ def _resolve_attack_or_raid(movement):
             catapult_units_sent += qty
 
     # امتیاز قهرمان مهاجم (در صورت زنده بودن)
-    attacker_points_attack += _hero_attack_bonus(source.player)
+    # بونوس حمله‌ی قهرمان فقط وقتی اعمال می‌شود که قهرمان واقعا همراه این
+    # حمله اعزام شده باشد (hero_participating). قبل از این تغییر، این
+    # بونوس بدون توجه به اعزام واقعی، به هر حمله‌ای اضافه می‌شد.
+    if movement.hero_participating:
+        attacker_points_attack += _hero_attack_bonus(source.player)
+        attacking_hero = Hero.objects.filter(player=source.player).first()
+        if attacking_hero:
+            # قهرمان همین‌جا از حالت «در ماموریت» آزاد می‌شود (ساده‌سازی
+            # عمدی: منتظر رسیدن موج بازگشتی نمی‌مانیم)
+            attacking_hero.is_away = False
+            attacking_hero.save()
 
     attacker_data = {"points_attack": attacker_points_attack}
 
@@ -358,7 +373,11 @@ def _resolve_attack_or_raid(movement):
             target.save()
 
     conquered = False
-    if victory == "attacker":
+    if victory == "attacker" and movement.movement_type == 'ATTACK' and original_defender_player.username == "Natars":
+        # فعلاً تسخیر فقط علیه دهکده‌های ناتار مجاز است. تسخیر PvP بین
+        # بازیکنان واقعی عمداً غیرفعال است تا بدون سیستم امتیاز فرهنگی/سقف
+        # تعداد دهکده (که هنوز پیاده نشده)، امکان سرقت دهکده‌ی بازیکنان
+        # تازه‌کار به‌عنوان یک اکسپلویت وجود نداشته باشد.
         chief_ids_sent = [
             int(tid) for tid, qty in movement.troops_payload.items()
             if int(qty) > 0 and troop_type_cache.get(int(tid)) and troop_type_cache[int(tid)].is_chief
@@ -367,7 +386,6 @@ def _resolve_attack_or_raid(movement):
             loyalty_reduction = len(chief_ids_sent) * random.randint(20, 35)
             target.loyalty = max(0, target.loyalty - loyalty_reduction)
 
-            # نیروهای سناتور اعزامی مصرف می‌شوند (چه تسخیر کامل شود چه نه)
             for tid in chief_ids_sent:
                 attacker_survivors[tid] = 0
 
@@ -382,7 +400,7 @@ def _resolve_attack_or_raid(movement):
                 _convert_to_ww_site(target)
 
     plan_message = ""
-    if victory == "attacker" and movement.hero_participating:
+    if victory == "attacker" and movement.movement_type == 'ATTACK' and movement.hero_participating:
         from apps.world_wonder.models import WWBuildingPlan
 
         all_defenders_dead = not VillageTroop.objects.filter(village=target, count__gt=0).exists()

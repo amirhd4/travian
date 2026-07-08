@@ -19,6 +19,11 @@ export default function SendTroops() {
     const [sendHero, setSendHero] = useState(false);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
+    const [heroStatus, setHeroStatus] = useState(null);
+
+    useEffect(() => {
+        api.get('combat/hero/').then(({ data }) => setHeroStatus(data)).catch(() => {});
+    }, []);
 
     const fetchTroops = useCallback(async () => {
         if (!activeVillageId) return;
@@ -118,10 +123,20 @@ export default function SendTroops() {
                         )}
                     </div>
 
-                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700 bg-amber-50 border border-amber-300 rounded p-3 cursor-pointer">
-                        <input type="checkbox" checked={sendHero} onChange={(e) => setSendHero(e.target.checked)} />
-                        🦸 اعزام قهرمان همراه این نیرو (لازم برای تسخیر یا برداشتن نقشه‌ی ساخت)
-                    </label>
+                    {heroStatus && !heroStatus.is_alive ? (
+                        <p className="text-xs text-red-600 font-bold bg-red-50 border border-red-300 rounded p-3">
+                            ⚰️ قهرمان شما از پای درآمده و قادر به اعزام نیست.
+                        </p>
+                    ) : heroStatus && (heroStatus.is_on_adventure || heroStatus.is_away) ? (
+                        <p className="text-xs text-orange-600 font-bold bg-orange-50 border border-orange-300 rounded p-3">
+                            🚫 قهرمان شما هم‌اکنون در دسترس نیست (ماجراجویی یا ماموریت نظامی دیگر).
+                        </p>
+                    ) : (
+                        <label className="flex items-center gap-2 text-sm font-bold text-gray-700 bg-amber-50 border border-amber-300 rounded p-3 cursor-pointer">
+                            <input type="checkbox" checked={sendHero} onChange={(e) => setSendHero(e.target.checked)} />
+                            🦸 اعزام قهرمان همراه این نیرو (لازم برای تسخیر یا برداشتن نقشه‌ی ساخت)
+                        </label>
+                    )}
 
                     <button
                         type="submit"

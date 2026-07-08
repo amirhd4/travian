@@ -27,7 +27,11 @@ def dispatch_troop_movement(player, source_village, target_village, movement_typ
             return False, "قهرمان شما در دسترس نیست (از پای درآمده یا وجود ندارد)."
         if hero.is_on_adventure:
             return False, "قهرمان شما در حال ماجراجویی است و نمی‌تواند همراه این حمله برود."
+        if hero.is_away:
+            return False, "قهرمان شما هم‌اکنون در یک ماموریت نظامی دیگر است."
         hero_participating = True
+        hero.is_away = True
+        hero.save()
 
     sent_troop_ids = [int(tid) for tid, qty in troops_payload.items() if int(qty or 0) > 0]
     troop_types = {t.id: t for t in TroopType.objects.filter(id__in=sent_troop_ids)}

@@ -133,6 +133,12 @@ export default function Hero() {
                             <p className="font-bold text-blue-200">🗺️ قهرمان در حال ماجراجویی است...</p>
                             <p className="font-mono text-xl mt-1" dir="ltr">{formatDuration(hero.adventure_remaining_seconds)}</p>
                         </div>
+                    ) : hero.is_away ? (
+                        <div className="bg-purple-900/40 border border-purple-500 rounded p-4 text-center mb-4">
+                            <p className="font-bold text-purple-200">
+                                ⚔️ قهرمان در یک ماموریت نظامی به سر می‌برد و نمی‌تواند ماجراجویی برود یا در خانه دفاع کند.
+                            </p>
+                        </div>
                     ) : null}
 
                     <div className="flex items-center justify-between mb-2 text-sm font-bold">

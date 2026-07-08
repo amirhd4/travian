@@ -245,6 +245,7 @@ class HeroView(APIView):
             "is_on_adventure": hero.is_on_adventure,
             "adventure_remaining_seconds": remaining_seconds,
             "home_village_id": hero.home_village_id,
+            "is_away": hero.is_away,
             "inventory": [
                 {
                     "id": inv.id,
@@ -324,6 +325,9 @@ class StartAdventureView(APIView):
         if not hero.is_alive:
             return Response({"error": "قهرمان شما از پای درآمده و قادر به ماجراجویی نیست."}, status=400)
         if hero.is_on_adventure:
+            if hero.is_away:
+                return Response({"error": "قهرمان شما در یک ماموریت نظامی است و نمی‌تواند به ماجراجویی برود."},
+                                status=400)
             return Response({"error": "قهرمان شما هم‌اکنون در حال ماجراجویی است."}, status=400)
         if hero.health < 20:
             return Response({"error": "سلامتی قهرمان برای این ماجراجویی کافی نیست؛ صبر کنید تا ترمیم شود."}, status=400)

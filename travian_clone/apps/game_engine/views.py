@@ -157,6 +157,7 @@ class VillageBuildingsView(APIView):
                 "name": village.name,
                 "is_capital": village.is_capital,
                 "population": calculate_village_population(village),
+                "loyalty": village.loyalty,
                 "resources": {
                     "wood": village.wood,
                     "clay": village.clay,

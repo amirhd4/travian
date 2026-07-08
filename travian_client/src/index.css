@@ -6,3 +6,48 @@ body {
   background-color: #f4f4f4;
   font-family: Tahoma, Arial, sans-serif;
 }
+
+@layer components {
+  /* تابلوی چوبی آویزان - شبیه تابلوهای روی درخت در تراوین */
+  .wood-sign {
+    @apply relative bg-parchment border-4 border-wood rounded-lg shadow-lg p-3;
+    background-image: linear-gradient(135deg, #f4ebd0 0%, #ecdfc0 100%);
+  }
+  .wood-sign::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    right: 50%;
+    transform: translateX(50%);
+    width: 14px; height: 14px;
+    background: #3d2b1a;
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px #7a5230;
+  }
+
+  /* دکمه‌ی دایره‌ای آیکونی برای ناوبری */
+  .wood-icon-btn {
+    @apply relative flex items-center justify-center rounded-full border-2 border-wood-light bg-white shadow-md transition transform hover:scale-105;
+  }
+  .wood-icon-btn.active {
+    @apply border-travian-gold ring-2 ring-travian-gold;
+  }
+
+  /* نوار پیشرفت منابع (خط قرمز مثل تصویر) */
+  .resource-progress-track {
+    @apply w-full h-1.5 rounded-full bg-gray-300 overflow-hidden mt-0.5;
+  }
+  .resource-progress-fill {
+    @apply h-full bg-red-600;
+  }
+
+  /* دکمه‌ی سبز اصلی (مثل دکمه‌ی ثبت‌نام) */
+  .btn-travian-green {
+    @apply bg-gradient-to-b from-green-500 to-green-700 text-white font-bold rounded-full px-6 py-2 border-b-4 border-green-900 shadow-md hover:brightness-105 active:border-b-0 active:translate-y-1 transition;
+  }
+
+  /* پس‌زمینه‌ی آسمان و چمن */
+  .game-sky-bg {
+    background: linear-gradient(180deg, #bfe0f5 0%, #d9ecd0 30%, #a8c97f 55%, #7fa855 78%, #5a7a3a 100%);
+  }
+}

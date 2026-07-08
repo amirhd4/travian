@@ -104,7 +104,7 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen bg-[#c2d69b] flex items-center justify-center p-4 py-10">
+        <div className="min-h-screen game-sky-bg flex items-center justify-center p-4">
             <div className="bg-[#f4ebd0] border-[8px] border-[#593d2b] rounded-xl shadow-2xl p-8 w-full max-w-xl">
                 <h1 className="text-3xl font-bold text-[#593d2b] text-center mb-6">
                     ثبت‌نام در بازی

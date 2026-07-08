@@ -210,6 +210,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.combat.tasks.generate_adventures_for_all_players",
         "schedule": crontab(minute=0, hour="*/6"),  # هر ۶ ساعت
     },
+    "regen-natar-loyalty-hourly": {
+        "task": "apps.world_wonder.tasks.regen_natar_village_loyalty",
+        "schedule": crontab(minute=0),
+    },
 }
 
 CACHES = {

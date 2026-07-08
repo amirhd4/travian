@@ -7,12 +7,16 @@ const useGameStore = create((set) => ({
     resources: { wood: 0, clay: 0, iron: 0, crop: 0 },
     production: { wood: 300, clay: 300, iron: 300, crop: 150 },
     hydrated: false,
+    maxStorage: 800,
+    maxGranary: 800,
 
     // لیست دهکده‌های واقعی بازیکن (از /api/game/villages/) و دهکده‌ی فعال فعلی.
     // قبلا هیچ‌کدام از این‌ها وجود نداشت و همه‌ی صفحات village_id: 1 را
     // هاردکد کرده بودند؛ به همین دلیل سیستم چند دهکده‌ای عملا کار نمی‌کرد.
     villages: [],
     activeVillageId: null,
+
+    setCapacities: (storage, granary) => set({ maxStorage: storage, maxGranary: granary }),
 
     setAccessToken: (token) => set({ accessToken: token }),
 
