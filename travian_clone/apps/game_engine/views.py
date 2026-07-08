@@ -9,8 +9,9 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 import datetime
 import math
+import uuid
 
-from .models import Village, VillageBuilding, ServerSetting
+from .models import Transaction, Discount, GameLog, GoldPackage
 from .engine import schedule_game_event
 from .utils import update_village_resources, calculate_crop_upkeep, calculate_building_population, calculate_village_population, is_server_finished
 from .services import found_new_village
@@ -274,9 +275,11 @@ class UpgradeBuildingView(APIView):
             update_village_resources(village)
 
             # محدودیت صف ساخت‌وساز: در هر لحظه فقط یک ساختمان می‌تواند در حال ارتقا باشد
-            if VillageBuilding.objects.filter(village=village, is_upgrading=True).exists():
+            max_concurrent_builds = 2 if request.user.has_plus_active() else 1
+            if VillageBuilding.objects.filter(village=village, is_upgrading=True).count() >= max_concurrent_builds:
                 return Response(
-                    {"error": "در هر لحظه فقط یک ساختمان می‌تواند در حال ارتقا باشد. صبر کنید تا ساخت فعلی تمام شود."},
+                    {
+                        "error": f"در هر لحظه حداکثر {max_concurrent_builds} ساختمان می‌تواند در حال ارتقا باشد. اکانت پلاس این حد را به ۲ می‌رساند."},
                     status=400
                 )
 
@@ -857,3 +860,126 @@ class ClaimQuestRewardView(APIView):
         if not success:
             return Response({"error": message}, status=400)
         return Response({"message": message})
+
+
+class GoldPackageListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        packages = GoldPackage.objects.filter(is_active=True).order_by('price')
+        active_discount = Discount.objects.filter(
+            start_time__lte=timezone.now(), end_time__gte=timezone.now(), is_active=True
+        ).first()
+        return Response({
+            "packages": [
+                {"id": p.id, "name": p.name, "gold_amount": p.gold_amount, "price": str(p.price)}
+                for p in packages
+            ],
+            "active_discount_percent": active_discount.percentage if active_discount else 0,
+        })
+
+
+class CreatePaymentRequestView(APIView):
+    """
+    شروع فرآیند خرید طلا.
+
+    ⚠️ این پیاده‌سازی از یک درگاه آزمایشی (Mock) استفاده می‌کند چون به کلید
+    API واقعی هیچ درگاه پرداختی دسترسی نداریم. برای اتصال واقعی، این ویو
+    را با فراخوانی API درخواست پرداخت درگاه واقعی (زرین‌پال/آیدی‌پی و...)
+    جایگزین کنید و authority واقعی که درگاه برمی‌گرداند را همین‌جا ذخیره
+    کنید؛ بقیه‌ی جریان کار (Transaction، PaymentWebhookView) بدون تغییر
+    باقی می‌ماند.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        package_id = request.data.get('package_id')
+        try:
+            package = GoldPackage.objects.get(id=package_id, is_active=True)
+        except GoldPackage.DoesNotExist:
+            return Response({"error": "بسته‌ی طلای انتخابی یافت نشد."}, status=404)
+
+        authority = uuid.uuid4().hex
+        Transaction.objects.create(
+            player=request.user, package=package, authority=authority, status='PENDING',
+        )
+        return Response({
+            "authority": authority,
+            "checkout_url": f"/checkout/{authority}",
+        })
+
+
+class MockCompletePaymentView(APIView):
+    """
+    تکمیل آزمایشی یک پرداخت (شبیه‌سازی صفحه‌ی موفقیت درگاه). در پروداکشن
+    واقعی، این مرحله باید فقط توسط callback واقعی درگاه بانکی (همان
+    PaymentWebhookView موجود) فراخوانی شود، نه مستقیم توسط کاربر.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        authority = request.data.get('authority')
+        try:
+            transaction = Transaction.objects.get(authority=authority, player=request.user)
+        except Transaction.DoesNotExist:
+            return Response({"error": "تراکنش یافت نشد."}, status=404)
+
+        if transaction.status == 'SUCCESS':
+            return Response({"message": "این تراکنش قبلا تایید شده است."})
+
+        package = transaction.package
+        active_discount = Discount.objects.filter(
+            start_time__lte=timezone.now(), end_time__gte=timezone.now(), is_active=True
+        ).first()
+
+        final_gold = package.gold_amount
+        if active_discount:
+            final_gold += int(package.gold_amount * (active_discount.percentage / 100))
+
+        player = request.user
+        player.gold_coins += final_gold
+        player.save()
+
+        transaction.status = 'SUCCESS'
+        transaction.save()
+
+        return Response({"message": f"{final_gold} سکه‌ی طلا با موفقیت به حساب شما اضافه شد.", "gold_coins": player.gold_coins})
+
+
+class BuyPlusView(APIView):
+    """خرید/تمدید اکانت پلاس با طلا: صف ساخت‌وساز را دوتایی می‌کند."""
+    permission_classes = [IsAuthenticated]
+
+    PLUS_COST_PER_DAY = 100
+
+    def get(self, request):
+        player = request.user
+        return Response({
+            "has_plus": player.has_plus_active(),
+            "expires_at": player.plus_expires_at,
+            "cost_per_day": self.PLUS_COST_PER_DAY,
+            "gold_coins": player.gold_coins,
+        })
+
+    def post(self, request):
+        days = int(request.data.get('days', 1))
+        if days <= 0:
+            return Response({"error": "تعداد روز نامعتبر است."}, status=400)
+
+        cost = self.PLUS_COST_PER_DAY * days
+        player = request.user
+        if player.gold_coins < cost:
+            return Response({"error": f"طلای کافی ندارید. هزینه: {cost} سکه."}, status=400)
+
+        player.gold_coins -= cost
+        now = timezone.now()
+        base_time = player.plus_expires_at if (player.plus_expires_at and player.plus_expires_at > now) else now
+        player.plus_expires_at = base_time + datetime.timedelta(days=days)
+        player.has_plus = True
+        player.save()
+
+        return Response({
+            "message": f"اکانت پلاس برای {days} روز فعال/تمدید شد!",
+            "expires_at": player.plus_expires_at,
+            "gold_coins": player.gold_coins,
+        })

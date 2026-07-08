@@ -20,6 +20,9 @@ import Colonize from "./pages/Colonize.jsx";
 import FarmList from "./pages/FarmList.jsx";
 import ServerStatusBanner from "./components/ServerStatusBanner.jsx";
 import Quests from "./pages/Quests.jsx";
+import GoldShop from "./pages/GoldShop.jsx";
+import Checkout from "./pages/Checkout.jsx";
+import PlusAccount from "./pages/PlusAccount.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -108,6 +111,9 @@ function App() {
                 <Route path="/colonize" element={<PrivateRoute><Colonize /></PrivateRoute>} />
                 <Route path="/farm-list" element={<PrivateRoute><FarmList /></PrivateRoute>} />
                 <Route path="/quests" element={<PrivateRoute><Quests /></PrivateRoute>} />
+                <Route path="/gold-shop" element={<PrivateRoute><GoldShop /></PrivateRoute>} />
+                <Route path="/checkout/:authority" element={<PrivateRoute><Checkout /></PrivateRoute>} />
+                <Route path="/plus" element={<PrivateRoute><PlusAccount /></PrivateRoute>} />
             </Routes>
         </Router>
     );

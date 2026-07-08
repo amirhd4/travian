@@ -17,6 +17,8 @@ const NAV_ITEMS = [
     { path: '/barracks', icon: '⚔️', label: 'پادگان' },
     { path: '/embassy', icon: '🏰', label: 'سفارتخانه' },
     { path: '/hero', icon: '🦸', label: 'قهرمان' },
+    { path: '/gold-shop', icon: '💰', label: 'فروشگاه طلا' },
+    { path: '/plus', icon: '👑', label: 'پلاس' },
 ];
 
 export default function Navbar() {

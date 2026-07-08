@@ -3,6 +3,7 @@ from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
     InboxView, MessageReadView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
     FoundVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
+    GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
 )
 
 urlpatterns = [
@@ -22,4 +23,8 @@ urlpatterns = [
     path('server-status/', ServerStatusView.as_view(), name='server_status'),
     path('quests/', QuestListView.as_view(), name='quest_list'),
     path('quests/claim/', ClaimQuestRewardView.as_view(), name='claim_quest_reward'),
+    path('gold-packages/', GoldPackageListView.as_view(), name='gold_packages'),
+    path('payment/create/', CreatePaymentRequestView.as_view(), name='create_payment'),
+    path('payment/mock-complete/', MockCompletePaymentView.as_view(), name='mock_complete_payment'),
+    path('plus/', BuyPlusView.as_view(), name='plus'),
 ]

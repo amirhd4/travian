@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+from django.utils import timezone
+
 from .managers import PlayerManager
 
 
@@ -24,6 +26,11 @@ class Player(AbstractUser):
 
     gold_coins = models.PositiveIntegerField(default=0)
     has_ww_plan = models.BooleanField(default=False)
+    has_plus = models.BooleanField(default=False)
+    plus_expires_at = models.DateTimeField(blank=True, null=True)
+
+    def has_plus_active(self):
+        return bool(self.has_plus and self.plus_expires_at and self.plus_expires_at > timezone.now())
 
     alliance_id = models.IntegerField(
         blank=True,

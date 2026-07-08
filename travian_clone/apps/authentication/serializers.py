@@ -25,6 +25,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "username": user.username,
                 "email": user.email,
                 "tribe": user.tribe,
+                "gold_coins": user.gold_coins,
             }
         }
 
