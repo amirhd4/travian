@@ -47,20 +47,34 @@ _CENTER_BUILDING_DEFS = (
 )
 
 
-def _find_free_coordinates(near_x=None, near_y=None, search_radius=20):
+def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=None):
     """
     یک مختصات (x, y) آزاد روی نقشه پیدا می‌کند.
 
-    اگر near_x/near_y داده شود، ابتدا در شعاع نزدیک آن مختصات جستجو می‌کند
-    (برای تاسیس دهکده جدید نزدیک دهکده مبدا - قبلا این تابع کاملا تصادفی
-    در کل نقشه ۲۰۰×۲۰۰ جستجو می‌کرد و دهکده جدید ممکن بود صدها خانه با
-    دهکده مبدا فاصله داشته باشد)؛ در غیر این صورت به جستجوی کاملا تصادفی
-    در کل نقشه برمی‌گردد (رفتار قبلی، برای اولین دهکده بازیکن تازه‌وارد).
+    - اگر near_x/near_y داده شود: ابتدا نزدیک آن مختصات جستجو می‌کند
+      (برای تاسیس دهکده جدید نزدیک دهکده مبدا).
+    - اگر quadrant داده شود (NE/NW/SE/SW): جستجو به همان ربع نقشه محدود
+      می‌شود (برای گزینه‌ی «محل شروع» در ثبت‌نام).
+    - در غیر این صورت، جستجوی کاملا تصادفی در کل نقشه انجام می‌شود.
     """
     if near_x is not None and near_y is not None:
         for _ in range(MAX_COORDINATE_ATTEMPTS):
             x = near_x + random.randint(-search_radius, search_radius)
             y = near_y + random.randint(-search_radius, search_radius)
+            if not Village.objects.filter(x_coord=x, y_coord=y).exists():
+                return x, y
+
+    quadrant_ranges = {
+        'NE': ((1, MAP_SEARCH_RADIUS), (1, MAP_SEARCH_RADIUS)),
+        'NW': ((-MAP_SEARCH_RADIUS, -1), (1, MAP_SEARCH_RADIUS)),
+        'SE': ((1, MAP_SEARCH_RADIUS), (-MAP_SEARCH_RADIUS, -1)),
+        'SW': ((-MAP_SEARCH_RADIUS, -1), (-MAP_SEARCH_RADIUS, -1)),
+    }
+    if quadrant in quadrant_ranges:
+        x_range, y_range = quadrant_ranges[quadrant]
+        for _ in range(MAX_COORDINATE_ATTEMPTS):
+            x = random.randint(*x_range)
+            y = random.randint(*y_range)
             if not Village.objects.filter(x_coord=x, y_coord=y).exists():
                 return x, y
 
@@ -72,7 +86,6 @@ def _find_free_coordinates(near_x=None, near_y=None, search_radius=20):
     raise RuntimeError(
         "مختصات آزادی روی نقشه پیدا نشد؛ محدوده نقشه را بزرگ‌تر کنید."
     )
-
 
 def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20, category='INFRASTRUCTURE'):
     building_type, _ = BuildingType.objects.get_or_create(
@@ -125,18 +138,13 @@ def _create_default_buildings(village):
 
 
 @transaction.atomic
-def create_starter_village(player, name="دهکده اول"):
-    """
-    برای یک بازیکن دهکده اولیه می‌سازد (اگر از قبل نداشته باشد) و آن را
-    به عنوان پایتخت علامت‌گذاری می‌کند. این تابع هم از سیگنال ثبت‌نام
-    فراخوانی می‌شود و هم می‌تواند برای بازیکنان قدیمی که دهکده ندارند
-    به صورت دستی (مثلا از طریق manage.py shell) اجرا شود.
-    """
+def create_starter_village(player, name="دهکده اول", starting_quadrant='RANDOM'):
     existing = Village.objects.filter(player=player).order_by('id').first()
     if existing:
         return existing
 
-    x, y = _find_free_coordinates()
+    quadrant = starting_quadrant if starting_quadrant in ('NE', 'NW', 'SE', 'SW') else None
+    x, y = _find_free_coordinates(quadrant=quadrant)
 
     village = Village.objects.create(
         player=player,

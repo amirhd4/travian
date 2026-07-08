@@ -29,12 +29,25 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         }
 
 
+from .captcha import verify_captcha
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         min_length=8,
         style={'input_type': 'password'}
     )
+
+    # فیلدهای غیرمدلی مخصوص فرآیند ثبت‌نام
+    starting_location = serializers.ChoiceField(
+        choices=['RANDOM', 'NE', 'NW', 'SE', 'SW'],
+        default='RANDOM',
+        write_only=True,
+    )
+    accept_terms = serializers.BooleanField(write_only=True)
+    captcha_token = serializers.CharField(write_only=True)
+    captcha_answer = serializers.CharField(write_only=True)
 
     class Meta:
         model = Player
@@ -44,6 +57,10 @@ class RegisterSerializer(serializers.ModelSerializer):
             "phone_number",
             "password",
             "tribe",
+            "starting_location",
+            "accept_terms",
+            "captcha_token",
+            "captcha_answer",
         )
 
     def validate_username(self, value):
@@ -61,5 +78,21 @@ class RegisterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("این شماره قبلاً ثبت شده است.")
         return value
 
+    def validate_accept_terms(self, value):
+        if not value:
+            raise serializers.ValidationError("برای ثبت‌نام باید قوانین بازی را بپذیرید.")
+        return value
+
+    def validate(self, attrs):
+        token = attrs.get('captcha_token')
+        answer = attrs.get('captcha_answer')
+        if not verify_captcha(token, answer):
+            raise serializers.ValidationError({"captcha_answer": "کد امنیتی وارد شده صحیح نیست یا منقضی شده است."})
+        return attrs
+
     def create(self, validated_data):
-        return Player.objects.create_user(**validated_data)
+        starting_location = validated_data.pop('starting_location', 'RANDOM')
+        validated_data.pop('accept_terms', None)
+        validated_data.pop('captcha_token', None)
+        validated_data.pop('captcha_answer', None)
+        return Player.objects.create_user(starting_quadrant=starting_location, **validated_data)

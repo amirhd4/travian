@@ -10,6 +10,7 @@ from django.conf import settings
 
 from .serializers import RegisterSerializer, MyTokenObtainPairSerializer
 from .cookies import set_refresh_cookie, clear_refresh_cookie
+from .captcha import generate_captcha
 
 
 class RegisterView(APIView):
@@ -102,3 +103,12 @@ class MeView(APIView):
             "email": user.email,
             "tribe": user.tribe,
         }, status=status.HTTP_200_OK)
+
+
+class CaptchaImageView(APIView):
+    """تولید یک کپچای تصویری جدید برای فرم ثبت‌نام."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        token, image_data_url = generate_captcha()
+        return Response({"token": token, "image": image_data_url})

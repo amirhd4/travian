@@ -2,7 +2,8 @@ import datetime
 from django.utils import timezone
 from django.db import transaction
 
-from .models import TroopMovement, VillageTroop, TroopType, GameLog
+from .models import TroopMovement, VillageTroop, TroopType
+from apps.game_engine.models import GameLog
 from .utils import calculate_travel_seconds
 from .tasks import resolve_combat_movement
 

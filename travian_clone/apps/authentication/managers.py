@@ -9,10 +9,16 @@ class PlayerManager(BaseUserManager):
         if not username:
             raise ValueError("نام کاربری برای ایجاد کاربر الزامی است.")
 
+        # starting_quadrant فیلد واقعی مدل Player نیست؛ فقط برای انتقال
+        # ترجیح «محل شروع» به سیگنال ساخت دهکده‌ی اول به‌صورت موقت روی
+        # نمونه نگه داشته می‌شود.
+        starting_quadrant = extra_fields.pop('starting_quadrant', 'RANDOM')
+
         email = self.normalize_email(email)
         user = self.model(username=username, email=email, **extra_fields)
 
         user.set_password(password)
+        user._starting_quadrant = starting_quadrant
         user.save(using=self._db)
         return user
 

@@ -3,7 +3,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from apps.game_engine.models import Village
 from .services import validate_ww_upgrade
-from apps.game_engine.models import Village, ServerSetting, WorldWonder
+from apps.game_engine.models import Village, ServerSetting
+from .models import WorldWonder
 
 
 class UpgradeWWView(APIView):

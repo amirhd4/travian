@@ -47,6 +47,7 @@ export default function Navbar() {
     };
 
     return (
+        <div>
         <div className="fixed top-12 left-0 w-full bg-gray-800 text-white p-3 flex flex-wrap justify-center items-center gap-4 z-[100] border-b-2 border-gray-900 shadow-xl">
             {villages.length > 0 && (
                 <select
@@ -90,5 +91,10 @@ export default function Navbar() {
                 🚪 خروج
             </button>
         </div>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            </div>
     );
 }
