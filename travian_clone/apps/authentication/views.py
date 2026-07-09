@@ -11,9 +11,12 @@ from django.conf import settings
 from .serializers import RegisterSerializer, MyTokenObtainPairSerializer
 from .cookies import set_refresh_cookie, clear_refresh_cookie
 from .captcha import generate_captcha
+from .throttles import LoginIPThrottle, LoginUsernameThrottle, RegisterIPThrottle, CaptchaIPThrottle
 
 
 class RegisterView(APIView):
+    throttle_classes = [RegisterIPThrottle]
+
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
 
@@ -26,10 +29,12 @@ class RegisterView(APIView):
 
 class MyTokenView(TokenObtainPairView):
     """
-    لاگین: access token در بدنه‌ی پاسخ برمی‌گرده (فقط در حافظه نگه داشته می‌شه)
-    و refresh token به صورت httpOnly cookie ست می‌شه؛ هرگز در دسترس جاوااسکریپت نیست.
+    لاگین: access token در بدنه‌ی پاسخ برمی‌گرده و refresh token به صورت
+    httpOnly cookie ست می‌شه. علاوه بر throttle سطح IP، بررسی قفل حساب و
+    کپچا هم داخل MyTokenObtainPairSerializer انجام می‌شه.
     """
     serializer_class = MyTokenObtainPairSerializer
+    throttle_classes = [LoginIPThrottle, LoginUsernameThrottle]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -107,8 +112,9 @@ class MeView(APIView):
 
 
 class CaptchaImageView(APIView):
-    """تولید یک کپچای تصویری جدید برای فرم ثبت‌نام."""
+    """تولید یک کپچای تصویری جدید (برای فرم ثبت‌نام یا ورود)."""
     permission_classes = [AllowAny]
+    throttle_classes = [CaptchaIPThrottle]
 
     def get(self, request):
         token, image_data_url = generate_captcha()

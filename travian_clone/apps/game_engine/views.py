@@ -11,7 +11,7 @@ import datetime
 import math
 import uuid
 
-from .models import Transaction, Discount, GameLog, GoldPackage
+from .models import Transaction, Discount, GameLog, GoldPackage, Village, VillageBuilding
 from .engine import schedule_game_event
 from .utils import update_village_resources, calculate_crop_upkeep, calculate_building_population, calculate_village_population, is_server_finished
 from .services import found_new_village

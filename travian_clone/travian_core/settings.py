@@ -171,9 +171,22 @@ CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        # 'rest_framework.authentication.TokenAuthentication',
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        # شبکه‌ی امنیتی کلی برای تمام API (حتی نقاطی که throttle اختصاصی ندارند)
+        'anon': '60/min',
+        'user': '300/min',
+        # نرخ‌های اختصاصی برای نقاط حساس در برابر brute force
+        'login_ip': '10/min',
+        'login_username': '5/5min',
+        'register_ip': '5/hour',
+        'captcha_ip': '30/min',
+    },
 }
 
 SIMPLE_JWT = {

@@ -86,6 +86,12 @@ export default function Register() {
             alert(data.message || "ثبت‌نام موفق");
             navigate("/login");
         } catch (err) {
+            if (err.response?.status === 429) {
+                setError("تعداد درخواست‌های شما زیاد بوده؛ لطفا کمی صبر کنید و دوباره تلاش کنید.");
+                fetchCaptcha();
+                setLoading(false);
+                return;
+            }
             setError(
                 err.response?.data?.username?.[0] ||
                 err.response?.data?.email?.[0] ||

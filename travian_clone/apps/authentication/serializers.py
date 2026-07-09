@@ -3,17 +3,42 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 
 from .models import Player
+from .captcha import verify_captcha
+from .security import get_lockout_info, register_failed_attempt, clear_failed_attempts
 
 
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+    captcha_token = serializers.CharField(write_only=True)
+    captcha_answer = serializers.CharField(write_only=True)
+
     def validate(self, attrs):
         login = attrs.get("username")
         password = attrs.get("password")
+        captcha_token = attrs.get("captcha_token")
+        captcha_answer = attrs.get("captcha_answer")
+
+        if not login:
+            raise serializers.ValidationError("نام کاربری یا ایمیل را وارد کنید.")
+
+        # قفل حساب: قبل از بررسی کپچا و رمز عبور چک می‌شود تا منابع سرور
+        # صرف حساب‌های در حال قفل نشود.
+        is_locked, remaining_seconds = get_lockout_info(login)
+        if is_locked:
+            minutes = max(1, remaining_seconds // 60)
+            raise serializers.ValidationError(
+                f"به‌دلیل تلاش‌های ناموفق مکرر، این حساب موقتا قفل شده است. حدود {minutes} دقیقه دیگر دوباره تلاش کنید."
+            )
+
+        if not verify_captcha(captcha_token, captcha_answer):
+            raise serializers.ValidationError({"captcha_answer": "کد امنیتی وارد شده صحیح نیست یا منقضی شده است."})
 
         user = authenticate(username=login, password=password)
 
         if not user:
+            register_failed_attempt(login)
             raise serializers.ValidationError("ایمیل، نام کاربری یا رمز عبور اشتباه است.")
+
+        clear_failed_attempts(login)
 
         refresh = self.get_token(user)
 
@@ -28,9 +53,6 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
                 "gold_coins": user.gold_coins,
             }
         }
-
-
-from .captcha import verify_captcha
 
 
 class RegisterSerializer(serializers.ModelSerializer):

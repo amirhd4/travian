@@ -15,7 +15,7 @@ def check_server_timeline():
     if active_server.is_finished:
         return
 
-    age_days = (datetime.now(timezone.utc) - active_server.start_date.replace(tzinfo=None)).days
+    age_days = (datetime.now() - active_server.start_date.replace(tzinfo=None)).days
 
     if age_days >= (active_server.duration_days * 0.5) and not Player.objects.filter(username="Natars").exists():
         spawn_natar_tribe()
