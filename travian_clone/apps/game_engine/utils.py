@@ -3,7 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from .models import ServerSetting, GameLog
+from .models import ServerSetting, GameLog, VillageBuilding
 
 # درصد تلفات نیرو در هر ساعتِ مستمرِ قحطی.
 STARVATION_LOSS_PERCENT_PER_HOUR = 10
@@ -123,7 +123,16 @@ def update_village_resources(village):
     net_crop_rate = village.prod_crop - calculate_crop_upkeep(village)
     if village.loyalty < 100:
         elapsed_hours_loyalty = (delta_seconds * speed) / 3600
-        village.loyalty = min(100.0, village.loyalty + elapsed_hours_loyalty * 1)  # +۱ در هر ساعت
+        net_crop_rate = village.prod_crop - calculate_crop_upkeep(village)
+
+        if village.loyalty < 100:
+            elapsed_hours_loyalty = (delta_seconds * speed) / 3600
+            # ✅ ترمیم وفاداری فقط وقتی اتفاق می‌افتد که عمارت اقامتی سرپا باشد
+            residence_exists = VillageBuilding.objects.filter(
+                village=village, building_type__name="عمارت اقامتی", level__gt=0
+            ).exists()
+            if residence_exists:
+                village.loyalty = min(100.0, village.loyalty + elapsed_hours_loyalty * 10)  # +۱۰ در هر ساعت
 
     village.wood = min(village.max_storage, village.wood + (village.prod_wood * delta_seconds * speed / 3600))
     village.clay = min(village.max_storage, village.clay + (village.prod_clay * delta_seconds * speed / 3600))

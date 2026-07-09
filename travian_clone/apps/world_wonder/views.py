@@ -43,9 +43,21 @@ class UpgradeWWView(APIView):
             village.crop -= req_res
             village.save()
 
-            # ارتقا موفق
             ww.level += 1
             ww.save()
+
+            # ✅ هماهنگ کردن بج لول روی نقشه‌ی دهکده با لول واقعی
+            from apps.game_engine.models import VillageBuilding
+            VillageBuilding.objects.filter(
+                village=village, building_type__name="شگفتی جهان"
+            ).update(level=ww.level)
+
+            # ✅ چک فوری برنده به‌جای صبر تا کرون ساعتی
+            from apps.world_wonder.tasks import _check_for_winner
+            active_server_obj = ServerSetting.objects.filter(is_active=True).first()
+            if active_server_obj:
+                _check_for_winner(active_server_obj)
+
             return Response({"message": f"شگفتی جهان به سطح {ww.level} ارتقا یافت!"})
 
         except Exception as e:

@@ -8,7 +8,7 @@ import random
 
 from travian_core.celery import app
 from apps.game_engine.models import Village, GameLog, VillageBuilding
-from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal, Adventure
+from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal, Adventure, TroopUpgrade
 from .engine import calculate_combat, calculate_catapult_damage
 from .hero_utils import resolve_adventure, generate_adventures_for_player
 
@@ -259,6 +259,11 @@ def _resolve_attack_or_raid(movement):
     attacker_survivors = {}
     catapult_units_sent = 0
 
+    attacker_upgrade_levels = {
+        u.troop_type_id: u.level
+        for u in TroopUpgrade.objects.filter(village=source, troop_type_id__in=troop_type_cache.keys())
+    }
+
     for troop_id_str, qty in movement.troops_payload.items():
         qty = int(qty)
         if qty <= 0:
@@ -266,7 +271,8 @@ def _resolve_attack_or_raid(movement):
         troop_type = troop_type_cache.get(int(troop_id_str))
         if troop_type is None:
             continue
-        attacker_points_attack += qty * troop_type.attack_power
+        multiplier = 1 + (attacker_upgrade_levels.get(troop_type.id, 0) * 0.02)
+        attacker_points_attack += qty * troop_type.attack_power * multiplier
         attacker_survivors[troop_type.id] = qty
         if troop_type.is_siege_weapon:
             catapult_units_sent += qty
@@ -287,11 +293,19 @@ def _resolve_attack_or_raid(movement):
     attacker_data = {"points_attack": attacker_points_attack}
 
     # ------- قدرت مدافع بر اساس نیروهای واقعی مستقر در دهکده مقصد -------
+
     defender_village_troops = list(
         VillageTroop.objects.select_for_update().filter(village=target).select_related('troop_type')
     )
-    defender_points_inf = sum(vt.count * vt.troop_type.defense_infantry for vt in defender_village_troops)
-    defender_points_cav = sum(vt.count * vt.troop_type.defense_cavalry for vt in defender_village_troops)
+    defender_upgrade_levels = {
+        u.troop_type_id: u.level for u in TroopUpgrade.objects.filter(village=target)
+    }
+    defender_points_inf = 0
+    defender_points_cav = 0
+    for vt in defender_village_troops:
+        multiplier = 1 + (defender_upgrade_levels.get(vt.troop_type_id, 0) * 0.02)
+        defender_points_inf += vt.count * vt.troop_type.defense_infantry * multiplier
+        defender_points_cav += vt.count * vt.troop_type.defense_cavalry * multiplier
 
     # امتیاز دفاعی حیوانات نگهبان خریداری‌شده با طلا
     animal_inf, animal_cav = _animal_defense_points(target)
@@ -374,30 +388,36 @@ def _resolve_attack_or_raid(movement):
 
     conquered = False
     if victory == "attacker" and movement.movement_type == 'ATTACK' and original_defender_player.username == "Natars":
-        # فعلاً تسخیر فقط علیه دهکده‌های ناتار مجاز است. تسخیر PvP بین
-        # بازیکنان واقعی عمداً غیرفعال است تا بدون سیستم امتیاز فرهنگی/سقف
-        # تعداد دهکده (که هنوز پیاده نشده)، امکان سرقت دهکده‌ی بازیکنان
-        # تازه‌کار به‌عنوان یک اکسپلویت وجود نداشته باشد.
         chief_ids_sent = [
             int(tid) for tid, qty in movement.troops_payload.items()
             if int(qty) > 0 and troop_type_cache.get(int(tid)) and troop_type_cache[int(tid)].is_chief
         ]
         if chief_ids_sent:
-            loyalty_reduction = len(chief_ids_sent) * random.randint(20, 35)
-            target.loyalty = max(0, target.loyalty - loyalty_reduction)
+            # ✅ وفاداری فقط وقتی کم می‌شود که عمارت اقامتی دهکده‌ی هدف تخریب شده باشد
+            residence_destroyed = not VillageBuilding.objects.filter(
+                village=target, building_type__name="عمارت اقامتی", level__gt=0
+            ).exists()
 
-            for tid in chief_ids_sent:
-                attacker_survivors[tid] = 0
+            if residence_destroyed:
+                loyalty_reduction = len(chief_ids_sent) * random.randint(20, 35)
+                target.loyalty = max(0, target.loyalty - loyalty_reduction)
 
-            if target.loyalty <= 0:
-                target.player = source.player
-                target.loyalty = random.randint(20, 35)
-                conquered = True
+                for tid in chief_ids_sent:
+                    attacker_survivors[tid] = 0
 
-            target.save()
+                if target.loyalty <= 0:
+                    target.player = source.player
+                    target.loyalty = random.randint(20, 35)
+                    conquered = True
 
-            if conquered and target.is_natar_ww_site:
-                _convert_to_ww_site(target)
+                target.save()
+
+                if conquered and target.is_natar_ww_site:
+                    _convert_to_ww_site(target)
+            else:
+                # چیف‌ها اثری نداشتند چون عمارت اقامتی هنوز سرپاست
+                for tid in chief_ids_sent:
+                    attacker_survivors[tid] = 0
 
     plan_message = ""
     if victory == "attacker" and movement.movement_type == 'ATTACK' and movement.hero_participating:
@@ -529,3 +549,17 @@ def generate_adventures_for_all_players():
         hero = Hero.objects.filter(player=player).select_related('home_village').first()
         if hero and hero.home_village:
             generate_adventures_for_player(player, hero.home_village, count=2)
+
+
+@app.task
+def complete_troop_upgrade(upgrade_id):
+    from .models import TroopUpgrade
+    try:
+        upgrade = TroopUpgrade.objects.select_for_update().get(id=upgrade_id, is_upgrading=True)
+    except TroopUpgrade.DoesNotExist:
+        return "یافت نشد یا قبلا انجام شده."
+    upgrade.level += 1
+    upgrade.is_upgrading = False
+    upgrade.upgrade_ends_at = None
+    upgrade.save()
+    return f"ارتقای {upgrade.troop_type.name} در {upgrade.village.name} به لول {upgrade.level} رسید."

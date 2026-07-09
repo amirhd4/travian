@@ -62,13 +62,6 @@ class VillageListView(APIView):
 
 
 class VillageDetailView(APIView):
-    """
-    اطلاعات زنده یک دهکده مشخص (منابع فعلی + نرخ تولید خالص).
-
-    قبل از این ویو، ResourceBar.jsx هیچ درخواستی به سرور نمی‌زد و صرفا
-    مقادیر پیش‌فرض استور Zustand را هر ثانیه در کلاینت افزایش می‌داد؛
-    یعنی منابع نمایش داده شده هیچ ارتباطی با دیتابیس واقعی نداشت.
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, village_id):
@@ -77,17 +70,14 @@ class VillageDetailView(APIView):
         except Village.DoesNotExist:
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
-        # همگام‌سازی منابع تا این لحظه (همون منطقی که هنگام ارتقای ساختمان اجرا می‌شه)
+        # همگام‌سازی منابع تا این لحظه
         update_village_resources(village)
 
-        # ۱.۵. محدودیت صف ساخت‌وساز: در تراوین اصلی فقط یک ساختمان در هر
-        # لحظه می‌تواند در حال ارتقا باشد (بدون Plus). قبلا این بررسی اصلا
-        # وجود نداشت و بازیکن می‌توانست روی همه‌ی ۴۰ جایگاه هم‌زمان ارتقا بزند.
-        if VillageBuilding.objects.filter(village=village, is_upgrading=True).exists():
-            return Response(
-                {"error": "در هر لحظه فقط یک ساختمان می‌تواند در حال ارتقا باشد. صبر کنید تا ساخت فعلی تمام شود."},
-                status=400
-            )
+        # ⛔️ بلوک زیر باید کاملاً حذف شود - اینجا فقط نمایش وضعیت است،
+        # نه شروع یک ارتقای جدید. این چک از قبل و درست در UpgradeBuildingView وجود دارد.
+        #
+        # if VillageBuilding.objects.filter(village=village, is_upgrading=True).exists():
+        #     return Response({...}, status=400)
 
         net_crop_production = village.prod_crop - calculate_crop_upkeep(village)
 
@@ -983,3 +973,20 @@ class BuyPlusView(APIView):
             "expires_at": player.plus_expires_at,
             "gold_coins": player.gold_coins,
         })
+
+
+class FarmVillagesListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        villages = Village.objects.filter(is_farm_village=True).order_by('id')
+        return Response([
+            {
+                "id": v.id,
+                "name": v.name,
+                "x_coord": v.x_coord,
+                "y_coord": v.y_coord,
+                "production_per_hour": v.prod_wood,
+            }
+            for v in villages
+        ])

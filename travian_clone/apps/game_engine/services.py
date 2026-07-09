@@ -15,7 +15,7 @@ import random
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from .models import Village, BuildingType, VillageBuilding
+from .models import Village, BuildingType, VillageBuilding, ServerSetting
 
 # محدوده نقشه برای جستجوی مختصات آزاد. در آینده می‌توان این را از
 # ServerSetting گرفت تا با اندازه واقعی نقشه هماهنگ باشد.
@@ -54,7 +54,7 @@ _CITY_BUILDING_DEFS = (
     ("تالار شهر", 0, 'INFRASTRUCTURE'),
     ("مخفیگاه", 0, 'INFRASTRUCTURE'),
     ("مخفیگاه", 0, 'INFRASTRUCTURE'),
-    ("مخفیگاه", 0, 'INFRASTRUCTURE'),
+    ("آهنگری", 0, 'MILITARY'),
     ("کارگاه سنگ‌تراشی", 0, 'INFRASTRUCTURE'),
     ("عمارت قهرمان", 0, 'INFRASTRUCTURE'),
     ("آبشخور اسب", 0, 'MILITARY'),
@@ -170,29 +170,20 @@ def create_starter_village(player, name="دهکده اول", starting_quadrant='
     if existing:
         return existing
 
+    server_settings = ServerSetting.objects.filter(is_active=True).first()
+    max_storage = server_settings.starting_max_storage if server_settings else 800
+    max_granary = server_settings.starting_max_granary if server_settings else 800
+
     quadrant = starting_quadrant if starting_quadrant in ('NE', 'NW', 'SE', 'SW') else None
     x, y = _find_free_coordinates(quadrant=quadrant)
 
     village = Village.objects.create(
-        player=player,
-        name=name,
-        x_coord=x,
-        y_coord=y,
-        is_capital=True,
-        wood=750.0,
-        clay=750.0,
-        iron=750.0,
-        crop=750.0,
-        prod_wood=20,
-        prod_clay=20,
-        prod_iron=20,
-        prod_crop=20,
-        max_storage=800,
-        max_granary=800,
+        player=player, name=name, x_coord=x, y_coord=y, is_capital=True,
+        wood=750.0, clay=750.0, iron=750.0, crop=750.0,
+        prod_wood=20, prod_clay=20, prod_iron=20, prod_crop=20,
+        max_storage=max_storage, max_granary=max_granary,
     )
-
     _create_default_buildings(village)
-
     return village
 
 
@@ -237,6 +228,10 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         vt.save()
         remaining_to_deduct -= deduct
 
+    server_settings = ServerSetting.objects.filter(is_active=True).first()
+    max_storage = server_settings.starting_max_storage if server_settings else 800
+    max_granary = server_settings.starting_max_granary if server_settings else 800
+
     new_village = Village.objects.create(
         player=player,
         name=name or "دهکده جدید",
@@ -251,8 +246,8 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         prod_clay=20,
         prod_iron=20,
         prod_crop=20,
-        max_storage=800,
-        max_granary=800,
+        max_storage=max_storage,
+        max_granary=max_granary,
     )
 
     _create_default_buildings(new_village)

@@ -6,8 +6,17 @@ admin.site.register(PlayerQuestProgress)
 
 @admin.register(ServerSetting)
 class ServerSettingAdmin(admin.ModelAdmin):
-    list_display = ('id', 'is_active', 'server_speed', 'duration_days', 'start_date', 'ww_unlocked')
-    list_editable = ('is_active', 'server_speed', 'ww_unlocked')
+    list_display = (
+        'id', 'is_active', 'server_speed', 'troop_speed', 'building_speed',
+        'troop_training_speed', 'duration_days', 'starting_max_storage',
+        'starting_max_granary', 'farm_village_count', 'farm_village_multiplier',
+        'start_date', 'ww_unlocked',
+    )
+    list_editable = (
+        'is_active', 'server_speed', 'troop_speed', 'building_speed',
+        'troop_training_speed', 'ww_unlocked', 'starting_max_storage',
+        'starting_max_granary', 'farm_village_count', 'farm_village_multiplier',
+    )
 
 @admin.register(Village)
 class VillageAdmin(admin.ModelAdmin):

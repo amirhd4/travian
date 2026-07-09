@@ -19,6 +19,7 @@ const NAV_ITEMS = [
     { path: '/hero', icon: '🦸', label: 'قهرمان' },
     { path: '/gold-shop', icon: '💰', label: 'فروشگاه طلا' },
     { path: '/plus', icon: '👑', label: 'پلاس' },
+    { path: '/blacksmith', icon: '🔨', label: 'آهنگری' }
 ];
 
 export default function Navbar() {

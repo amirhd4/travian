@@ -240,3 +240,31 @@ class Adventure(models.Model):
 
     def __str__(self):
         return f"Adventure ({self.x_coord}|{self.y_coord}) - {self.difficulty} for {self.player.username}"
+
+
+class TroopUpgrade(models.Model):
+    """
+    سطح ارتقای یک نوع نیرو در یک دهکده‌ی مشخص (از طریق آهنگری)، حداکثر تا لول ۲۰.
+    هر لول، قدرت حمله/دفاع آن نیرو را وقتی از این دهکده اعزام/مستقر باشد افزایش می‌دهد.
+    """
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='troop_upgrades')
+    troop_type = models.ForeignKey(TroopType, on_delete=models.CASCADE)
+    level = models.IntegerField(default=0)
+    is_upgrading = models.BooleanField(default=False)
+    upgrade_ends_at = models.DateTimeField(null=True, blank=True)
+
+    MAX_LEVEL = 20
+
+    class Meta:
+        unique_together = ('village', 'troop_type')
+
+    def __str__(self):
+        return f"{self.village.name} - {self.troop_type.name} (لول {self.level})"
+
+    @staticmethod
+    def get_multiplier(village_id, troop_type_id):
+        try:
+            upgrade = TroopUpgrade.objects.get(village_id=village_id, troop_type_id=troop_type_id)
+            return 1 + (upgrade.level * 0.02)  # هر لول ۲٪ افزایش قدرت
+        except TroopUpgrade.DoesNotExist:
+            return 1.0

@@ -88,14 +88,8 @@ def _broadcast_server_end(winning_ww, winner_player, winner_alliance):
 
 @app.task
 def regen_natar_village_loyalty():
-    """
-    ترمیم دوره‌ای وفاداری دهکده‌های ناتار. برخلاف دهکده‌های بازیکنان که با
-    هر بازدید بازیکن (VillageDetailView و ...) به‌صورت تنبل ترمیم می‌شوند،
-    هیچ‌کس دهکده‌ی ناتار را «نمی‌بیند»، پس بدون این تسک وفاداری‌شان هیچ‌وقت
-    خودکار ترمیم نمی‌شد و نامتقارن با دهکده‌های بازیکنان بود.
-    """
     from apps.game_engine.models import Village
     natar_villages = Village.objects.filter(player__username="Natars", loyalty__lt=100)
     for village in natar_villages:
-        village.loyalty = min(100, village.loyalty + 1)
+        village.loyalty = min(100, village.loyalty + 10)
         village.save(update_fields=['loyalty'])

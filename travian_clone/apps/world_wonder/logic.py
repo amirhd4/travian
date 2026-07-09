@@ -5,7 +5,7 @@ from apps.authentication.models import Player
 from apps.combat.models import TroopType, VillageTroop
 
 NATAR_WW_SITE_COUNT = 12
-NATAR_PLAN_GUARD_COUNT = 4
+NATAR_PLAN_GUARD_COUNT = 6
 
 
 def spawn_natar_tribe():

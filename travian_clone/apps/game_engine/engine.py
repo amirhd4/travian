@@ -7,13 +7,20 @@ from apps.combat.models import TroopType, VillageTroop
 
 def schedule_game_event(village_id, event_type, base_duration_seconds, details):
     settings = ServerSetting.objects.get(is_active=True)
-    actual_duration = base_duration_seconds / settings.server_speed
+
+    # ✅ هر نوع رویداد از ضریب سرعت مخصوص خودش استفاده می‌کند
+    if event_type == "BUILDING_UPGRADE":
+        speed = settings.building_speed or 1
+    elif event_type == "TROOP_RECRUITMENT":
+        speed = settings.troop_training_speed or 1
+    else:
+        speed = settings.server_speed or 1
+
+    actual_duration = base_duration_seconds / max(1, speed)
 
     if actual_duration <= 0.1:
-        # حالت سرعت نجومی: اجرای آنی
         execute_immediate_event(village_id, event_type, details)
     else:
-        # حالت نرمال: ارسال به صف Celery
         run_time = datetime.now(timezone.utc) + timedelta(seconds=actual_duration)
         process_game_event.apply_async(args=[village_id, event_type, details], eta=run_time)
 

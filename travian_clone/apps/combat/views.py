@@ -4,14 +4,13 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
 import datetime
-from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal, TrainingQueue, Adventure, FarmListEntry
+from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal, TrainingQueue, Adventure, FarmListEntry, TroopUpgrade
 from .movement_utils import dispatch_troop_movement
 from .tasks import resolve_hero_adventure
-from apps.game_engine.models import Village, GameLog
 from apps.game_engine.engine import schedule_game_event
 from .hero_utils import sync_hero_health, calculate_travel_seconds_to_point, DIFFICULTY_SETTINGS
 from apps.game_engine.models import Village, GameLog, VillageBuilding
-from .utils import calculate_travel_seconds, get_required_training_building
+from .utils import get_required_training_building
 
 
 class SendTroopsView(APIView):
@@ -54,10 +53,9 @@ class BarracksTrainView(APIView):
             return Response({"error": "تعداد نیرو برای آموزش نامعتبر است."}, status=400)
 
         try:
-            # خواندن مشخصات نیرو از دیتابیس به جای هاردکد کردن
-            troop_info = TroopType.objects.get(id=troop_type_id)
+            troop_info = TroopType.objects.get(id=troop_type_id, tribe=request.user.tribe)
         except TroopType.DoesNotExist:
-            return Response({"error": "نوع نیروی درخواستی وجود ندارد."}, status=400)
+            return Response({"error": "این نیرو مختص نژاد شما نیست یا وجود ندارد."}, status=400)
 
         total_cost = {
             'wood': troop_info.wood_cost * quantity,
@@ -135,18 +133,11 @@ class BarracksTrainView(APIView):
 
 
 class TroopTypeCatalogView(APIView):
-    """
-    فهرست همه نیروهای قابل آموزش با هزینه و زمان واقعی از دیتابیس.
-
-    قبل از این ویو، Barracks.jsx فقط دو واحد را با هزینه‌های هاردکد در
-    خود فایل React نمایش می‌داد؛ یعنی نیروهای مهاجر/کاراگاه که بعدا اضافه
-    شدند اصلا در پادگان قابل آموزش نبودند، و اگر ادمین هزینه یک نیرو را
-    در پنل مدیریت تغییر می‌داد، فرانت‌اند همچنان عدد قدیمی را نشان می‌داد.
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        troop_types = TroopType.objects.all().order_by('id')
+        # ✅ فقط نیروهای متعلق به نژاد خود بازیکن (ناتار هرگز نمایش داده نمی‌شود)
+        troop_types = TroopType.objects.filter(tribe=request.user.tribe).order_by('id')
         return Response([
             {
                 "id": t.id,
@@ -161,10 +152,8 @@ class TroopTypeCatalogView(APIView):
                 "is_settler": t.is_settler,
                 "is_scout": t.is_scout,
                 "costs": {
-                    "wood": t.wood_cost,
-                    "clay": t.clay_cost,
-                    "iron": t.iron_cost,
-                    "crop": t.crop_cost,
+                    "wood": t.wood_cost, "clay": t.clay_cost,
+                    "iron": t.iron_cost, "crop": t.crop_cost,
                 },
                 "crop_upkeep": t.crop_upkeep,
                 "base_train_time": t.base_train_time,
@@ -589,3 +578,96 @@ class FarmListRunView(APIView):
             "message": f"{dispatched_count} از {len(results)} ردیف با موفقیت اعزام شد.",
             "results": results,
         })
+
+
+class BlacksmithView(APIView):
+    """وضعیت و شروع ارتقای نیرو در آهنگری یک دهکده مشخص."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        blacksmith = VillageBuilding.objects.filter(village=village, building_type__name="آهنگری").first()
+        if not blacksmith or blacksmith.level <= 0:
+            return Response({"error": "ابتدا باید آهنگری بسازید.", "has_blacksmith": False}, status=400)
+
+        troop_types = TroopType.objects.filter(tribe=request.user.tribe)
+        upgrades = {u.troop_type_id: u for u in TroopUpgrade.objects.filter(village=village)}
+
+        data = []
+        for t in troop_types:
+            existing = upgrades.get(t.id)
+            level = existing.level if existing else 0
+            is_upgrading = existing.is_upgrading if existing else False
+            data.append({
+                "troop_type_id": t.id,
+                "name": t.name,
+                "level": level,
+                "max_level": TroopUpgrade.MAX_LEVEL,
+                "is_upgrading": is_upgrading,
+                "upgrade_ends_at": existing.upgrade_ends_at if existing else None,
+                "next_level_cost": None if level >= TroopUpgrade.MAX_LEVEL else {
+                    "wood": int(t.wood_cost * 1.6 * (level + 1)),
+                    "clay": int(t.clay_cost * 1.6 * (level + 1)),
+                    "iron": int(t.iron_cost * 1.6 * (level + 1)),
+                    "crop": int(t.crop_cost * 1.6 * (level + 1)),
+                },
+            })
+
+        return Response({"has_blacksmith": True, "blacksmith_level": blacksmith.level, "troops": data})
+
+    def post(self, request):
+        village_id = request.data.get('village_id')
+        troop_type_id = request.data.get('troop_type_id')
+
+        with transaction.atomic():
+            try:
+                village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+            blacksmith = VillageBuilding.objects.filter(village=village, building_type__name="آهنگری").first()
+            if not blacksmith or blacksmith.level <= 0:
+                return Response({"error": "ابتدا باید آهنگری بسازید."}, status=400)
+
+            try:
+                troop_type = TroopType.objects.get(id=troop_type_id, tribe=request.user.tribe)
+            except TroopType.DoesNotExist:
+                return Response({"error": "این نیرو مختص نژاد شما نیست."}, status=400)
+
+            upgrade, _ = TroopUpgrade.objects.select_for_update().get_or_create(
+                village=village, troop_type=troop_type
+            )
+            if upgrade.is_upgrading:
+                return Response({"error": "این نیرو در حال حاضر در حال ارتقا است."}, status=400)
+            if upgrade.level >= TroopUpgrade.MAX_LEVEL:
+                return Response({"error": f"این نیرو به حداکثر لول ({TroopUpgrade.MAX_LEVEL}) رسیده."}, status=400)
+
+            next_level = upgrade.level + 1
+            req_wood = int(troop_type.wood_cost * 1.6 * next_level)
+            req_clay = int(troop_type.clay_cost * 1.6 * next_level)
+            req_iron = int(troop_type.iron_cost * 1.6 * next_level)
+            req_crop = int(troop_type.crop_cost * 1.6 * next_level)
+
+            if village.wood < req_wood or village.clay < req_clay or village.iron < req_iron or village.crop < req_crop:
+                return Response({"error": "منابع کافی نیست."}, status=400)
+
+            village.wood -= req_wood; village.clay -= req_clay
+            village.iron -= req_iron; village.crop -= req_crop
+            village.save()
+
+            duration = 1800 * next_level  # هر لول ۳۰ دقیقه پایه (تحت تاثیر سرعت سرور نیست، ولی می‌توان مشابه بالا اضافه کرد)
+            upgrade.is_upgrading = True
+            upgrade.upgrade_ends_at = timezone.now() + datetime.timedelta(seconds=duration)
+            upgrade.save()
+
+            from .tasks import complete_troop_upgrade
+            transaction.on_commit(lambda: complete_troop_upgrade.apply_async(
+                args=[upgrade.id], eta=upgrade.upgrade_ends_at
+            ))
+
+        return Response({"message": f"ارتقای {troop_type.name} به لول {next_level} آغاز شد."})

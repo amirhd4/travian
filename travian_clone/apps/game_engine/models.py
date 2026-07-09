@@ -6,16 +6,22 @@ from django.utils import timezone
 
 class ServerSetting(models.Model):
     server_speed = models.BigIntegerField(default=1)
-    troop_speed = models.IntegerField(default=1)
-    building_speed = models.IntegerField(default=1)
+    troop_speed = models.BigIntegerField(default=1)          # سرعت حرکت نیرو روی نقشه
+    building_speed = models.BigIntegerField(default=1)       # سرعت ساخت‌وساز
+    troop_training_speed = models.BigIntegerField(default=1) # ✅ فیلد جدید: سرعت آموزش نیرو در پادگان/اصطبل/کارگاه
     duration_days = models.IntegerField(default=365)
     is_active = models.BooleanField(default=True)
     start_date = models.DateTimeField(auto_now_add=True)
     ww_unlocked = models.BooleanField(default=False)
 
-    # وضعیت پایان بازی. قبل از این فیلدها، هیچ راهی برای اعلام برنده یا
-    # بستن سرور وقتی شگفتی جهان به سطح ۱۰۰ می‌رسید وجود نداشت - سرور
-    # می‌توانست تا ابد بدون هیچ نتیجه‌ی رسمی ادامه پیدا کند.
+    # ✅ ظرفیت پیش‌فرض انبار/سیلو برای دهکده‌های جدید این سرور (قابل تنظیم توسط ادمین)
+    starting_max_storage = models.IntegerField(default=800)
+    starting_max_granary = models.IntegerField(default=800)
+
+    # ✅ تنظیمات دهکده‌های فارم
+    farm_village_count = models.IntegerField(default=20)
+    farm_village_multiplier = models.IntegerField(default=1)
+
     is_finished = models.BooleanField(default=False)
     finished_at = models.DateTimeField(null=True, blank=True)
     winner_player = models.ForeignKey(
@@ -58,6 +64,8 @@ class Village(models.Model):
     loyalty = models.FloatField(default=100)
     is_natar_ww_site = models.BooleanField(default=False)
     is_natar_plan_guard = models.BooleanField(default=False)
+
+    is_farm_village = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('x_coord', 'y_coord')

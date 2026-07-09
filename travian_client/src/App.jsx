@@ -114,6 +114,7 @@ function App() {
                 <Route path="/gold-shop" element={<PrivateRoute><GoldShop /></PrivateRoute>} />
                 <Route path="/checkout/:authority" element={<PrivateRoute><Checkout /></PrivateRoute>} />
                 <Route path="/plus" element={<PrivateRoute><PlusAccount /></PrivateRoute>} />
+                <Route path="/blacksmith" element={<PrivateRoute><Blacksmith /></PrivateRoute>} />
             </Routes>
         </Router>
     );
