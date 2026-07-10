@@ -6,7 +6,143 @@ import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import {formatDuration} from "../utils/formatter.js";
 
+const EQUIP_SLOTS = [
+    { key: 'HELMET', label: 'کلاه‌خود' },
+    { key: 'WEAPON', label: 'سلاح' },
+    { key: 'HORSE', label: 'اسب' },
+    { key: 'BODY', label: 'زره' },
+    { key: 'SHIELD', label: 'سپر' },
+    { key: 'LEFT_HAND', label: 'دست چپ' },
+    { key: 'RIGHT_HAND', label: 'دست راست' },
+    { key: 'SHOES', label: 'کفش' },
+];
 
+const HAIR_COLORS = ['#3d2b1a', '#7a5230', '#c9a063', '#1a1a1a', '#a83232', '#e0e0e0'];
+
+function AppearanceTab({ hero, onSave }) {
+    const [gender, setGender] = useState(hero.appearance?.gender || 'FEMALE');
+    const [hairStyle, setHairStyle] = useState(hero.appearance?.hair_style || 1);
+    const [hairColor, setHairColor] = useState(hero.appearance?.hair_color || HAIR_COLORS[0]);
+    const [saving, setSaving] = useState(false);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            await onSave({ gender, hair_style: hairStyle, hair_color: hairColor });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <div className="flex gap-3 mb-4">
+                    <button onClick={() => setGender('FEMALE')} className={`flex-1 p-2 rounded border-2 font-bold ${gender === 'FEMALE' ? 'border-amber-600 bg-amber-50' : 'border-gray-300'}`}>♀ زن</button>
+                    <button onClick={() => setGender('MALE')} className={`flex-1 p-2 rounded border-2 font-bold ${gender === 'MALE' ? 'border-amber-600 bg-amber-50' : 'border-gray-300'}`}>♂ مرد</button>
+                </div>
+
+                <p className="text-xs font-bold text-gray-600 mb-2">مدل مو:</p>
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <button
+                            key={n}
+                            onClick={() => setHairStyle(n)}
+                            className={`aspect-square rounded border-2 overflow-hidden bg-white ${hairStyle === n ? 'border-amber-600' : 'border-gray-300'}`}
+                        >
+                            <img
+                                src={`/assets/hero/hair_${gender.toLowerCase()}_${n}.png`}
+                                alt={`مدل ${n}`}
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.target.style.visibility = 'hidden'; }}
+                            />
+                        </button>
+                    ))}
+                </div>
+
+                <p className="text-xs font-bold text-gray-600 mb-2">رنگ مو:</p>
+                <div className="flex gap-2 mb-6 flex-wrap">
+                    {HAIR_COLORS.map((c) => (
+                        <button
+                            key={c}
+                            onClick={() => setHairColor(c)}
+                            style={{ backgroundColor: c }}
+                            className={`w-8 h-8 rounded-full border-2 ${hairColor === c ? 'border-amber-600 ring-2 ring-amber-400' : 'border-gray-300'}`}
+                        />
+                    ))}
+                </div>
+
+                <button onClick={handleSave} disabled={saving} className="btn-travian-green w-full disabled:opacity-50">
+                    {saving ? 'در حال ذخیره...' : '✅ ذخیره ظاهر'}
+                </button>
+            </div>
+
+            <div className="flex items-center justify-center bg-stone-50 rounded border min-h-[280px]">
+                <img
+                    src={`/assets/hero/preview_${gender.toLowerCase()}_${hairStyle}.png`}
+                    alt="پیش‌نمایش قهرمان"
+                    className="max-h-80 object-contain"
+                    onError={(e) => { e.target.style.visibility = 'hidden'; }}
+                />
+            </div>
+        </div>
+    );
+}
+
+function AuctionTab({ villageId }) {
+    const [auctions, setAuctions] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [bidding, setBidding] = useState(null);
+
+    const fetchAuctions = useCallback(async () => {
+        try {
+            const { data } = await api.get('combat/hero/auction/');
+            setAuctions(data);
+        } catch {
+            setAuctions([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { fetchAuctions(); }, [fetchAuctions]);
+
+    const handleBid = async (auctionId) => {
+        setBidding(auctionId);
+        try {
+            const { data } = await api.post('combat/hero/auction/bid/', { auction_id: auctionId, village_id: villageId });
+            alert(data.message);
+            fetchAuctions();
+        } catch (error) {
+            alert(error.response?.data?.error || 'خطا در ثبت پیشنهاد');
+        } finally {
+            setBidding(null);
+        }
+    };
+
+    if (loading) return <p className="text-sm text-gray-500 text-center py-6">در حال بارگذاری حراجی...</p>;
+    if (auctions.length === 0) return <p className="text-sm text-gray-500 text-center py-6">در حال حاضر هیچ آیتمی در حراجی نیست.</p>;
+
+    return (
+        <div className="space-y-2">
+            {auctions.map((a) => (
+                <div key={a.id} className="flex items-center justify-between border p-3 rounded bg-stone-50">
+                    <div>
+                        <p className="font-bold text-sm">{a.item_name}</p>
+                        <p className="text-xs text-gray-500">بالاترین پیشنهاد: {a.current_bid} 💰</p>
+                    </div>
+                    <button
+                        onClick={() => handleBid(a.id)}
+                        disabled={bidding === a.id}
+                        className="text-xs font-bold bg-amber-600 text-white px-3 py-2 rounded hover:bg-amber-700 disabled:bg-gray-400"
+                    >
+                        {bidding === a.id ? '...' : 'پیشنهاد 💰'}
+                    </button>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 const itemTypeIcon = (type) => ({ HELMET: '⛑️', WEAPON: '⚔️', HORSE: '🐎' }[type] || '🎒');
 const difficultyColor = (d) => ({
@@ -138,6 +274,16 @@ export default function Hero() {
             alert(error.response?.data?.error || 'خطا در تخصیص امتیاز');
         } finally {
             setBusy(null);
+        }
+    };
+
+    const handleSaveAppearance = async (payload) => {
+        try {
+            const { data } = await api.post('combat/hero/appearance/', payload);
+            alert(data.message || 'ظاهر قهرمان بروزرسانی شد.');
+            fetchHero();
+        } catch (error) {
+            alert(error.response?.data?.error || 'این قابلیت هنوز در سرور فعال نشده است.');
         }
     };
 
@@ -322,6 +468,8 @@ export default function Hero() {
                         {[
                             { key: 'attributes', label: '📊 خصیصات' },
                             { key: 'inventory', label: '🎒 کوله‌پشتی' },
+                            { key: 'appearance', label: '🎨 ظاهر' },
+                            { key: 'auction', label: '🏺 حراجی' },
                             { key: 'adventures', label: '🗺️ ماجراجویی‌ها' },
                         ].map((tab) => (
                             <button
@@ -392,43 +540,59 @@ export default function Hero() {
                             </div>
                         )}
 
-                        {activeTab === 'inventory' &&
-                            (hero.inventory.length === 0 ? (
-                                <p className="text-sm text-gray-500">هیچ آیتمی در کوله‌پشتی قهرمان نیست.</p>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {hero.inventory.map((inv) => (
-                                        <div
-                                            key={inv.id}
-                                            className={`flex items-center justify-between border p-3 rounded ${
-                                                inv.is_equipped ? 'bg-amber-50 border-amber-400' : 'bg-stone-50 border-gray-300'
-                                            }`}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xl">{itemTypeIcon(inv.item_type)}</span>
-                                                <div>
-                                                    <p className="font-bold text-sm">{inv.name}</p>
-                                                    <p className="text-xs text-gray-500">
-                                                        {inv.attack_bonus > 0 && `⚔️ +${inv.attack_bonus} `}
-                                                        {inv.speed_bonus > 0 && `⚡ +${inv.speed_bonus}`}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <button
-                                                onClick={() => handleEquip(inv)}
-                                                disabled={busy === inv.id}
-                                                className={`text-xs font-bold px-3 py-1.5 rounded transition ${
-                                                    inv.is_equipped
-                                                        ? 'bg-gray-500 text-white hover:bg-gray-600'
-                                                        : 'bg-amber-600 text-white hover:bg-amber-700'
-                                                }`}
+                        {activeTab === 'inventory' && (
+                            <div>
+                                <p className="text-xs font-bold text-gray-600 mb-2">تجهیزات فعلی:</p>
+                                <div className="grid grid-cols-4 gap-3 mb-6">
+                                    {EQUIP_SLOTS.map((slot) => {
+                                        const equipped = hero.inventory.find((inv) => inv.item_type === slot.key && inv.is_equipped);
+                                        return (
+                                            <div
+                                                key={slot.key}
+                                                className={`equip-slot ${equipped ? 'filled' : ''}`}
+                                                title={slot.label}
+                                                onClick={() => equipped && handleEquip(equipped)}
                                             >
-                                                {inv.is_equipped ? 'درآوردن' : 'پوشیدن'}
-                                            </button>
-                                        </div>
-                                    ))}
+                                                {equipped ? (
+                                                    <span className="text-3xl">{itemTypeIcon(equipped.item_type)}</span>
+                                                ) : (
+                                                    <span className="text-[10px] text-gray-400 text-center px-1">{slot.label}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            ))}
+
+                                <p className="text-xs font-bold text-gray-600 mb-2">کوله‌پشتی:</p>
+                                {hero.inventory.filter((inv) => !inv.is_equipped).length === 0 ? (
+                                    <p className="text-sm text-gray-500">آیتم درون کوله‌پشتی نیست.</p>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {hero.inventory.filter((inv) => !inv.is_equipped).map((inv) => (
+                                            <div key={inv.id} className="flex items-center justify-between border p-3 rounded bg-stone-50 border-gray-300">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xl">{itemTypeIcon(inv.item_type)}</span>
+                                                    <div>
+                                                        <p className="font-bold text-sm">{inv.name}</p>
+                                                        <p className="text-xs text-gray-500">
+                                                            {inv.attack_bonus > 0 && `⚔️ +${inv.attack_bonus} `}
+                                                            {inv.speed_bonus > 0 && `⚡ +${inv.speed_bonus}`}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleEquip(inv)}
+                                                    disabled={busy === inv.id}
+                                                    className="text-xs font-bold px-3 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-700"
+                                                >
+                                                    پوشیدن
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {activeTab === 'adventures' &&
                             (adventures.length === 0 ? (
@@ -456,6 +620,9 @@ export default function Hero() {
                                     ))}
                                 </div>
                             ))}
+
+                            {activeTab === 'appearance' && <AppearanceTab hero={hero} onSave={handleSaveAppearance} />}
+                            {activeTab === 'auction' && <AuctionTab villageId={villages[0]?.id} />}
                     </div>
                 </div>
             </div>

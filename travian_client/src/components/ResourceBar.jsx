@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -10,6 +10,15 @@ const RESOURCE_CONFIG = [
     { key: 'crop', icon: '🌾', maxKey: 'maxGranary' },
 ];
 
+function useLiveClock() {
+    const [now, setNow] = useState(new Date());
+    useEffect(() => {
+        const t = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(t);
+    }, []);
+    return now;
+}
+
 export default function ResourceBar() {
     const { resources, production, tickResources, updateResources, setProduction, setCapacities } = useGameStore();
     const activeVillageId = useGameStore((state) => state.activeVillageId);
@@ -17,6 +26,7 @@ export default function ResourceBar() {
     const maxStorage = useGameStore((state) => state.maxStorage);
     const maxGranary = useGameStore((state) => state.maxGranary);
     const { lastMessage } = useGameWebSocket();
+    const now = useLiveClock();
 
     useEffect(() => {
         if (lastMessage?.type === 'FAMINE_WARNING') alert(lastMessage.data.message);
@@ -51,9 +61,16 @@ export default function ResourceBar() {
     return (
         <div className="absolute top-0 left-0 w-full z-10 bg-parchment/95 border-b-2 border-wood-light shadow-md">
             <div className="flex items-center justify-between px-3 py-1">
-                <span className="text-[10px] font-bold text-wood">👤 {user?.username}</span>
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-white border-2 border-wood-light flex items-center justify-center text-sm">👤</div>
+                    <span className="text-[10px] font-bold text-wood">{user?.username}</span>
+                </div>
+                <span className="text-[11px] font-bold text-wood-dark flex items-center gap-1" dir="ltr">
+                    🕐 {now.toLocaleTimeString('fa-IR')}
+                </span>
                 <span className="text-xs font-bold text-wood flex items-center gap-1">
-                    💰 <span className="text-amber-700">{(user?.gold_coins ?? 0).toLocaleString()}</span>
+                    <span className="w-6 h-6 rounded-full bg-amber-100 border border-amber-500 flex items-center justify-center">💰</span>
+                    <span className="text-amber-700">{(user?.gold_coins ?? 0).toLocaleString()}</span>
                 </span>
             </div>
             <div className="flex flex-wrap justify-center gap-4 px-3 pb-1.5">
@@ -65,9 +82,10 @@ export default function ResourceBar() {
                     const isCrop = key === 'crop';
                     return (
                         <div key={key} className="flex flex-col items-center min-w-[85px]">
-                            <span className="text-xs font-bold text-wood-dark flex items-center gap-1">
-                                {isCrop && isStarving ? '⚠️' : icon} {value.toLocaleString()}
-                            </span>
+                            <div className="w-7 h-7 rounded-full bg-white border-2 border-wood-light flex items-center justify-center text-xs mb-0.5">
+                                {isCrop && isStarving ? '⚠️' : icon}
+                            </div>
+                            <span className="text-xs font-bold text-wood-dark">{value.toLocaleString()}</span>
                             <div className="resource-progress-track">
                                 <div
                                     className={`resource-progress-fill ${isCrop && prod < 0 ? 'bg-red-700 animate-pulse' : ''}`}

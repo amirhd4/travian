@@ -50,4 +50,19 @@ body {
   .game-sky-bg {
     background: linear-gradient(180deg, #bfe0f5 0%, #d9ecd0 30%, #a8c97f 55%, #7fa855 78%, #5a7a3a 100%);
   }
+
+  /* درخت‌های تزئینی دو طرف صفحه، پشت همه چیز */
+  .side-tree-left, .side-tree-right {
+    @apply hidden 2xl:block fixed top-0 h-full w-44 z-[90] pointer-events-none bg-no-repeat bg-contain;
+  }
+  .side-tree-left { left: 0; background-image: url('/assets/ui/tree-left.png'); background-position: top left; }
+  .side-tree-right { right: 0; background-image: url('/assets/ui/tree-right.png'); background-position: top right; }
+
+  /* اسلات تجهیزات قهرمان، شبیه گرید تراوین */
+  .equip-slot {
+    @apply w-full aspect-square rounded border-2 border-wood-light bg-white/70 flex items-center justify-center relative overflow-hidden transition hover:border-amber-600 cursor-pointer;
+  }
+  .equip-slot.filled {
+    @apply border-amber-600 bg-amber-50;
+  }
 }
