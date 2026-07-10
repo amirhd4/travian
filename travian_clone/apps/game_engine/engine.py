@@ -1,14 +1,15 @@
 from datetime import datetime, timedelta, timezone
 from .models import ServerSetting, Village, VillageBuilding
 from .tasks.game_tasks import process_game_event
-from apps.game_engine.models import  GameLog
+from apps.game_engine.models import GameLog
 from apps.combat.models import TroopType, VillageTroop
 
 
 def schedule_game_event(village_id, event_type, base_duration_seconds, details):
     settings = ServerSetting.objects.get(is_active=True)
 
-    # ✅ هر نوع رویداد از ضریب سرعت مخصوص خودش استفاده می‌کند
+    # ✅ هر نوع رویداد از ضریب سرعت مخصوص خودش استفاده می‌کند (قبلا همه از
+    # server_speed استفاده می‌کردند و building_speed اصلا استفاده نمی‌شد)
     if event_type == "BUILDING_UPGRADE":
         speed = settings.building_speed or 1
     elif event_type == "TROOP_RECRUITMENT":
@@ -19,8 +20,10 @@ def schedule_game_event(village_id, event_type, base_duration_seconds, details):
     actual_duration = base_duration_seconds / max(1, speed)
 
     if actual_duration <= 0.1:
+        # حالت سرعت نجومی: اجرای آنی
         execute_immediate_event(village_id, event_type, details)
     else:
+        # حالت نرمال: ارسال به صف Celery
         run_time = datetime.now(timezone.utc) + timedelta(seconds=actual_duration)
         process_game_event.apply_async(args=[village_id, event_type, details], eta=run_time)
 
@@ -41,7 +44,6 @@ def execute_immediate_event(village_id, event_type, details):
             building.upgrade_end_time = None
             building.save()
 
-            # ثبت سیستم لاگ برای ارتقای ساختمان
             GameLog.objects.create(
                 village=village,
                 log_type='BUILDING',
@@ -60,7 +62,6 @@ def execute_immediate_event(village_id, event_type, details):
             village_troop.count += count
             village_troop.save()
 
-            # ثبت لاگ برای ساخت نیرو
             GameLog.objects.create(
                 village=village,
                 log_type='SYSTEM',

@@ -5,23 +5,32 @@ from django.utils import timezone
 
 
 class ServerSetting(models.Model):
+    # سرعت کلی تولید منابع
     server_speed = models.BigIntegerField(default=1)
-    troop_speed = models.BigIntegerField(default=1)          # سرعت حرکت نیرو روی نقشه
-    building_speed = models.BigIntegerField(default=1)       # سرعت ساخت‌وساز
-    troop_training_speed = models.BigIntegerField(default=1) # ✅ فیلد جدید: سرعت آموزش نیرو در پادگان/اصطبل/کارگاه
+    # سرعت حرکت نیرو روی نقشه (جابه‌جایی/حمله/غارت/بازگشت)
+    troop_speed = models.BigIntegerField(default=1)
+    # ✅ سرعت ساخت‌وساز ساختمان‌ها (قبلا تعریف شده بود ولی هیچ‌جا استفاده نمی‌شد)
+    building_speed = models.BigIntegerField(default=1)
+    # ✅ جدید: سرعت آموزش نیرو در پادگان/اصطبل/کارگاه (کاملا جدا از سرعت حرکت و ساخت‌وساز)
+    troop_training_speed = models.BigIntegerField(default=1)
+
     duration_days = models.IntegerField(default=365)
     is_active = models.BooleanField(default=True)
     start_date = models.DateTimeField(auto_now_add=True)
     ww_unlocked = models.BooleanField(default=False)
 
-    # ✅ ظرفیت پیش‌فرض انبار/سیلو برای دهکده‌های جدید این سرور (قابل تنظیم توسط ادمین)
+    # ✅ ظرفیت پیش‌فرض انبار/سیلو برای دهکده‌های جدید این سرور
     starting_max_storage = models.IntegerField(default=800)
     starting_max_granary = models.IntegerField(default=800)
 
-    # ✅ تنظیمات دهکده‌های فارم
+    # ✅ تنظیمات دهکده‌های فارم (تعداد و ضریب تولید، هر دو قابل تنظیم توسط ادمین موقع نصب سرور)
     farm_village_count = models.IntegerField(default=20)
     farm_village_multiplier = models.IntegerField(default=1)
 
+    # ✅ مدت زمان محافظت تازه‌واردان در برابر حمله/غارت/تسخیر (به روز)، قابل تنظیم برای هر سرور
+    new_player_protection_days = models.IntegerField(default=7)
+
+    # وضعیت پایان بازی
     is_finished = models.BooleanField(default=False)
     finished_at = models.DateTimeField(null=True, blank=True)
     winner_player = models.ForeignKey(
@@ -38,33 +47,27 @@ class Village(models.Model):
     x_coord = models.IntegerField()
     y_coord = models.IntegerField()
 
-    # اولین دهکده هر بازیکن به عنوان پایتخت علامت‌گذاری می‌شود
-    # (برای انتخاب پیش‌فرض دهکده فعال در فرانت‌اند و منطق‌های آینده مثل انتقال پایتخت)
     is_capital = models.BooleanField(default=False)
 
-    # منابع (مقادیر ذخیره شده در آخرین آپدیت)
     wood = models.FloatField(default=750.0)
     clay = models.FloatField(default=750.0)
     iron = models.FloatField(default=750.0)
     crop = models.FloatField(default=750.0)
 
-    # نرخ تولید پایه در ساعت (بدون احتساب سرعت سرور)
     prod_wood = models.IntegerField(default=20)
     prod_clay = models.IntegerField(default=20)
     prod_iron = models.IntegerField(default=20)
     prod_crop = models.IntegerField(default=20)
 
-    # ظرفیت انبارها
     max_storage = models.IntegerField(default=800)
     max_granary = models.IntegerField(default=800)
 
-    # زمان آخرین آپدیت برای محاسبه دلتای منابع
     last_update = models.DateTimeField(auto_now_add=True)
 
     loyalty = models.FloatField(default=100)
     is_natar_ww_site = models.BooleanField(default=False)
     is_natar_plan_guard = models.BooleanField(default=False)
-
+    # ✅ جدید: دهکده‌ی فارم (منبع نامحدود برای غارت، متعلق به NPC "Farms")
     is_farm_village = models.BooleanField(default=False)
 
     class Meta:
@@ -76,30 +79,21 @@ class Village(models.Model):
 
 
 class BuildingType(models.Model):
-    """مدل نگهدارنده اطلاعات ثابت ساختمان‌ها (مثل پادگان، انبار، معدن آهن)"""
+    """مدل نگهدارنده اطلاعات ثابت ساختمان‌ها"""
     name = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True)
 
-    # هزینه‌های پایه برای سطح ۱
     base_wood_cost = models.IntegerField(default=50)
     base_clay_cost = models.IntegerField(default=50)
     base_iron_cost = models.IntegerField(default=50)
     base_crop_cost = models.IntegerField(default=50)
 
-    # زمان پایه ساخت (به ثانیه) برای سطح ۱
     base_build_time = models.IntegerField(default=120)
 
-    # مصرف گندم این ساختمان در ساعت
     crop_upkeep = models.IntegerField(default=2)
 
-    # مشخص می‌کند این نوع ساختمان نقش «دیوار دفاعی» را ایفا می‌کند.
-    # به این ترتیب موتور نبرد به‌جای جستجوی ساختمان بر اساس نام (که شکننده است)
-    # می‌تواند دیوار دهکده را با یک کوئری ساده پیدا کند.
     provides_wall_defense = models.BooleanField(default=False)
 
-    # دسته‌بندی ساختمان برای رندر بصری متفاوت در فرانت‌اند (به‌جای تطبیق روی
-    # رشته نام که شکننده است). RESOURCE = مزارع منابع، MILITARY = پادگان/اصطبل،
-    # INFRASTRUCTURE = ساختمان اصلی/انبار/سیلو/محل گردهمایی، WALL = دیوار.
     CATEGORY_CHOICES = [
         ('RESOURCE', 'منبع'),
         ('INFRASTRUCTURE', 'زیرساخت'),
@@ -108,8 +102,6 @@ class BuildingType(models.Model):
     ]
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='INFRASTRUCTURE')
 
-    # سقف سطح این نوع ساختمان. قبل از این فیلد، ساختمان‌ها بدون هیچ محدودیتی
-    # تا بی‌نهایت قابل ارتقا بودند.
     max_level = models.IntegerField(default=20)
 
     def __str__(self):
@@ -121,11 +113,9 @@ class VillageBuilding(models.Model):
     village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='buildings')
     building_type = models.ForeignKey(BuildingType, on_delete=models.CASCADE)
 
-    # هر دهکده در تراوین حدود ۴۰ اسلات (جایگاه) برای ساخت دارد
     position = models.IntegerField()
     level = models.IntegerField(default=0)
 
-    # وضعیت ارتقا
     is_upgrading = models.BooleanField(default=False)
     upgrade_end_time = models.DateTimeField(null=True, blank=True)
 
@@ -139,20 +129,22 @@ class VillageBuilding(models.Model):
 class GoldPackage(models.Model):
     name = models.CharField(max_length=100)
     gold_amount = models.IntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2) # قیمت به تومان یا ریال
+    price = models.DecimalField(max_digits=10, decimal_places=2)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.name} - {self.gold_amount} Gold"
 
+
 class Discount(models.Model):
-    percentage = models.IntegerField() # مثلا 25 برای ۲۵ درصد تخفیف
+    percentage = models.IntegerField()
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.percentage}% Discount"
+
 
 class Transaction(models.Model):
     player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE)
@@ -179,14 +171,6 @@ class GameLog(models.Model):
 
 
 class ResourceTrade(models.Model):
-    """
-    محموله‌ی تجاری بین دو دهکده که با تعداد مشخصی تاجر (Merchant) و در طول
-    زمان واقعی سفر جابه‌جا می‌شود.
-
-    قبل از این مدل، MarketplaceView منابع را به‌صورت آنی و بدون هیچ زمان
-    سفر یا محدودیت ظرفیت تاجر منتقل می‌کرد؛ یعنی عملا هیچ «بازارچه»ی
-    واقعی وجود نداشت.
-    """
     source_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='outgoing_trades')
     target_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='incoming_trades')
 
@@ -198,11 +182,11 @@ class ResourceTrade(models.Model):
     merchants_used = models.PositiveIntegerField(default=1)
 
     dispatched_at = models.DateTimeField(auto_now_add=True)
-    delivery_time = models.DateTimeField()          # زمان رسیدن منابع به مقصد
-    merchants_return_time = models.DateTimeField()  # زمان بازگشت تاجرها به مبدا (آزاد شدن ظرفیت)
+    delivery_time = models.DateTimeField()
+    merchants_return_time = models.DateTimeField()
 
     is_delivered = models.BooleanField(default=False)
-    is_completed = models.BooleanField(default=False)  # یعنی تاجرها هم برگشتند
+    is_completed = models.BooleanField(default=False)
 
     def total_resources(self):
         return self.wood + self.clay + self.iron + self.crop
@@ -233,25 +217,18 @@ class Alliance(models.Model):
     def __str__(self):
         return f"[{self.tag}] {self.name}"
 
+
 class AllianceMember(models.Model):
     alliance = models.ForeignKey(Alliance, related_name='members', on_delete=models.CASCADE)
     player = models.OneToOneField(settings.AUTH_USER_MODEL, related_name='alliance_membership', on_delete=models.CASCADE)
     joined_at = models.DateTimeField(auto_now_add=True)
-    role = models.CharField(max_length=50, default='Member') # e.g., Leader, Diplomat, Member
+    role = models.CharField(max_length=50, default='Member')
 
     def __str__(self):
         return f"{self.player} in {self.alliance.tag}"
 
 
 class QuestDefinition(models.Model):
-    """
-    تعریف یک کوئست تیوتوریال (مثل «ارتقای ساختمان اصلی به سطح ۳»). این
-    مدل قالب کوئست است، نه پیشرفت شخصی هر بازیکن.
-
-    قبل از این مدل، هیچ سیستم کوئست/تیوتوریالی وجود نداشت؛ بازیکن تازه‌وارد
-    بعد از ثبت‌نام فقط یک دهکده خالی می‌دید و هیچ راهنمایی گام‌به‌گامی
-    دریافت نمی‌کرد.
-    """
     CONDITION_CHOICES = [
         ('MAIN_BUILDING_LEVEL', 'سطح ساختمان اصلی'),
         ('WAREHOUSE_LEVEL', 'سطح انبار'),
@@ -290,7 +267,6 @@ class QuestDefinition(models.Model):
 
 
 class PlayerQuestProgress(models.Model):
-    """پیشرفت شخصی هر بازیکن در هر کوئست."""
     player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='quest_progress')
     quest = models.ForeignKey(QuestDefinition, on_delete=models.CASCADE, related_name='+')
     is_completed = models.BooleanField(default=False)

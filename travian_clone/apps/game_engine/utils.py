@@ -5,18 +5,15 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .models import ServerSetting, GameLog, VillageBuilding
 
-# درصد تلفات نیرو در هر ساعتِ مستمرِ قحطی.
 STARVATION_LOSS_PERCENT_PER_HOUR = 10
-
-# هر چند واحد منبعِ صرف‌شده در ساخت‌وساز معادل ۱ نفر جمعیت است. این عدد
-# صرفا یک ثابت بالانسی است و می‌توانید برای تنظیم دقیق‌تر آن را تغییر دهید.
 POPULATION_RESOURCE_DIVISOR = 100
+
+# ✅ نرخ ترمیم وفاداری توسط عمارت اقامتی (امتیاز در ساعت) - قبلا اشتباهاً ۱ بود
+LOYALTY_REGEN_PER_HOUR = 10
 
 
 def calculate_crop_upkeep(village):
-    """مجموع مصرف گندم (upkeep) تمام نیروهای مستقر و ساختمان‌های ساخته‌شده در این دهکده."""
     from apps.combat.models import VillageTroop
-    from .models import VillageBuilding
 
     troop_upkeep = sum(
         vt.count * vt.troop_type.crop_upkeep
@@ -30,15 +27,6 @@ def calculate_crop_upkeep(village):
 
 
 def calculate_building_population(building_type, level):
-    """
-    جمعیتی که یک ساختمان تا سطح فعلی‌اش ایجاد کرده، بر اساس مجموع منابعی
-    که صرف رسیدن به این سطح شده (همان فرمول تصاعدی 1.5^level که در محاسبه‌ی
-    هزینه‌ی ارتقا هم استفاده می‌شود).
-
-    قبل از این تابع، جمعیت در LeaderboardView صرفا «مجموع سطح همه‌ی
-    ساختمان‌ها» بود که هیچ ربطی به فرمول واقعی تراوین (جمعیت متناسب با
-    منابع سرمایه‌گذاری‌شده) نداشت.
-    """
     if level <= 0:
         return 0
     base_total_cost = (
@@ -50,14 +38,11 @@ def calculate_building_population(building_type, level):
 
 
 def calculate_village_population(village):
-    """جمعیت کل یک دهکده: مجموع جمعیت تمام ساختمان‌های ساخته‌شده‌اش."""
-    from .models import VillageBuilding
     buildings = VillageBuilding.objects.filter(village=village, level__gt=0).select_related('building_type')
     return int(round(sum(calculate_building_population(b.building_type, b.level) for b in buildings)))
 
 
 def _apply_starvation(village, elapsed_hours):
-    """وقتی گندم دهکده به صفر رسیده و نرخ تولید خالص همچنان منفی است، بخشی از نیروها می‌میرند."""
     from apps.combat.models import VillageTroop
 
     total_lost = 0
@@ -110,6 +95,29 @@ def _apply_starvation(village, elapsed_hours):
         )
 
 
+def _get_hero_resource_bonus(village):
+    """
+    اگر قهرمانِ زنده و در دسترسِ صاحب این دهکده، این دهکده را به‌عنوان خانه انتخاب کرده
+    باشد و در ماموریت/ماجراجویی نباشد، نرخ اضافه‌ی تولید منابع (بر ساعت) و نوع منبع
+    هدف را برمی‌گرداند. قبل از این، امتیاز «منابع» قهرمان اصلا هیچ اثری نداشت.
+    """
+    from apps.combat.models import Hero
+
+    try:
+        hero = Hero.objects.get(home_village=village, is_alive=True)
+    except Hero.DoesNotExist:
+        return None, 0
+
+    if hero.is_away or hero.is_on_adventure:
+        return None, 0
+
+    if hero.resource_points <= 0:
+        return None, 0
+
+    rate_per_hour = hero.resource_points * Hero.RESOURCE_UNITS_PER_POINT_PER_HOUR
+    return hero.resource_production_type, rate_per_hour
+
+
 def update_village_resources(village):
     """محاسبه منابع بر اساس زمان سپری‌شده از آخرین آپدیت + بررسی قحطی گندم."""
     now = timezone.now()
@@ -121,24 +129,31 @@ def update_village_resources(village):
     speed = settings.server_speed
 
     net_crop_rate = village.prod_crop - calculate_crop_upkeep(village)
+
     if village.loyalty < 100:
-        elapsed_hours_loyalty = (delta_seconds * speed) / 3600
-        net_crop_rate = village.prod_crop - calculate_crop_upkeep(village)
-
-        if village.loyalty < 100:
+        # ✅ ترمیم وفاداری فقط وقتی اتفاق می‌افتد که عمارت اقامتی این دهکده سرپا باشد
+        # (طبق قانون: اگر عمارت اقامتی با منجنیق تخریب و نابود شده باشد، وفاداری
+        # دیگر خودبه‌خود ترمیم نمی‌شود)
+        residence_exists = VillageBuilding.objects.filter(
+            village=village, building_type__name="عمارت اقامتی", level__gt=0
+        ).exists()
+        if residence_exists:
             elapsed_hours_loyalty = (delta_seconds * speed) / 3600
-            # ✅ ترمیم وفاداری فقط وقتی اتفاق می‌افتد که عمارت اقامتی سرپا باشد
-            residence_exists = VillageBuilding.objects.filter(
-                village=village, building_type__name="عمارت اقامتی", level__gt=0
-            ).exists()
-            if residence_exists:
-                village.loyalty = min(100.0, village.loyalty + elapsed_hours_loyalty * 10)  # +۱۰ در هر ساعت
+            village.loyalty = min(100.0, village.loyalty + elapsed_hours_loyalty * LOYALTY_REGEN_PER_HOUR)
 
-    village.wood = min(village.max_storage, village.wood + (village.prod_wood * delta_seconds * speed / 3600))
-    village.clay = min(village.max_storage, village.clay + (village.prod_clay * delta_seconds * speed / 3600))
-    village.iron = min(village.max_storage, village.iron + (village.prod_iron * delta_seconds * speed / 3600))
+    # ✅ بونوس منابع قهرمان (امتیازهای «منابع» که در صفحه‌ی قهرمان توزیع شده‌اند)
+    hero_resource_type, hero_rate_per_hour = _get_hero_resource_bonus(village)
 
-    raw_new_crop = village.crop + (net_crop_rate * delta_seconds * speed / 3600)
+    def _hero_extra(resource_key):
+        if hero_resource_type == resource_key:
+            return hero_rate_per_hour * delta_seconds * speed / 3600
+        return 0
+
+    village.wood = min(village.max_storage, village.wood + (village.prod_wood * delta_seconds * speed / 3600) + _hero_extra('wood'))
+    village.clay = min(village.max_storage, village.clay + (village.prod_clay * delta_seconds * speed / 3600) + _hero_extra('clay'))
+    village.iron = min(village.max_storage, village.iron + (village.prod_iron * delta_seconds * speed / 3600) + _hero_extra('iron'))
+
+    raw_new_crop = village.crop + (net_crop_rate * delta_seconds * speed / 3600) + _hero_extra('crop')
 
     if raw_new_crop < 0 and net_crop_rate < 0:
         elapsed_hours = (delta_seconds * speed) / 3600
@@ -154,6 +169,5 @@ def update_village_resources(village):
 
 
 def is_server_finished():
-    """آیا سرور فعال به پایان رسیده (برنده اعلام شده) است؟"""
     active_server = ServerSetting.objects.filter(is_active=True).first()
     return bool(active_server and active_server.is_finished)

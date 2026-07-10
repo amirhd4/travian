@@ -11,7 +11,7 @@ import datetime
 import math
 import uuid
 
-from .models import Transaction, Discount, GameLog, GoldPackage, Village, VillageBuilding
+from .models import Transaction, Discount, GameLog, GoldPackage, Village, VillageBuilding, ServerSetting
 from .engine import schedule_game_event
 from .utils import update_village_resources, calculate_crop_upkeep, calculate_building_population, calculate_village_population, is_server_finished
 from .services import found_new_village
@@ -30,14 +30,6 @@ Player = get_user_model()
 
 
 class VillageListView(APIView):
-    """
-    لیست تمام دهکده‌های بازیکن فعلی.
-
-    قبل از این ویو، فرانت‌اند هیچ راهی برای دانستن آی‌دی واقعی دهکده‌ها
-    نداشت و همیشه village_id=1 را هاردکد می‌کرد؛ به همین دلیل سیستم
-    چند دهکده‌ای عملا کار نمی‌کرد. این endpoint دقیقا همان چیزی است که
-    فرانت‌اند برای انتخاب «دهکده فعال» به آن نیاز دارد.
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -62,6 +54,16 @@ class VillageListView(APIView):
 
 
 class VillageDetailView(APIView):
+    """
+    اطلاعات زنده یک دهکده مشخص (منابع فعلی + نرخ تولید خالص).
+
+    ⚠️ این ویو صرفاً برای «نمایش وضعیت» صدا زده می‌شود (هر ۱۵ ثانیه توسط
+    ResourceBar.jsx). هرگونه محدودیت مربوط به «شروع یک ارتقای جدید» باید
+    فقط در UpgradeBuildingView باشد، نه اینجا - قبلا یک چک اشتباه اینجا
+    هم اضافه شده بود که باعث می‌شد هر وقت یک ساختمان در حال ساخت باشد
+    (که تقریبا همیشه اینطور است)، کل درخواست با خطای ۴۰۰ برگردد و منابع/
+    تولید هرگز از سرور به‌روزرسانی نشوند. این باگ در نسخه‌ی فعلی رفع شده.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, village_id):
@@ -70,14 +72,7 @@ class VillageDetailView(APIView):
         except Village.DoesNotExist:
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
-        # همگام‌سازی منابع تا این لحظه
         update_village_resources(village)
-
-        # ⛔️ بلوک زیر باید کاملاً حذف شود - اینجا فقط نمایش وضعیت است،
-        # نه شروع یک ارتقای جدید. این چک از قبل و درست در UpgradeBuildingView وجود دارد.
-        #
-        # if VillageBuilding.objects.filter(village=village, is_upgrading=True).exists():
-        #     return Response({...}, status=400)
 
         net_crop_production = village.prod_crop - calculate_crop_upkeep(village)
 
@@ -117,17 +112,28 @@ class VillageBuildingsView(APIView):
 
         buildings = VillageBuilding.objects.filter(village=village).select_related('building_type').order_by('position')
 
+        # ✅ سطح واقعی شگفتی جهان روی مدل WorldWonder نگه‌داری می‌شود، نه روی
+        # VillageBuilding (که همیشه با level=0 ساخته می‌شود). برای اینکه بج
+        # لول روی نقشه‌ی دهکده درست نمایش داده شود، این مقدار را جداگانه می‌خوانیم.
+        ww_level = None
+        if hasattr(village, 'world_wonder'):
+            ww_level = village.world_wonder.level
+
         data = []
         for b in buildings:
-            multiplier = 1.5 ** b.level
-            time_multiplier = 1.2 ** b.level
-            is_max_level = b.level >= b.building_type.max_level
+            display_level = b.level
+            if b.building_type.name == "شگفتی جهان" and ww_level is not None:
+                display_level = ww_level
+
+            multiplier = 1.5 ** display_level
+            time_multiplier = 1.2 ** display_level
+            is_max_level = display_level >= b.building_type.max_level
             data.append({
                 "id": b.id,
                 "position": b.position,
                 "name": b.building_type.name,
                 "category": b.building_type.category,
-                "level": b.level,
+                "level": display_level,
                 "max_level": b.building_type.max_level,
                 "is_max_level": is_max_level,
                 "is_upgrading": b.is_upgrading,
@@ -159,13 +165,8 @@ class VillageBuildingsView(APIView):
             "buildings": data,
         })
 
-class WorldMapView(APIView):
-    """
-    نقشه واقعی جهان اطراف یک مختصات مشخص.
 
-    قبل از این ویو، WorldMap.jsx کاملا در کلاینت و با Math.random() یک
-    شبکه ساختگی می‌ساخت که هیچ ارتباطی با دهکده‌های واقعی بازیکنان نداشت.
-    """
+class WorldMapView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -175,7 +176,6 @@ class WorldMapView(APIView):
         except (TypeError, ValueError):
             return Response({"error": "مختصات نامعتبر است."}, status=400)
 
-        # محدود کردن شعاع جلوی کوئری‌های خیلی سنگین را می‌گیرد
         radius = min(max(int(request.query_params.get('radius', 2) or 2), 1), 10)
 
         villages = Village.objects.filter(
@@ -191,6 +191,8 @@ class WorldMapView(APIView):
                 "y_coord": v.y_coord,
                 "owner": v.player.username,
                 "is_natar": v.player.username == "Natars",
+                "is_farm": v.is_farm_village,
+                "is_capital": v.is_capital,
                 "is_natar_ww_site": v.is_natar_ww_site,
                 "is_natar_plan_guard": v.is_natar_plan_guard,
             }
@@ -199,11 +201,28 @@ class WorldMapView(APIView):
         return Response(data)
 
 
+class FarmVillagesListView(APIView):
+    """
+    ✅ جدید: فهرست کامل دهکده‌های فارم روی نقشه (برای تب «فارم‌ها» در صفحه‌ی آمار)
+    تا بازیکن بتواند آن‌ها را مستقیم به لیست مزرعه (Farm List) اضافه کند.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        villages = Village.objects.filter(is_farm_village=True).order_by('id')
+        return Response([
+            {
+                "id": v.id,
+                "name": v.name,
+                "x_coord": v.x_coord,
+                "y_coord": v.y_coord,
+                "production_per_hour": v.prod_wood,
+            }
+            for v in villages
+        ])
+
+
 class FoundVillageView(APIView):
-    """
-    تاسیس دهکده جدید (Colonization). قبل از این ویو، هیچ راهی برای بازیکن
-    (نه در فرانت و نه در بک‌اند) برای تاسیس دهکده دوم/سوم وجود نداشت.
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -264,7 +283,6 @@ class UpgradeBuildingView(APIView):
 
             update_village_resources(village)
 
-            # محدودیت صف ساخت‌وساز: در هر لحظه فقط یک ساختمان می‌تواند در حال ارتقا باشد
             max_concurrent_builds = 2 if request.user.has_plus_active() else 1
             if VillageBuilding.objects.filter(village=village, is_upgrading=True).count() >= max_concurrent_builds:
                 return Response(
@@ -281,8 +299,6 @@ class UpgradeBuildingView(APIView):
             if building.is_upgrading:
                 return Response({"error": "این ساختمان در حال حاضر در حال ارتقا است."}, status=400)
 
-            # سقف سطح: قبل از این بررسی، ساختمان‌ها بدون هیچ محدودیتی تا بی‌نهایت
-            # قابل ارتقا بودند
             if building.level >= building.building_type.max_level:
                 return Response(
                     {"error": f"این ساختمان به حداکثر سطح مجاز ({building.building_type.max_level}) رسیده است."},
@@ -343,7 +359,6 @@ class PaymentWebhookView(APIView):
             package = transaction.package
             player = transaction.player
 
-            # بررسی تخفیف فعال [cite: 102, 103]
             active_discount = Discount.objects.filter(
                 start_time__lte=timezone.now(),
                 end_time__gte=timezone.now(),
@@ -352,7 +367,6 @@ class PaymentWebhookView(APIView):
 
             final_gold = package.gold_amount
             if active_discount:
-                # اعمال بونوس درصد طلای بیشتر [cite: 104]
                 final_gold += int(package.gold_amount * (active_discount.percentage / 100))
 
             player.gold_coins += final_gold
@@ -360,7 +374,6 @@ class PaymentWebhookView(APIView):
             transaction.status = 'SUCCESS'
             transaction.save()
 
-            # ارسال نوتیفیکیشن زنده به کاربر از طریق وب‌سوکت [cite: 105]
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 f"player_{player.id}",
@@ -387,22 +400,12 @@ class GameLogListView(APIView):
 
 
 class LeaderboardView(APIView):
-    """
-    رنکینگ واقعی بازیکنان و شگفتی جهان.
-
-    قبل از این ویو، جمعیت، اتحاد و رتبه شگفتی جهان کاملا ساختگی و بر اساس
-    فرمول‌های نمایشی مثل `1000 + rank * 50` تولید می‌شدند و هیچ ربطی به
-    وضعیت واقعی بازی نداشتند.
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         from apps.world_wonder.models import WorldWonder
         from apps.combat.models import TroopMovement
 
-        # --- جمعیت واقعی هر بازیکن: بر اساس مجموع منابع صرف‌شده در تمام سطوح
-        # تمام ساختمان‌های تمام دهکده‌هایش (فرمول واقعی‌تر؛ قبلا این فقط جمع
-        # سطح‌ها بود و هیچ تناسبی با هزینه‌ی واقعی ساخت‌وساز نداشت) ---
         population_by_player = {}
         for b in VillageBuilding.objects.filter(level__gt=0).select_related('building_type', 'village'):
             player_id = b.village.player_id
@@ -411,14 +414,13 @@ class LeaderboardView(APIView):
             )
         population_by_player = {pid: int(round(pop)) for pid, pop in population_by_player.items()}
 
-        # --- نام اتحاد واقعی هر بازیکن (در صورت عضویت) ---
         alliance_by_player = {
             m.player_id: f"[{m.alliance.tag}] {m.alliance.name}"
             for m in AllianceMember.objects.select_related('alliance').all()
         }
 
         players = (
-            Player.objects.exclude(username="Natars")
+            Player.objects.exclude(username__in=["Natars", "Farms"])
             .filter(is_active=True)
             .order_by('id')
         )
@@ -432,12 +434,10 @@ class LeaderboardView(APIView):
                 "population": population_by_player.get(p.id, 0),
             })
 
-        # مرتب‌سازی بر اساس جمعیت واقعی (نزولی) و اضافه کردن رتبه
         ranking_data.sort(key=lambda row: row["population"], reverse=True)
         for rank, row in enumerate(ranking_data, start=1):
             row["rank"] = rank
 
-        # --- رتبه‌بندی واقعی شگفتی جهان ---
         ww_data = []
         ww_qs = WorldWonder.objects.select_related('village__player').order_by('-level')[:20]
         for rank, ww in enumerate(ww_qs, start=1):
@@ -464,11 +464,6 @@ class LeaderboardView(APIView):
 
 
 class MarketplaceView(APIView):
-    """
-    ارسال منابع بین دهکده‌ها با تاجرهای واقعی، محدود به ظرفیت حمل و زمان
-    سفر. قبل از این ویو، منابع به‌صورت آنی و بدون هیچ محدودیتی منتقل
-    می‌شدند - یعنی عملا هیچ «بازارچه»ی واقعی وجود نداشت.
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -560,7 +555,6 @@ class MarketplaceView(APIView):
                     )
                 }, status=400)
 
-            # کسر منابع از مبدا همین الان انجام می‌شود (سرمایه‌گذاری برای تجارت)
             source.wood -= wood
             source.clay -= clay
             source.iron -= iron
@@ -605,13 +599,11 @@ class InboxView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # دریافت پیام‌های ورودی کاربر
         messages = Message.objects.filter(receiver=request.user).order_by('-created_at')
         serializer = MessageSerializer(messages, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        # ارسال پیام جدید
         receiver_id = request.data.get('receiver_id')
         subject = request.data.get('subject', '(بدون عنوان)')
         body = request.data.get('body', '')
@@ -634,7 +626,6 @@ class MessageReadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        # تغییر وضعیت پیام به خوانده شده
         try:
             message = Message.objects.get(pk=pk, receiver=request.user)
             message.is_read = True
@@ -648,7 +639,6 @@ class EmbassyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # دریافت اطلاعات اتحاد فعلی بازیکن
         try:
             membership = AllianceMember.objects.get(player=request.user)
             alliance = membership.alliance
@@ -667,7 +657,6 @@ class EmbassyView(APIView):
                 }
             })
         except AllianceMember.DoesNotExist:
-            # ارسال لیست تمام اتحادها برای پیوستن
             alliances = Alliance.objects.all().values('id', 'name', 'tag')
             return Response({
                 "has_alliance": False,
@@ -677,10 +666,6 @@ class EmbassyView(APIView):
     def post(self, request):
         action = request.data.get('action')
 
-        # نکته مهم: قبلا بررسی «شما از قبل عضو یک اتحاد هستید» به صورت
-        # بی‌قید و شرط برای هر اکشنی اجرا می‌شد؛ یعنی حتی اگر کاربر می‌خواست
-        # اتحاد را ترک کند یا عضوی را اخراج کند (که ذاتا نیازمند عضویت است)،
-        # همین ابتدا با خطا رد می‌شد. این بررسی الان فقط برای create/join است.
         if action in ('create', 'join'):
             if AllianceMember.objects.filter(player=request.user).exists():
                 return Response({"error": "شما از قبل عضو یک اتحاد هستید."}, status=400)
@@ -702,7 +687,6 @@ class EmbassyView(APIView):
             except Alliance.DoesNotExist:
                 return Response({"error": "اتحاد مورد نظر یافت نشد."}, status=404)
 
-        # --- اکشن‌های زیر همگی نیازمند عضویت فعلی در یک اتحاد هستند ---
         try:
             membership = AllianceMember.objects.select_related('alliance').get(player=request.user)
         except AllianceMember.DoesNotExist:
@@ -718,8 +702,6 @@ class EmbassyView(APIView):
                     ).exclude(player=request.user).order_by('joined_at')
 
                     if other_members.exists():
-                        # رهبری به قدیمی‌ترین عضو باقی‌مانده منتقل می‌شود تا
-                        # اتحاد بدون رهبر باقی نماند
                         successor = other_members.first()
                         successor.role = 'Leader'
                         successor.save()
@@ -728,7 +710,6 @@ class EmbassyView(APIView):
                             "message": f"شما اتحاد را ترک کردید. رهبری به {successor.player.username} منتقل شد."
                         })
                     else:
-                        # رهبر آخرین عضو باقی‌مانده است؛ ترک کردن یعنی انحلال اتحاد
                         alliance_name = alliance.name
                         alliance.delete()
                         return Response({"message": f"شما آخرین عضو بودید؛ اتحاد {alliance_name} منحل شد."})
@@ -769,7 +750,6 @@ class EmbassyView(APIView):
 
             with transaction.atomic():
                 if new_role == 'Leader':
-                    # فقط یک رهبر می‌تواند وجود داشته باشد؛ رهبر فعلی به دیپلمات تنزل می‌کند
                     membership.role = 'Diplomat'
                     membership.save()
                 target_membership.role = new_role
@@ -782,17 +762,13 @@ class EmbassyView(APIView):
                 return Response({"error": "فقط رهبر اتحاد می‌تواند اتحاد را منحل کند."}, status=403)
 
             alliance_name = alliance.name
-            alliance.delete()  # AllianceMember ها با CASCADE حذف می‌شوند
+            alliance.delete()
             return Response({"message": f"اتحاد {alliance_name} منحل شد."})
 
         return Response({"error": "عملیات نامعتبر"}, status=400)
 
 
 class ServerStatusView(APIView):
-    """
-    وضعیت کلی سرور (فعال/پایان‌یافته + برنده). عمدا بدون نیاز به احراز
-    هویت است تا حتی در صفحه‌ی ورود/ثبت‌نام هم اعلام برنده نمایش داده شود.
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
@@ -804,6 +780,7 @@ class ServerStatusView(APIView):
             "is_finished": active_server.is_finished,
             "duration_days": active_server.duration_days,
             "start_date": active_server.start_date,
+            "new_player_protection_days": active_server.new_player_protection_days,
         }
         if active_server.is_finished:
             data["finished_at"] = active_server.finished_at
@@ -814,7 +791,6 @@ class ServerStatusView(APIView):
 
 
 class QuestListView(APIView):
-    """فهرست کوئست‌های تیوتوریال + وضعیت پیشرفت بازیکن در هر کدام."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -870,16 +846,6 @@ class GoldPackageListView(APIView):
 
 
 class CreatePaymentRequestView(APIView):
-    """
-    شروع فرآیند خرید طلا.
-
-    ⚠️ این پیاده‌سازی از یک درگاه آزمایشی (Mock) استفاده می‌کند چون به کلید
-    API واقعی هیچ درگاه پرداختی دسترسی نداریم. برای اتصال واقعی، این ویو
-    را با فراخوانی API درخواست پرداخت درگاه واقعی (زرین‌پال/آیدی‌پی و...)
-    جایگزین کنید و authority واقعی که درگاه برمی‌گرداند را همین‌جا ذخیره
-    کنید؛ بقیه‌ی جریان کار (Transaction، PaymentWebhookView) بدون تغییر
-    باقی می‌ماند.
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -900,11 +866,6 @@ class CreatePaymentRequestView(APIView):
 
 
 class MockCompletePaymentView(APIView):
-    """
-    تکمیل آزمایشی یک پرداخت (شبیه‌سازی صفحه‌ی موفقیت درگاه). در پروداکشن
-    واقعی، این مرحله باید فقط توسط callback واقعی درگاه بانکی (همان
-    PaymentWebhookView موجود) فراخوانی شود، نه مستقیم توسط کاربر.
-    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -937,7 +898,6 @@ class MockCompletePaymentView(APIView):
 
 
 class BuyPlusView(APIView):
-    """خرید/تمدید اکانت پلاس با طلا: صف ساخت‌وساز را دوتایی می‌کند."""
     permission_classes = [IsAuthenticated]
 
     PLUS_COST_PER_DAY = 100
@@ -973,20 +933,3 @@ class BuyPlusView(APIView):
             "expires_at": player.plus_expires_at,
             "gold_coins": player.gold_coins,
         })
-
-
-class FarmVillagesListView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        villages = Village.objects.filter(is_farm_village=True).order_by('id')
-        return Response([
-            {
-                "id": v.id,
-                "name": v.name,
-                "x_coord": v.x_coord,
-                "y_coord": v.y_coord,
-                "production_per_hour": v.prod_wood,
-            }
-            for v in villages
-        ])

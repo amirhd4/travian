@@ -1,14 +1,6 @@
 """
 منطق ساخت «دهکده اولیه» برای بازیکنان تازه ثبت‌نام کرده، و «تاسیس دهکده جدید»
 (Colonization) برای بازیکنانی که مهاجر (Settler) کافی دارند.
-
-قبل از این فایل، هیچ کدی وجود نداشت که برای یک بازیکن تازه‌وارد دهکده بسازد؛
-بازیکن بعد از ثبت‌نام هیچ Village ای نداشت و کل بازی برایش کار نمی‌کرد. همچنین
-هیچ راهی برای تاسیس دهکده دوم/سوم وجود نداشت.
-
-نکته: create_starter_village idempotent است (اگر بازیکن از قبل دهکده داشته
-باشد، کاری انجام نمی‌دهد) تا فراخوانی تصادفی دوباره‌اش (مثلا از طریق سیگنال)
-مشکلی ایجاد نکند.
 """
 import random
 
@@ -17,17 +9,11 @@ from django.db import transaction
 
 from .models import Village, BuildingType, VillageBuilding, ServerSetting
 
-# محدوده نقشه برای جستجوی مختصات آزاد. در آینده می‌توان این را از
-# ServerSetting گرفت تا با اندازه واقعی نقشه هماهنگ باشد.
 MAP_SEARCH_RADIUS = 200
 MAX_COORDINATE_ATTEMPTS = 500
 
-# تعداد مهاجر لازم برای تاسیس یک دهکده جدید (مشابه تراوین اصلی)
 SETTLERS_REQUIRED = 3
 
-# چیدمان ساده‌شده جایگاه‌های دهکده: ۴ چوب‌بری + ۴ گودال خاک‌رس + ۴ معدن آهن
-# + ۶ مزرعه گندم (جمعا ۱۸ جایگاه منبع، دقیقا مثل تراوین اصلی) + ۶ ساختمان
-# مرکزی پایه (ساختمان اصلی، انبار، سیلوی غله، محل گردهمایی، پادگان، دیوار).
 _RESOURCE_FIELD_DEFS = (
     ("چوب‌بری", 4),
     ("گودال خاک رس", 4),
@@ -36,9 +22,8 @@ _RESOURCE_FIELD_DEFS = (
 )
 
 # ساختمان‌های داخل شهر (Dorf2) که در جایگاه‌های ۱۹ تا ۳۸ قرار می‌گیرند.
-# قبل از این لیست، فقط ۷ ساختمان تعریف شده بود و ۱۳ جایگاه از این ۲۰ تا
-# (که VillageMap.jsx از قبل مختصاتشان را رزرو کرده بود) اصلا هیچ رکوردی
-# در دیتابیس نداشتند - یعنی برای بازیکن حتی قابل مشاهده هم نبودند.
+# ✅ یکی از سه «مخفیگاه» تکراری با «آهنگری» (ارتقای نیرو تا لول ۲۰) جایگزین شد
+# تا مجموع اسلات‌ها همچنان ۴۰ باقی بماند.
 _CITY_BUILDING_DEFS = (
     ("ساختمان اصلی", 1, 'INFRASTRUCTURE'),
     ("انبار", 1, 'INFRASTRUCTURE'),
@@ -62,22 +47,11 @@ _CITY_BUILDING_DEFS = (
     ("پادگان بزرگ", 0, 'MILITARY'),
 )
 
-# این دو جایگاه ثابت و ویژه‌اند (دقیقا مثل تراوین اصلی): محل گردهمایی
-# همیشه جایگاه ۳۹ و دیوار همیشه جایگاه ۴۰ است.
 _RALLY_POINT_DEF = ("محل گردهمایی", 1, 'INFRASTRUCTURE')
 _WALL_DEF = ("دیوار (Wall)", 0, 'WALL')
 
 
 def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=None):
-    """
-    یک مختصات (x, y) آزاد روی نقشه پیدا می‌کند.
-
-    - اگر near_x/near_y داده شود: ابتدا نزدیک آن مختصات جستجو می‌کند
-      (برای تاسیس دهکده جدید نزدیک دهکده مبدا).
-    - اگر quadrant داده شود (NE/NW/SE/SW): جستجو به همان ربع نقشه محدود
-      می‌شود (برای گزینه‌ی «محل شروع» در ثبت‌نام).
-    - در غیر این صورت، جستجوی کاملا تصادفی در کل نقشه انجام می‌شود.
-    """
     if near_x is not None and near_y is not None:
         for _ in range(MAX_COORDINATE_ATTEMPTS):
             x = near_x + random.randint(-search_radius, search_radius)
@@ -104,9 +78,8 @@ def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=
         y = random.randint(-MAP_SEARCH_RADIUS, MAP_SEARCH_RADIUS)
         if not Village.objects.filter(x_coord=x, y_coord=y).exists():
             return x, y
-    raise RuntimeError(
-        "مختصات آزادی روی نقشه پیدا نشد؛ محدوده نقشه را بزرگ‌تر کنید."
-    )
+    raise RuntimeError("مختصات آزادی روی نقشه پیدا نشد؛ محدوده نقشه را بزرگ‌تر کنید.")
+
 
 def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20, category='INFRASTRUCTURE'):
     building_type, _ = BuildingType.objects.get_or_create(
@@ -128,16 +101,6 @@ def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20
 
 
 def _create_default_buildings(village):
-    """
-    چیدمان استاندارد ساختمان‌های یک دهکده تازه (چه دهکده اول، چه کلونی جدید).
-
-    جایگاه ۱ تا ۱۸: مزارع منابع (Dorf1).
-    جایگاه ۱۹ تا ۳۸: ساختمان‌های داخل شهر (Dorf2).
-    جایگاه ۳۹: محل گردهمایی (رزرو ثابت).
-    جایگاه ۴۰: دیوار (رزرو ثابت).
-    این چیدمان دقیقا با مختصات تعریف‌شده در VillageMap.jsx (DORF1_SLOTS و
-    DORF2_SLOTS) هماهنگ است.
-    """
     position = 1
     for type_name, count in _RESOURCE_FIELD_DEFS:
         building_type = _get_or_create_building_type(type_name, category='RESOURCE')
@@ -164,36 +127,49 @@ def _create_default_buildings(village):
     VillageBuilding.objects.create(village=village, building_type=wall_type, position=40, level=wall_level)
 
 
+def _get_starting_capacities():
+    """✅ ظرفیت شروع انبار/سیلو را از تنظیمات سرور فعال می‌خواند (قابل تنظیم برای هر سرور)."""
+    server_settings = ServerSetting.objects.filter(is_active=True).first()
+    if server_settings:
+        return server_settings.starting_max_storage, server_settings.starting_max_granary
+    return 800, 800
+
+
 @transaction.atomic
 def create_starter_village(player, name="دهکده اول", starting_quadrant='RANDOM'):
     existing = Village.objects.filter(player=player).order_by('id').first()
     if existing:
         return existing
 
-    server_settings = ServerSetting.objects.filter(is_active=True).first()
-    max_storage = server_settings.starting_max_storage if server_settings else 800
-    max_granary = server_settings.starting_max_granary if server_settings else 800
+    max_storage, max_granary = _get_starting_capacities()
 
     quadrant = starting_quadrant if starting_quadrant in ('NE', 'NW', 'SE', 'SW') else None
     x, y = _find_free_coordinates(quadrant=quadrant)
 
     village = Village.objects.create(
-        player=player, name=name, x_coord=x, y_coord=y, is_capital=True,
-        wood=750.0, clay=750.0, iron=750.0, crop=750.0,
-        prod_wood=20, prod_clay=20, prod_iron=20, prod_crop=20,
-        max_storage=max_storage, max_granary=max_granary,
+        player=player,
+        name=name,
+        x_coord=x,
+        y_coord=y,
+        is_capital=True,
+        wood=750.0,
+        clay=750.0,
+        iron=750.0,
+        crop=750.0,
+        prod_wood=20,
+        prod_clay=20,
+        prod_iron=20,
+        prod_crop=20,
+        max_storage=max_storage,
+        max_granary=max_granary,
     )
+
     _create_default_buildings(village)
+
     return village
 
 
 def found_new_village(player, source_village, target_x=None, target_y=None, name="دهکده جدید"):
-    """
-    تاسیس یک دهکده جدید (Colonization) با مصرف ۳ نیروی مهاجر از دهکده مبدا.
-
-    قبل از این تابع، هیچ راهی برای تاسیس دهکده دوم/سوم وجود نداشت؛ سیستم
-    چند دهکده‌ای فقط از طریق ادمین جنگو قابل شبیه‌سازی بود.
-    """
     from apps.combat.models import VillageTroop
 
     if source_village.player_id != player.id:
@@ -218,7 +194,6 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
     else:
         x, y = _find_free_coordinates(near_x=source_village.x_coord, near_y=source_village.y_coord)
 
-    # کسر مهاجرها از دهکده مبدا (به ترتیب از گروه‌های موجود مصرف می‌شود)
     remaining_to_deduct = SETTLERS_REQUIRED
     for vt in settler_troops:
         if remaining_to_deduct <= 0:
@@ -228,9 +203,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         vt.save()
         remaining_to_deduct -= deduct
 
-    server_settings = ServerSetting.objects.filter(is_active=True).first()
-    max_storage = server_settings.starting_max_storage if server_settings else 800
-    max_granary = server_settings.starting_max_granary if server_settings else 800
+    max_storage, max_granary = _get_starting_capacities()
 
     new_village = Village.objects.create(
         player=player,
@@ -256,8 +229,6 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
 
 
 def _create_resource_fields_only(village):
-    """فقط مزارع منابع (بدون هیچ ساختمان مرکزی) می‌سازد - برای دهکده‌های
-    ویرانه‌ی ناتار که بعدا محل شگفتی جهان می‌شوند."""
     position = 1
     for type_name, count in _RESOURCE_FIELD_DEFS:
         building_type = _get_or_create_building_type(type_name, category='RESOURCE')

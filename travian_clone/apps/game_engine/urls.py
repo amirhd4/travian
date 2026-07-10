@@ -3,7 +3,8 @@ from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
     InboxView, MessageReadView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
     FoundVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
-    GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView, FarmVillagesListView,
+    GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
+    FarmVillagesListView,
 )
 
 urlpatterns = [
@@ -11,6 +12,7 @@ urlpatterns = [
     path('villages/<int:village_id>/', VillageDetailView.as_view(), name='village_detail'),
     path('villages/<int:village_id>/buildings/', VillageBuildingsView.as_view(), name='village_buildings'),
     path('world-map/', WorldMapView.as_view(), name='world_map'),
+    path('farm-villages/', FarmVillagesListView.as_view(), name='farm_villages'),
     path('found-village/', FoundVillageView.as_view(), name='found_village'),
     path('upgrade-building/', UpgradeBuildingView.as_view(), name='upgrade_building'),
     path('webhook/', PaymentWebhookView.as_view()),
@@ -27,5 +29,4 @@ urlpatterns = [
     path('payment/create/', CreatePaymentRequestView.as_view(), name='create_payment'),
     path('payment/mock-complete/', MockCompletePaymentView.as_view(), name='mock_complete_payment'),
     path('plus/', BuyPlusView.as_view(), name='plus'),
-    path('farm-villages/', FarmVillagesListView.as_view(), name='farm_villages'),
 ]

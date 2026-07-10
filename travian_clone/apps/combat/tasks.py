@@ -1,3 +1,4 @@
+import datetime
 from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
@@ -7,16 +8,23 @@ from channels.layers import get_channel_layer
 import random
 
 from travian_core.celery import app
-from apps.game_engine.models import Village, GameLog, VillageBuilding
-from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal, Adventure, TroopUpgrade
+from apps.game_engine.models import Village, GameLog, VillageBuilding, ServerSetting
+from .models import (
+    TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal,
+    Adventure, TroopUpgrade,
+)
 from .engine import calculate_combat, calculate_catapult_damage
 from .hero_utils import resolve_adventure, generate_adventures_for_player
 
 
 CRANNY_PROTECTION_PER_LEVEL = 100  # هر سطح مخفیگاه، این مقدار از هر نوع منبع را از غارت محافظت می‌کند
 
+# ✅ ساختمان‌هایی که هرگز نباید هدف منجنیق قرار بگیرند (دیوار جداگانه توسط
+# قوچ مدیریت می‌شود، و مزارع منابع اصلا در تراوین اصلی هدف منجنیق نیستند)
+_CATAPULT_EXCLUDED_CATEGORIES = ('RESOURCE', 'WALL')
+
+
 def _notify_player(player_id, update_type, payload):
-    """ارسال آپدیت زنده به کاربر از طریق وب‌سوکت (در صورت وجود channel layer)."""
     channel_layer = get_channel_layer()
     if channel_layer is None:
         return
@@ -31,7 +39,8 @@ def _notify_player(player_id, update_type, payload):
 
 
 def _hero_attack_bonus(player):
-    """امتیاز حمله‌ای که قهرمانِ زندهٔ بازیکن به ستون مهاجم اضافه می‌کند."""
+    """امتیاز حمله‌ای که قهرمانِ زندهٔ بازیکن به ستون مهاجم اضافه می‌کند (بونوس ثابت،
+    نه درصدی - «قدرت مبارزه» + آیتم‌های تجهیز شده + امتیازهای «قدرت مبارزه»)."""
     try:
         hero = Hero.objects.get(player=player, is_alive=True)
     except Hero.DoesNotExist:
@@ -40,24 +49,47 @@ def _hero_attack_bonus(player):
         inv.item.attack_bonus
         for inv in PlayerHeroItem.objects.filter(hero=hero, is_equipped=True).select_related('item')
     )
-    return hero.level * 50 + equipped_bonus
+    return hero.level * 50 + hero.fighting_strength_points * 20 + equipped_bonus
 
 
 def _hero_defense_bonus(player, village):
-    """امتیاز دفاعی قهرمان؛ فقط وقتی قهرمان دقیقا در همین دهکده مستقر است
-    و هم‌اکنون در ماموریت نظامی دیگر یا ماجراجویی نیست."""
+    """امتیاز دفاعی قهرمان؛ فقط وقتی قهرمان دقیقا در همین دهکده مستقر است،
+    در ماموریت/ماجراجویی نیست، و گزینه‌ی «مشارکت در دفاع» را غیرفعال نکرده باشد."""
     try:
         hero = Hero.objects.get(
             player=player, is_alive=True, home_village=village,
-            is_away=False, is_on_adventure=False,
+            is_away=False, is_on_adventure=False, participates_in_defense=True,
         )
     except Hero.DoesNotExist:
         return 0
-    return hero.level * 40
+    return hero.level * 40 + hero.fighting_strength_points * 20
+
+
+def _hero_off_bonus_percent(player, participating):
+    """✅ جدید: بونوس درصدی «امتیاز تهاجمی» قهرمان روی کل قدرت حمله‌ی ستون، فقط
+    وقتی قهرمان واقعا همراه همین حمله اعزام شده باشد."""
+    if not participating:
+        return 0
+    try:
+        hero = Hero.objects.get(player=player, is_alive=True)
+    except Hero.DoesNotExist:
+        return 0
+    return hero.off_bonus_points * Hero.OFF_DEF_BONUS_PERCENT_PER_POINT
+
+
+def _hero_def_bonus_percent(player, village):
+    """✅ جدید: بونوس درصدی «امتیاز دفاعی» قهرمان روی کل قدرت دفاع دهکده."""
+    try:
+        hero = Hero.objects.get(
+            player=player, is_alive=True, home_village=village,
+            is_away=False, is_on_adventure=False, participates_in_defense=True,
+        )
+    except Hero.DoesNotExist:
+        return 0
+    return hero.def_bonus_points * Hero.OFF_DEF_BONUS_PERCENT_PER_POINT
 
 
 def _animal_defense_points(village):
-    """امتیاز دفاعی حیوانات نگهبانی که بازیکن با طلا برای این دهکده خریده است."""
     animals = VillageAnimal.objects.filter(village=village).select_related('animal')
     inf = sum(va.count * va.animal.defense_infantry for va in animals)
     cav = sum(va.count * va.animal.defense_cavalry for va in animals)
@@ -65,7 +97,6 @@ def _animal_defense_points(village):
 
 
 def _grant_hero_experience(player, amount):
-    """تجربه ساده بعد از نبرد؛ هر ۱۰۰ تجربه یک سطح."""
     hero, _ = Hero.objects.get_or_create(player=player)
     if not hero.is_alive:
         return
@@ -74,24 +105,29 @@ def _grant_hero_experience(player, amount):
     hero.save()
 
 
+def _is_still_protected(target_village):
+    """بررسی مضاعف محافظت تازه‌واردان در لحظه‌ی نتیجه‌گیری نبرد (علاوه بر چک اولیه
+    هنگام دیسپچ) - برای اطمینان کامل، چون بین لحظه‌ی اعزام و لحظه‌ی رسیدن ممکن
+    است زمان زیادی گذشته باشد و این تابع همیشه وضعیت لحظه‌ی فعلی را چک می‌کند."""
+    owner_username = target_village.player.username
+    if owner_username in ("Natars", "Farms"):
+        return False
+    server_settings = ServerSetting.objects.filter(is_active=True).first()
+    protection_days = server_settings.new_player_protection_days if server_settings else 7
+    if protection_days <= 0:
+        return False
+    protection_until = target_village.player.date_joined + datetime.timedelta(days=protection_days)
+    return timezone.now() < protection_until
+
+
 @app.task
 def resolve_combat_movement(movement_id):
-    """
-    نقطه ورودی اصلی برای «حل کردن» یک حرکت نظامی وقتی زمان رسیدنش فرا می‌رسد.
-
-    قبل از این تابع، هیچ جایی resolve_combat_movement را صدا نمی‌زد؛
-    SendTroopsView فقط یک TroopMovement می‌ساخت و همان‌جا رهایش می‌کرد،
-    پس هیچ حمله‌ای هرگز به نتیجه نمی‌رسید. حالا این تسک از views.py با
-    apply_async(eta=arrival_time) زمان‌بندی می‌شود و خودش هم برای نیروهای
-    بازمانده یک حرکت RETURN جدید می‌سازد و زمان‌بندی می‌کند.
-    """
     with transaction.atomic():
         try:
             movement = TroopMovement.objects.select_for_update().get(
                 id=movement_id, is_completed=False
             )
         except TroopMovement.DoesNotExist:
-            # یا قبلا پردازش شده (idempotency) یا پاک شده؛ در هر دو حالت کاری نیست
             return "این حرکت نظامی یافت نشد یا قبلا پردازش شده است."
 
         if movement.movement_type == 'REINFORCEMENT':
@@ -136,7 +172,6 @@ def _resolve_reinforcement(movement):
 
 
 def _resolve_return(movement):
-    """بازگشت بازماندگان حمله/غارت (و غنائم آن‌ها) به دهکده مبدا اصلی."""
     home_village = Village.objects.select_for_update().get(id=movement.target_village_id)
 
     for troop_id_str, qty in movement.troops_payload.items():
@@ -176,14 +211,6 @@ def _resolve_return(movement):
 
 
 def _resolve_scout(movement):
-    """
-    ماموریت شناسایی. قبل از این تابع، سیستم جاسوسی اصلا وجود نداشت.
-
-    منطق ساده‌شده: اگر جمع جاسوس‌های دفاعی مستقر در دهکده هدف حداقل دو
-    برابر تعداد جاسوس‌های اعزامی باشد، ماموریت شکست می‌خورد و جاسوسان
-    مهاجم از بین می‌روند. در غیر این صورت، گزارش کاملی از منابع و نیروهای
-    دهکده هدف تهیه و برای مهاجم ارسال می‌شود و جاسوسان زنده به خانه برمی‌گردند.
-    """
     source = movement.source_village
     target = Village.objects.select_for_update().get(id=movement.target_village_id)
 
@@ -224,7 +251,6 @@ def _resolve_scout(movement):
     GameLog.objects.create(village=source, log_type='COMBAT', description=description)
     _notify_player(source.player_id, "SCOUT_RESULT", {"message": description, "success": True})
 
-    # بازگشت جاسوسان زنده به دهکده مبدا
     travel_duration = movement.arrival_time - movement.start_time
     return_arrival = timezone.now() + travel_duration
     return_movement = TroopMovement.objects.create(
@@ -248,21 +274,24 @@ def _resolve_attack_or_raid(movement):
     original_defender_player = target.player
     original_defender_player_id = target.player_id
 
-    # ------- قدرت مهاجم بر اساس اطلاعات واقعی TroopType از دیتابیس -------
     troop_type_cache = {
         t.id: t for t in TroopType.objects.filter(
             id__in=[int(k) for k in movement.troops_payload.keys()]
         )
     }
 
-    attacker_points_attack = 0
-    attacker_survivors = {}
-    catapult_units_sent = 0
-
+    # ✅ ضرایب ارتقای آهنگری مهاجم (بر اساس دهکده‌ی مبدا)، یک‌بار خوانده می‌شود
     attacker_upgrade_levels = {
         u.troop_type_id: u.level
         for u in TroopUpgrade.objects.filter(village=source, troop_type_id__in=troop_type_cache.keys())
     }
+
+    attacker_points_attack = 0
+    attacker_survivors = {}
+
+    # ✅ تفکیک کامل قوچ (همیشه هدفش دیوار است) از منجنیق (هدفش قابل انتخاب است)
+    ram_units_sent = 0
+    catapult_units_sent = 0
 
     for troop_id_str, qty in movement.troops_payload.items():
         qty = int(qty)
@@ -271,94 +300,125 @@ def _resolve_attack_or_raid(movement):
         troop_type = troop_type_cache.get(int(troop_id_str))
         if troop_type is None:
             continue
-        multiplier = 1 + (attacker_upgrade_levels.get(troop_type.id, 0) * 0.02)
-        attacker_points_attack += qty * troop_type.attack_power * multiplier
+
+        upgrade_multiplier = 1 + (attacker_upgrade_levels.get(troop_type.id, 0) * TroopUpgrade.BONUS_PER_LEVEL)
+        attacker_points_attack += qty * troop_type.attack_power * upgrade_multiplier
         attacker_survivors[troop_type.id] = qty
-        if troop_type.is_siege_weapon:
+
+        if getattr(troop_type, 'is_ram', False):
+            ram_units_sent += qty
+        if getattr(troop_type, 'is_catapult', False):
+            catapult_units_sent += qty
+        elif troop_type.is_siege_weapon and not getattr(troop_type, 'is_ram', False):
+            # نیروهای محاصره‌ای قدیمی seed شده که هنوز is_ram/is_catapult ندارند:
+            # با فرض این‌که منجنیق‌اند در نظر گرفته می‌شوند تا رفتار قبلی حفظ شود.
             catapult_units_sent += qty
 
-    # امتیاز قهرمان مهاجم (در صورت زنده بودن)
-    # بونوس حمله‌ی قهرمان فقط وقتی اعمال می‌شود که قهرمان واقعا همراه این
-    # حمله اعزام شده باشد (hero_participating). قبل از این تغییر، این
-    # بونوس بدون توجه به اعزام واقعی، به هر حمله‌ای اضافه می‌شد.
+    # امتیاز قهرمان مهاجم (بونوس ثابت + بونوس درصدی امتیاز تهاجمی)
     if movement.hero_participating:
         attacker_points_attack += _hero_attack_bonus(source.player)
         attacking_hero = Hero.objects.filter(player=source.player).first()
         if attacking_hero:
-            # قهرمان همین‌جا از حالت «در ماموریت» آزاد می‌شود (ساده‌سازی
-            # عمدی: منتظر رسیدن موج بازگشتی نمی‌مانیم)
             attacking_hero.is_away = False
             attacking_hero.save()
 
+    off_bonus_percent = _hero_off_bonus_percent(source.player, movement.hero_participating)
+    attacker_points_attack *= (1 + off_bonus_percent / 100)
+
     attacker_data = {"points_attack": attacker_points_attack}
 
-    # ------- قدرت مدافع بر اساس نیروهای واقعی مستقر در دهکده مقصد -------
-
+    # ------- قدرت مدافع -------
     defender_village_troops = list(
         VillageTroop.objects.select_for_update().filter(village=target).select_related('troop_type')
     )
     defender_upgrade_levels = {
         u.troop_type_id: u.level for u in TroopUpgrade.objects.filter(village=target)
     }
-    defender_points_inf = 0
-    defender_points_cav = 0
+
+    defender_points_inf = 0.0
+    defender_points_cav = 0.0
     for vt in defender_village_troops:
-        multiplier = 1 + (defender_upgrade_levels.get(vt.troop_type_id, 0) * 0.02)
+        multiplier = 1 + (defender_upgrade_levels.get(vt.troop_type_id, 0) * TroopUpgrade.BONUS_PER_LEVEL)
         defender_points_inf += vt.count * vt.troop_type.defense_infantry * multiplier
         defender_points_cav += vt.count * vt.troop_type.defense_cavalry * multiplier
 
-    # امتیاز دفاعی حیوانات نگهبان خریداری‌شده با طلا
     animal_inf, animal_cav = _animal_defense_points(target)
     defender_points_inf += animal_inf
     defender_points_cav += animal_cav
 
-    # امتیاز دفاعی قهرمان مدافع (فقط اگر قهرمان دقیقا در این دهکده مستقر باشد)
-    hero_defense = _hero_defense_bonus(target.player, target)
-    defender_points_inf += hero_defense
-    defender_points_cav += hero_defense
+    hero_defense_flat = _hero_defense_bonus(target.player, target)
+    defender_points_inf += hero_defense_flat
+    defender_points_cav += hero_defense_flat
+
+    def_bonus_percent = _hero_def_bonus_percent(target.player, target)
+    defender_points_inf *= (1 + def_bonus_percent / 100)
+    defender_points_cav *= (1 + def_bonus_percent / 100)
 
     defender_data = {
         "points_def_infantry": defender_points_inf,
         "points_def_cavalry": defender_points_cav,
     }
 
-    # دیوار دفاعی دهکده مقصد (در صورت وجود) بر اساس فلگ عمومی، نه نام هاردکد شده
     wall_building = VillageBuilding.objects.select_for_update().filter(
         village=target, building_type__provides_wall_defense=True
     ).first()
     wall_level = wall_building.level if wall_building else 0
 
-    combat_result = calculate_combat(
-        attacker_data,
-        defender_data,
-        wall_level=wall_level,
-        catapult_target=(catapult_units_sent > 0),
-        catapult_count=catapult_units_sent,
-    )
+    combat_result = calculate_combat(attacker_data, defender_data, wall_level=wall_level)
 
     attacker_loss_ratio = combat_result["attacker_loss_percent"] / 100
     defender_loss_ratio = combat_result["defender_loss_percent"] / 100
     victory = combat_result["victory"]
 
-    # ------- اعمال تلفات مهاجم و محاسبه بازماندگان -------
     for troop_id in list(attacker_survivors.keys()):
         qty = attacker_survivors[troop_id]
         remaining = qty - int(round(qty * attacker_loss_ratio))
         attacker_survivors[troop_id] = max(0, remaining)
 
-    # ------- اعمال تلفات مدافع روی رکوردهای واقعی VillageTroop -------
     for vt in defender_village_troops:
         remaining = vt.count - int(round(vt.count * defender_loss_ratio))
         vt.count = max(0, remaining)
         vt.save()
 
-    # ------- تخریب دیوار در صورت پیروزی مهاجم با منجنیق -------
-    if victory == "attacker" and wall_building and catapult_units_sent > 0:
-        wall_building.level = calculate_catapult_damage(catapult_units_sent, wall_building.level)
+    # ------- ✅ آسیب قوچ به دیوار (همیشه، مستقل از منجنیق) -------
+    wall_damage_msg = ""
+    if victory == "attacker" and wall_building and ram_units_sent > 0:
+        old_wall_level = wall_building.level
+        wall_building.level = calculate_catapult_damage(ram_units_sent, wall_building.level)
         wall_building.is_upgrading = False
         wall_building.save()
+        wall_damage_msg = f"\nقوچ‌ها دیوار دهکده را از سطح {old_wall_level} به سطح {wall_building.level} تخریب کردند."
 
-    # ------- غارت منابع در صورت پیروزی مهاجم در حرکت از نوع RAID -------
+    # ------- ✅ آسیب منجنیق به ساختمان انتخابی یا تصادفی (مستقل از قوچ) -------
+    catapult_damage_msg = ""
+    if victory == "attacker" and catapult_units_sent > 0:
+        target_building_name = movement.catapult_target_building
+        catapult_building = None
+
+        if target_building_name and target_building_name != 'RANDOM':
+            catapult_building = VillageBuilding.objects.select_for_update().filter(
+                village=target, building_type__name=target_building_name, level__gt=0
+            ).exclude(building_type__category__in=_CATAPULT_EXCLUDED_CATEGORIES).first()
+
+        if catapult_building is None:
+            candidates = list(
+                VillageBuilding.objects.select_for_update().filter(village=target, level__gt=0)
+                .exclude(building_type__category__in=_CATAPULT_EXCLUDED_CATEGORIES)
+            )
+            if candidates:
+                catapult_building = random.choice(candidates)
+
+        if catapult_building:
+            old_level = catapult_building.level
+            catapult_building.level = calculate_catapult_damage(catapult_units_sent, catapult_building.level)
+            catapult_building.is_upgrading = False
+            catapult_building.save()
+            catapult_damage_msg = (
+                f"\nمنجنیق‌ها به ساختمان «{catapult_building.building_type.name}» اصابت کردند "
+                f"(سطح {old_level} → {catapult_building.level})."
+            )
+
+    # ------- غارت منابع (فقط در حرکت از نوع RAID و پیروزی مهاجم) -------
     loot = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
     if movement.movement_type == "RAID" and victory == "attacker":
         cranny_levels_sum = VillageBuilding.objects.filter(
@@ -386,19 +446,24 @@ def _resolve_attack_or_raid(movement):
                 setattr(target, res_name, getattr(target, res_name) - int(share))
             target.save()
 
+    # ------- ✅ تسخیر دهکده با چیف/سناتور/رئیس - حالا برای هر دهکده‌ای (نه فقط ناتار) -------
     conquered = False
-    if victory == "attacker" and movement.movement_type == 'ATTACK' and original_defender_player.username == "Natars":
+    conquest_blocked_reason = ""
+    if victory == "attacker" and movement.movement_type == 'ATTACK':
         chief_ids_sent = [
             int(tid) for tid, qty in movement.troops_payload.items()
             if int(qty) > 0 and troop_type_cache.get(int(tid)) and troop_type_cache[int(tid)].is_chief
         ]
         if chief_ids_sent:
-            # ✅ وفاداری فقط وقتی کم می‌شود که عمارت اقامتی دهکده‌ی هدف تخریب شده باشد
+            # عمارت اقامتی باید تخریب و ناموجود باشد تا وفاداری اصلا کم شود
             residence_destroyed = not VillageBuilding.objects.filter(
                 village=target, building_type__name="عمارت اقامتی", level__gt=0
             ).exists()
 
-            if residence_destroyed:
+            # ✅ محافظت تازه‌واردان: چک مضاعف در لحظه‌ی نتیجه‌گیری
+            still_protected = _is_still_protected(target)
+
+            if residence_destroyed and not still_protected:
                 loyalty_reduction = len(chief_ids_sent) * random.randint(20, 35)
                 target.loyalty = max(0, target.loyalty - loyalty_reduction)
 
@@ -406,18 +471,26 @@ def _resolve_attack_or_raid(movement):
                     attacker_survivors[tid] = 0
 
                 if target.loyalty <= 0:
-                    target.player = source.player
-                    target.loyalty = random.randint(20, 35)
-                    conquered = True
+                    if target.is_capital:
+                        # ✅ پایتخت هرگز تسخیر نمی‌شود (دقیقا مثل تراوین اصلی)
+                        target.loyalty = 1
+                        conquest_blocked_reason = "\n👑 این دهکده پایتخت است و هرگز قابل تسخیر نیست."
+                    else:
+                        target.player = source.player
+                        target.loyalty = random.randint(20, 35)
+                        conquered = True
 
                 target.save()
 
                 if conquered and target.is_natar_ww_site:
                     _convert_to_ww_site(target)
             else:
-                # چیف‌ها اثری نداشتند چون عمارت اقامتی هنوز سرپاست
                 for tid in chief_ids_sent:
                     attacker_survivors[tid] = 0
+                if still_protected:
+                    conquest_blocked_reason = "\n🛡️ این دهکده هنوز در دوره‌ی محافظت تازه‌واردان است؛ چیف اثری نداشت."
+                else:
+                    conquest_blocked_reason = "\n🛡️ عمارت اقامتی این دهکده هنوز سرپاست؛ چیف اثری نداشت."
 
     plan_message = ""
     if victory == "attacker" and movement.movement_type == 'ATTACK' and movement.hero_participating:
@@ -447,14 +520,15 @@ def _resolve_attack_or_raid(movement):
         f"تلفات مهاجم: {combat_result['attacker_loss_percent']:.1f}%\n"
         f"تلفات مدافع: {combat_result['defender_loss_percent']:.1f}%"
     )
-    if wall_building and catapult_units_sent > 0:
-        log_msg += f"\nدیوار دهکده به سطح {wall_building.level} تخریب شد."
+    log_msg += wall_damage_msg
+    log_msg += catapult_damage_msg
     if any(loot.values()):
         log_msg += f"\nمنابع غارت شده: {loot}"
     if victory == "attacker" and any(
             troop_type_cache.get(int(tid), None) and troop_type_cache[int(tid)].is_chief for tid in
             movement.troops_payload):
         log_msg += f"\n👑 وفاداری دهکده هدف اکنون {target.loyalty:.0f} است."
+    log_msg += conquest_blocked_reason
     if conquered:
         log_msg += f"\n🏆 دهکده {target.name} با موفقیت تسخیر شد و اکنون متعلق به شماست!"
     log_msg += plan_message
@@ -496,11 +570,6 @@ def _resolve_attack_or_raid(movement):
 
 
 def _convert_to_ww_site(village):
-    """
-    تبدیل یک دهکده‌ی تازه‌تسخیرشده‌ی ناتار به سایت شگفتی جهان: تمام
-    ساختمان‌های غیرمزرعه حذف می‌شوند و به‌جایشان یک ساختمان «شگفتی جهان»
-    در جایگاه ۱۹ قرار می‌گیرد؛ رکورد WorldWonder هم ساخته می‌شود.
-    """
     from apps.game_engine.models import VillageBuilding
     from apps.game_engine.services import _get_or_create_building_type
     from apps.world_wonder.models import WorldWonder
@@ -518,7 +587,6 @@ def _convert_to_ww_site(village):
 
 @app.task
 def resolve_hero_adventure(hero_id, adventure_id):
-    """نتیجه‌گیری ماجراجویی قهرمان در لحظه‌ی بازگشت (زمان‌بندی‌شده از StartAdventureView)."""
     try:
         hero = Hero.objects.select_for_update().get(id=hero_id)
         adventure = Adventure.objects.get(id=adventure_id, is_completed=False)
@@ -543,9 +611,8 @@ def resolve_hero_adventure(hero_id, adventure_id):
 
 @app.task
 def generate_adventures_for_all_players():
-    """هر چند ساعت یک‌بار (طبق CELERY_BEAT_SCHEDULE) برای هر بازیکن ماجراجویی جدید می‌سازد."""
     from apps.authentication.models import Player
-    for player in Player.objects.filter(is_active=True).exclude(username="Natars"):
+    for player in Player.objects.filter(is_active=True).exclude(username__in=["Natars", "Farms"]):
         hero = Hero.objects.filter(player=player).select_related('home_village').first()
         if hero and hero.home_village:
             generate_adventures_for_player(player, hero.home_village, count=2)
@@ -553,13 +620,23 @@ def generate_adventures_for_all_players():
 
 @app.task
 def complete_troop_upgrade(upgrade_id):
-    from .models import TroopUpgrade
+    """✅ تکمیل ارتقای آهنگری یک نوع نیرو در یک دهکده."""
     try:
         upgrade = TroopUpgrade.objects.select_for_update().get(id=upgrade_id, is_upgrading=True)
     except TroopUpgrade.DoesNotExist:
-        return "یافت نشد یا قبلا انجام شده."
+        return "ارتقا یافت نشد یا قبلا انجام شده."
     upgrade.level += 1
     upgrade.is_upgrading = False
     upgrade.upgrade_ends_at = None
     upgrade.save()
+
+    GameLog.objects.create(
+        village=upgrade.village,
+        log_type='BUILDING',
+        description=f"ارتقای {upgrade.troop_type.name} در آهنگری به لول {upgrade.level} رسید."
+    )
+    _notify_player(upgrade.village.player_id, "TROOP_UPGRADE_COMPLETED", {
+        "message": f"ارتقای {upgrade.troop_type.name} به لول {upgrade.level} در {upgrade.village.name} تمام شد.",
+        "village_id": upgrade.village_id,
+    })
     return f"ارتقای {upgrade.troop_type.name} در {upgrade.village.name} به لول {upgrade.level} رسید."

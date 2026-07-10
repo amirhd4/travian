@@ -2,14 +2,45 @@ import datetime
 from django.utils import timezone
 from django.db import transaction
 
-from .models import TroopMovement, VillageTroop, TroopType
 from .models import TroopMovement, VillageTroop, TroopType, Hero
-from apps.game_engine.models import GameLog
+from apps.game_engine.models import GameLog, ServerSetting
 from .utils import calculate_travel_seconds
 from .tasks import resolve_combat_movement
 
 
-def dispatch_troop_movement(player, source_village, target_village, movement_type, troops_payload, farm_list_entry=None, send_hero=False):
+def _get_protection_message_if_blocked(target_village):
+    """
+    ✅ محافظت تازه‌واردان: بازیکنی که کمتر از X روز (قابل‌تنظیم توسط ادمین
+    برای هر سرور، پیش‌فرض ۷ روز) از ثبت‌نامش گذشته، نباید هدف حمله یا
+    غارت قرار بگیرد - دقیقا مثل تراوین اصلی. دهکده‌های ناتار و فارم از
+    این قانون مستثنی هستند (اصلا حسابی که این محافظت را داشته باشد ندارند).
+    """
+    owner_username = target_village.player.username
+    if owner_username in ("Natars", "Farms"):
+        return None
+
+    server_settings = ServerSetting.objects.filter(is_active=True).first()
+    protection_days = server_settings.new_player_protection_days if server_settings else 7
+
+    if protection_days <= 0:
+        return None
+
+    protection_until = target_village.player.date_joined + datetime.timedelta(days=protection_days)
+    now = timezone.now()
+    if now < protection_until:
+        remaining = protection_until - now
+        remaining_days = remaining.days + (1 if remaining.seconds > 0 else 0)
+        return (
+            f"این بازیکن هنوز در دوره‌ی محافظت تازه‌واردان قرار دارد "
+            f"(حدود {remaining_days} روز دیگر تا پایان محافظت باقی مانده)."
+        )
+    return None
+
+
+def dispatch_troop_movement(
+    player, source_village, target_village, movement_type, troops_payload,
+    farm_list_entry=None, send_hero=False, catapult_target_building=None,
+):
     valid_types = dict(TroopMovement.MOVEMENT_TYPES)
     if movement_type not in valid_types:
         return False, "نوع عملیات تاکتیکی نامعتبر است."
@@ -19,6 +50,12 @@ def dispatch_troop_movement(player, source_village, target_village, movement_typ
 
     if movement_type == 'ATTACK' and source_village.id == target_village.id:
         return False, "نمی‌توانید به دهکده خودتان حمله کنید."
+
+    # ✅ چک محافظت تازه‌واردان فقط برای حمله و غارت (پشتیبانی/شناسایی مجاز است)
+    if movement_type in ('ATTACK', 'RAID'):
+        protection_message = _get_protection_message_if_blocked(target_village)
+        if protection_message:
+            return False, protection_message
 
     hero_participating = False
     if send_hero:
@@ -40,6 +77,14 @@ def dispatch_troop_movement(player, source_village, target_village, movement_typ
         return False, f"نوع نیروی نامعتبر: {sorted(missing_ids)}"
 
     slowest_speed = min(t.speed for t in troop_types.values())
+
+    # ✅ اعتبارسنجی هدف منجنیق (اگر ارسال شده)؛ اگر نامعتبر بود، به‌جای رد کردن
+    # کل درخواست، به‌صورت خودکار روی «تصادفی» تنظیم می‌شود
+    if catapult_target_building and catapult_target_building != 'RANDOM':
+        from apps.game_engine.models import BuildingType
+        valid_names = set(BuildingType.objects.values_list('name', flat=True))
+        if catapult_target_building not in valid_names:
+            catapult_target_building = 'RANDOM'
 
     with transaction.atomic():
         for troop_id_str, count_to_send in troops_payload.items():
@@ -70,6 +115,7 @@ def dispatch_troop_movement(player, source_village, target_village, movement_typ
             arrival_time=arrival_time,
             farm_list_entry=farm_list_entry,
             hero_participating=hero_participating,
+            catapult_target_building=catapult_target_building,
         )
 
         GameLog.objects.create(
