@@ -235,6 +235,30 @@ class HeroView(APIView):
             "adventure_remaining_seconds": remaining_seconds,
             "home_village_id": hero.home_village_id,
             "is_away": hero.is_away,
+
+            # ✅ جدید: امتیازات قابل تخصیص قهرمان
+            "fighting_strength_points": hero.fighting_strength_points,
+            "off_bonus_points": hero.off_bonus_points,
+            "def_bonus_points": hero.def_bonus_points,
+            "resource_points": hero.resource_points,
+            "resource_production_type": hero.resource_production_type,
+            "participates_in_defense": hero.participates_in_defense,
+            "total_attribute_points": hero.total_attribute_points,
+            "available_attribute_points": hero.available_attribute_points,
+
+            "appearance": {
+                "gender": hero.gender,
+                "head_style": hero.head_style,
+                "hair_color": hero.hair_color,
+                "hair_style": hero.hair_style,
+                "ear_style": hero.ear_style,
+                "eyebrow_style": hero.eyebrow_style,
+                "eye_style": hero.eye_style,
+                "nose_style": hero.nose_style,
+                "mouth_style": hero.mouth_style,
+                "options_count": Hero.APPEARANCE_OPTION_COUNT,
+            },
+
             "inventory": [
                 {
                     "id": inv.id,
@@ -671,3 +695,161 @@ class BlacksmithView(APIView):
             ))
 
         return Response({"message": f"ارتقای {troop_type.name} به لول {next_level} آغاز شد."})
+
+
+class HeroAllocatePointsView(APIView):
+    """تخصیص امتیازهای قابل توزیع قهرمان (قدرت مبارزه/تهاجمی/دفاعی/منابع)."""
+    permission_classes = [IsAuthenticated]
+
+    ATTRIBUTE_FIELDS = {
+        'fighting_strength': 'fighting_strength_points',
+        'off_bonus': 'off_bonus_points',
+        'def_bonus': 'def_bonus_points',
+        'resource': 'resource_points',
+    }
+
+    def post(self, request):
+        attribute = request.data.get('attribute')
+        try:
+            amount = int(request.data.get('amount', 0))
+        except (TypeError, ValueError):
+            amount = 0
+
+        field_name = self.ATTRIBUTE_FIELDS.get(attribute)
+        if not field_name or amount <= 0:
+            return Response({"error": "خصیصه یا مقدار نامعتبر است."}, status=400)
+
+        try:
+            hero = Hero.objects.get(player=request.user)
+        except Hero.DoesNotExist:
+            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+
+        if amount > hero.available_attribute_points:
+            return Response({"error": "امتیاز کافی برای این تخصیص ندارید."}, status=400)
+
+        setattr(hero, field_name, getattr(hero, field_name) + amount)
+        hero.save()
+
+        return Response({
+            "message": "امتیاز با موفقیت تخصیص یافت.",
+            "available_attribute_points": hero.available_attribute_points,
+        })
+
+
+class HeroSettingsView(APIView):
+    """تنظیم نوع منبع تولیدی قهرمان و مشارکت در دفاع دهکده خانگی."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            hero = Hero.objects.get(player=request.user)
+        except Hero.DoesNotExist:
+            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+
+        resource_type = request.data.get('resource_production_type')
+        if resource_type:
+            valid_types = dict(Hero.RESOURCE_CHOICES)
+            if resource_type not in valid_types:
+                return Response({"error": "نوع منبع نامعتبر است."}, status=400)
+            hero.resource_production_type = resource_type
+
+        if 'participates_in_defense' in request.data:
+            hero.participates_in_defense = bool(request.data.get('participates_in_defense'))
+
+        hero.save()
+        return Response({"message": "تنظیمات قهرمان به‌روزرسانی شد."})
+
+
+class HeroReviveView(APIView):
+    """
+    احیای قهرمان مرده. هزینه بر اساس سطح قهرمان محاسبه می‌شود و از منابع
+    دهکده‌ی انتخابی کسر می‌شود. قبل از این ویو، اگر قهرمان از پای درمی‌آمد
+    (is_alive=False)، هیچ راهی برای احیای دوباره‌ی او وجود نداشت.
+    """
+    permission_classes = [IsAuthenticated]
+
+    BASE_COST_PER_RESOURCE = 500
+
+    def _calculate_cost(self, hero):
+        multiplier = 1 + (hero.level * 0.15)
+        cost = int(self.BASE_COST_PER_RESOURCE * multiplier)
+        return {"wood": cost, "clay": cost, "iron": cost, "crop": cost}
+
+    def get(self, request):
+        try:
+            hero = Hero.objects.get(player=request.user)
+        except Hero.DoesNotExist:
+            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+        return Response({"is_alive": hero.is_alive, "cost": self._calculate_cost(hero)})
+
+    def post(self, request):
+        village_id = request.data.get('village_id')
+
+        try:
+            hero = Hero.objects.select_for_update().get(player=request.user)
+        except Hero.DoesNotExist:
+            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+
+        if hero.is_alive:
+            return Response({"error": "قهرمان شما در حال حاضر زنده است."}, status=400)
+
+        cost = self._calculate_cost(hero)
+
+        with transaction.atomic():
+            try:
+                village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+            if (village.wood < cost['wood'] or village.clay < cost['clay'] or
+                    village.iron < cost['iron'] or village.crop < cost['crop']):
+                return Response({"error": "منابع این دهکده برای احیای قهرمان کافی نیست."}, status=400)
+
+            village.wood -= cost['wood']
+            village.clay -= cost['clay']
+            village.iron -= cost['iron']
+            village.crop -= cost['crop']
+            village.save()
+
+            hero.is_alive = True
+            hero.health = 50
+            hero.home_village = village
+            hero.last_health_update = timezone.now()
+            hero.save()
+
+        return Response({"message": "قهرمان شما با موفقیت احیا شد و در حال استراحت است."})
+
+
+class HeroAppearanceView(APIView):
+    """ذخیره‌ی ظاهر سفارشی قهرمان (بخش «ظاهر» مشابه تراوین اصلی)."""
+    permission_classes = [IsAuthenticated]
+
+    APPEARANCE_FIELDS = [
+        'head_style', 'hair_color', 'hair_style', 'ear_style',
+        'eyebrow_style', 'eye_style', 'nose_style', 'mouth_style',
+    ]
+
+    def post(self, request):
+        try:
+            hero = Hero.objects.get(player=request.user)
+        except Hero.DoesNotExist:
+            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+
+        gender = request.data.get('gender')
+        if gender:
+            if gender not in dict(Hero.GENDER_CHOICES):
+                return Response({"error": "جنسیت نامعتبر است."}, status=400)
+            hero.gender = gender
+
+        for field in self.APPEARANCE_FIELDS:
+            if field in request.data:
+                try:
+                    value = int(request.data[field])
+                except (TypeError, ValueError):
+                    return Response({"error": f"مقدار {field} نامعتبر است."}, status=400)
+                if not (1 <= value <= Hero.APPEARANCE_OPTION_COUNT):
+                    return Response({"error": f"مقدار {field} خارج از محدوده مجاز است."}, status=400)
+                setattr(hero, field, value)
+
+        hero.save()
+        return Response({"message": "ظاهر قهرمان با موفقیت ذخیره شد."})

@@ -15,7 +15,7 @@ import useGameStore from "./store/useGameStore.js";
 import { useEffect } from "react";
 import api from "./api/axiosConfig.js";
 import Movements from "./pages/Movements.jsx";
-import Hero from "./pages/Herro.jsx";
+import Hero from "./pages/Hero.jsx";
 import Colonize from "./pages/Colonize.jsx";
 import FarmList from "./pages/FarmList.jsx";
 import ServerStatusBanner from "./components/ServerStatusBanner.jsx";
@@ -23,6 +23,7 @@ import Quests from "./pages/Quests.jsx";
 import GoldShop from "./pages/GoldShop.jsx";
 import Checkout from "./pages/Checkout.jsx";
 import PlusAccount from "./pages/PlusAccount.jsx";
+import Blacksmith from "./pages/Blacksmith.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);

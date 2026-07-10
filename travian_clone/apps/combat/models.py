@@ -216,6 +216,22 @@ class Hero(models.Model):
     # ✅ سوییچ مشارکت در دفاع دهکده
     participates_in_defense = models.BooleanField(default=True)
 
+    # ✅ ظاهر قابل‌شخصی‌سازی قهرمان (شبیه تراوین اصلی).
+    # هر عدد فقط «شماره‌ی گزینه» در آن دسته است (بین ۱ تا APPEARANCE_OPTION_COUNT)؛
+    # خود تصاویر باید توسط طراح در public/assets/hero/... قرار بگیرند.
+    GENDER_CHOICES = [('MALE', 'مرد'), ('FEMALE', 'زن')]
+    APPEARANCE_OPTION_COUNT = 6
+
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default='MALE')
+    head_style = models.PositiveSmallIntegerField(default=1)
+    hair_color = models.PositiveSmallIntegerField(default=1)
+    hair_style = models.PositiveSmallIntegerField(default=1)
+    ear_style = models.PositiveSmallIntegerField(default=1)
+    eyebrow_style = models.PositiveSmallIntegerField(default=1)
+    eye_style = models.PositiveSmallIntegerField(default=1)
+    nose_style = models.PositiveSmallIntegerField(default=1)
+    mouth_style = models.PositiveSmallIntegerField(default=1)
+
     POINTS_PER_LEVEL = 4
     RESOURCE_UNITS_PER_POINT_PER_HOUR = 3  # هر امتیاز منابع، این مقدار در ساعت تولید می‌کند
     OFF_DEF_BONUS_PERCENT_PER_POINT = 0.5  # هر امتیاز تهاجمی/دفاعی، این درصد بونوس می‌دهد
