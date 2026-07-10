@@ -183,7 +183,7 @@ REST_FRAMEWORK = {
         'user': '300/min',
         # نرخ‌های اختصاصی برای نقاط حساس در برابر brute force
         'login_ip': '10/min',
-        'login_username': '5/5min',
+        'login_username': '5/min',
         'register_ip': '5/hour',
         'captcha_ip': '30/min',
     },
