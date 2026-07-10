@@ -185,21 +185,21 @@ REST_FRAMEWORK = {
         'login_ip': '10/min',
         'login_username': '5/min',
         'register_ip': '5/hour',
-        'captcha_ip': '30/min',
+        'captcha_ip': '40/min',
     },
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=2),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5), # زمان را از ۲ دقیقه به ۵ دقیقه افزایش بده تا فشار کمتری به شبکه بیاید
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
-    "ROTATE_REFRESH_TOKENS": True,      # هر رفرش، یک refresh token جدید صادر می‌کنه
-    "BLACKLIST_AFTER_ROTATION": True,   # توکن قدیمی بعد از رفرش باطل می‌شه (جلوی reuse رو می‌گیره)
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": False,   # در محیط توسعه False بگذار تا مشکل Race Condition کاملاً حل شود
 }
 
 # --- تنظیمات کوکی httpOnly برای نگهداری امن refresh token ---
 AUTH_COOKIE_NAME = "refresh_token"
-AUTH_COOKIE_PATH = "/api/auth/"     # فقط برای مسیرهای auth ارسال می‌شه، نه کل API
+AUTH_COOKIE_PATH = "/"
 AUTH_COOKIE_SAMESITE = "Lax"
 AUTH_COOKIE_SECURE = not DEBUG      # روی پروداکشن (HTTPS) باید True باشه
 

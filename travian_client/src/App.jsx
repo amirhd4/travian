@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import VillageMap from './pages/VillageMap';
 import WorldMap from './pages/WorldMap';
 import SendTroops from './pages/SendTroops';
 import Reports from "./pages/Reports.jsx";
@@ -24,6 +23,8 @@ import GoldShop from "./pages/GoldShop.jsx";
 import Checkout from "./pages/Checkout.jsx";
 import PlusAccount from "./pages/PlusAccount.jsx";
 import Blacksmith from "./pages/Blacksmith.jsx";
+import ResourceFields from "./pages/ResourceFields.jsx";
+import VillageCenter from "./pages/VillageCenter.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -82,10 +83,8 @@ function App() {
                 <Route path="/" element={<Navigate to="/login" />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route
-                    path="/village"
-                    element={<PrivateRoute><VillageMap /></PrivateRoute>}
-                />
+                <Route path="/village" element={<ResourceFields />} />
+                <Route path="/dorf2" element={<VillageCenter />} />
                 <Route
                     path="/world-map"
                     element={<PrivateRoute><WorldMap /></PrivateRoute>}

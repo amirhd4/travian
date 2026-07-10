@@ -1,82 +1,108 @@
 import axios from "axios";
 import useGameStore from "../store/useGameStore";
 
-// نکته مهم: این آدرس عمداً از "localhost" استفاده می‌کند نه "127.0.0.1".
-// مرورگرها این دو را دو "سایت" کاملاً متفاوت در نظر می‌گیرند؛ چون کوکی
-// refresh_token با SameSite=Lax ست شده، اگر فرانت‌اند (localhost:5173) و
-// بک‌اند با هاست‌نیم متفاوتی (مثلا 127.0.0.1:8000) صدا زده شوند، مرورگر
-// کوکی رفرش توکن را در درخواست‌های XHR/fetch ارسال نمی‌کند و در نتیجه بعد
-// از هر رفرش صفحه، کاربر عملاً از حساب خارج می‌شد. با یکسان نگه داشتن
-// هاست‌نیم (فقط پورت فرق دارد) این مشکل در حالت توسعه برطرف می‌شود.
-const baseURL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
+// نکته امنیتی مرورگرها: برای اینکه کوکی httpOnly (با تنظیم SameSite=Lax) در محیط لوکال به درستی کار کند،
+// فرانت و بک‌باند باید دقیقا روی یک هاست‌نیم (مثلا هر دو localhost یا هر دو 127.0.0.1) باشند.
+const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 const api = axios.create({
     baseURL: `${baseURL}/api/`,
-    withCredentials: true, // برای ارسال/دریافت کوکی httpOnly رفرش توکن ضروریه
+    withCredentials: true, // ارسال و دریافت کوکی رفرش توکن
+    timeout: 10000,        // جلوگیری از معلق ماندن درخواست‌ها در شبکه ضعیف
 });
 
-api.interceptors.request.use((config) => {
-    const token = useGameStore.getState().accessToken;
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+// اینترسپتور درخواست: تزریق خودکار Access Token
+api.interceptors.request.use(
+    (config) => {
+        const token = useGameStore.getState().accessToken;
+        if (token && !config.headers.Authorization) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
 
-// جلوگیری از چند درخواست هم‌زمان رفرش وقتی چند ریکوئست با هم 401 می‌گیرن
+// مدیریت صف درخواست‌های معلق در زمان رفرش توکن
 let isRefreshing = false;
 let pendingQueue = [];
 
 const processQueue = (error, token = null) => {
     pendingQueue.forEach(({ resolve, reject }) => {
-        if (error) reject(error);
-        else resolve(token);
+        if (error) {
+            reject(error);
+        } else {
+            resolve(token);
+        }
     });
     pendingQueue = [];
 };
 
+// اینترسپتور پاسخ: مدیریت خطاهای ۴۰۱ و رفرش خودکار توکن
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
-        const isRefreshCall = originalRequest?.url?.includes("token/refresh");
 
-        if (error.response?.status === 401 && !originalRequest._retry && !isRefreshCall) {
+        // اگر خطا مربوط به شبکه باشد یا پاسخی از سمت سرور دریافت نشده باشد
+        if (!error.response) {
+            return Promise.reject(error);
+        }
+
+        const isRefreshCall = originalRequest?.url?.includes("auth/token/refresh");
+        const isLoginCall = originalRequest?.url?.includes("auth/login"); // یا هر آدرسی که برای ورود دارید
+
+        // فقط در صورتی وارد پروسه رفرش می‌شویم که خطا ۴۰۱ باشد و درخواست مربوط به خود لاگین یا رفرش نباشد
+        if (error.response.status === 401 && !originalRequest._retry && !isRefreshCall && !isLoginCall) {
+
+            // اگر در حال حاضر یک درخواست رفرش در جریان است، بقیه درخواست‌ها را در صف نگه دار
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     pendingQueue.push({ resolve, reject });
-                }).then((newToken) => {
+                })
+                .then((newToken) => {
                     originalRequest.headers.Authorization = `Bearer ${newToken}`;
                     return api(originalRequest);
-                });
+                })
+                .catch((err) => Promise.reject(err));
             }
 
             originalRequest._retry = true;
             isRefreshing = true;
 
             try {
-                const { data } = await axios.post(
-                    `${baseURL}/api/auth/token/refresh/`,
-                    {},
-                    { withCredentials: true }
-                );
+                // ارسال درخواست رفرش به بک‌اند (بدنه خالی است چون توکن در کوکی ارسال می‌شود)
+                const { data } = await api.post("auth/token/refresh/", {});
 
                 const newAccessToken = data.access;
+
+                // به‌روزرسانی استیت مرکزی بازی
                 useGameStore.getState().setAccessToken(newAccessToken);
+
+                // آزاد کردن درخواست‌های منتظر در صف با توکن جدید
                 processQueue(null, newAccessToken);
 
+                // بازخوانی درخواست اصلی شکست خورده با توکن جدید
                 originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
                 return api(originalRequest);
 
             } catch (refreshError) {
+                // اگر رفرش توکن هم منقضی شده باشد، کاربر باید دوباره لاگین کند
                 processQueue(refreshError, null);
+
                 useGameStore.getState().clearUser();
-                window.location.href = "/login";
+
+                // برای جلوگیری از اختلال در رندر روت‌ها، هدایت به لاگین با کمی تاخیر یا مستقیما انجام شود
+                if (window.location.pathname !== "/login") {
+                    window.location.href = "/login";
+                }
+
                 return Promise.reject(refreshError);
             } finally {
                 isRefreshing = false;
             }
         }
+
         return Promise.reject(error);
     }
 );

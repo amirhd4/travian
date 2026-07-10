@@ -55,8 +55,8 @@ body {
   .side-tree-left, .side-tree-right {
     @apply hidden 2xl:block fixed top-0 h-full w-44 z-[90] pointer-events-none bg-no-repeat bg-contain;
   }
-  .side-tree-left { left: 0; background-image: url('/assets/ui/tree-left.png'); background-position: top left; }
-  .side-tree-right { right: 0; background-image: url('/assets/ui/tree-right.png'); background-position: top right; }
+  .side-tree-left { left: 0; background-position: top left; }
+  .side-tree-right { right: 0; background-position: top right; }
 
   /* اسلات تجهیزات قهرمان، شبیه گرید تراوین */
   .equip-slot {

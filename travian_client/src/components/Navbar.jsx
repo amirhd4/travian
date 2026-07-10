@@ -5,7 +5,8 @@ import api from "../api/axiosConfig.js";
 import SideInfoBoards from "./SideInfoBoards.jsx";
 
 const NAV_ITEMS = [
-    { path: '/village', icon: '🏛️', label: 'دهکده' },
+    { path: '/village', icon: '🌾', label: 'منابع'},
+    { path: '/dorf2', icon: '🏛️', label: 'مرکز دهکده' },
     { path: '/world-map', icon: '🗺️', label: 'نقشه' },
     { path: '/colonize', icon: '🏕️', label: 'تاسیس' },
     { path: '/movements', icon: '📡', label: 'گردهمایی' },
@@ -58,13 +59,14 @@ export default function Navbar() {
             <div className="side-tree-left" />
             <div className="side-tree-right" />
             <SideInfoBoards />
-            <div className="fixed top-16 left-0 w-full bg-gradient-to-b from-parchment-dark to-[#d9c9a0] border-b-2 border-wood-light shadow-lg z-[100] px-2 py-2">
-                <div className="flex flex-wrap items-center justify-center gap-2 max-w-6xl mx-auto">
+            {/* تغییر: پدینگ از py-2 به py-1 کاهش یافت */}
+            <div className="fixed top-14 left-0 w-full bg-gradient-to-b from-parchment-dark to-[#d9c9a0] border-b-2 border-wood-light shadow-lg z-[100] px-2 py-1">
+                <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-6xl mx-auto">
                     {villages.length > 0 && (
                         <select
                             value={activeVillageId || ''}
                             onChange={(e) => setActiveVillageId(Number(e.target.value))}
-                            className="bg-white text-wood-dark font-bold text-xs rounded-full px-3 py-2 border-2 border-wood-light focus:outline-none cursor-pointer ml-2"
+                            className="bg-white text-wood-dark font-bold text-[11px] rounded-full px-2.5 py-1.5 border-2 border-wood-light focus:outline-none cursor-pointer ml-1"
                             title="دهکده فعال"
                         >
                             {villages.map((v) => (
@@ -79,21 +81,21 @@ export default function Navbar() {
                         <button
                             key={item.path}
                             onClick={() => navigate(item.path)}
-                            className={`wood-icon-btn w-12 h-12 ${location.pathname === item.path ? 'active' : ''}`}
+                            className={`wood-icon-btn w-10 h-10 ${location.pathname === item.path ? 'active' : ''}`}
                             title={item.label}
                         >
-                            <span className="text-lg">{item.icon}</span>
+                            <span className="text-base">{item.icon}</span>
                         </button>
                     ))}
 
                     <button
                         onClick={() => navigate('/quests')}
-                        className={`wood-icon-btn w-12 h-12 ${location.pathname === '/quests' ? 'active' : ''}`}
+                        className={`wood-icon-btn w-10 h-10 ${location.pathname === '/quests' ? 'active' : ''}`}
                         title="کوئست‌ها"
                     >
-                        <span className="text-lg">🎯</span>
+                        <span className="text-base">🎯</span>
                         {pendingQuests > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center animate-bounce">
+                            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center animate-bounce">
                                 {pendingQuests}
                             </span>
                         )}
@@ -101,10 +103,10 @@ export default function Navbar() {
 
                     <button
                         onClick={handleLogout}
-                        className="wood-icon-btn w-12 h-12 border-red-700 bg-red-50 text-red-700 ml-2"
+                        className="wood-icon-btn w-10 h-10 border-red-700 bg-red-50 text-red-700 ml-1"
                         title="خروج"
                     >
-                        <span className="text-lg">🚪</span>
+                        <span className="text-base">🚪</span>
                     </button>
                 </div>
             </div>
