@@ -11,7 +11,7 @@ from django.conf import settings
 from .serializers import RegisterSerializer, MyTokenObtainPairSerializer
 from .cookies import set_refresh_cookie, clear_refresh_cookie
 from .captcha import generate_captcha
-from .throttles import LoginIPThrottle, LoginUsernameThrottle, RegisterIPThrottle, CaptchaIPThrottle
+from .trottles import LoginIPThrottle, LoginUsernameThrottle, RegisterIPThrottle, CaptchaIPThrottle
 
 
 class RegisterView(APIView):
