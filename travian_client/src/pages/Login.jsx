@@ -35,21 +35,17 @@ export default function Login() {
         e.preventDefault();
         setError("");
         setLoading(true);
-
         try {
             const { data } = await api.post("auth/login/", {
-                username: login,
-                password,
-                captcha_token: captcha.token,
-                captcha_answer: captchaAnswer,
+                username: login, password,
+                captcha_token: captcha.token, captcha_answer: captchaAnswer,
             });
-
             setAccessToken(data.access);
             setUser(data.user);
             navigate("/village");
         } catch (err) {
             if (err.response?.status === 429) {
-                setError("تعداد تلاش‌های شما زیاد بوده؛ لطفا کمی صبر کنید و دوباره امتحان کنید.");
+                setError("تعداد تلاش‌های شما زیاد بوده؛ لطفا کمی صبر کنید.");
             } else {
                 setError(
                     err.response?.data?.captcha_answer?.[0] ||
@@ -64,72 +60,74 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen game-sky-bg flex items-center justify-center p-4">
-            <div className="bg-[#f4ebd0] border-[8px] border-[#593d2b] rounded-xl shadow-2xl p-8 w-full max-w-md">
-                <h1 className="text-3xl font-bold text-[#593d2b] text-center mb-6">
-                    ورود به بازی
-                </h1>
-
-                {error && (
-                    <div className="bg-red-200 border border-red-500 text-red-700 p-3 rounded mb-4 text-sm text-center">
-                        {error}
-                    </div>
-                )}
-
-                <form onSubmit={handleLogin} className="space-y-4 text-right" dir="rtl">
-                    <div>
-                        <label className="block font-bold mb-1">نام کاربری یا ایمیل:</label>
-                        <input
-                            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#593d2b]"
-                            value={login} onChange={(e) => setLogin(e.target.value)}
-                            placeholder="example@domain.com" required
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block font-bold mb-1">رمز عبور:</label>
-                        <input
-                            type="password"
-                            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#593d2b]"
-                            value={password} onChange={(e) => setPassword(e.target.value)}
-                            placeholder="••••••••" required
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block font-bold mb-1 text-sm">تایید امنیتی:</label>
-                        <div className="flex items-center gap-3">
-                            {captchaLoading ? (
-                                <div className="w-32 h-[50px] bg-gray-200 animate-pulse rounded" />
-                            ) : (
-                                <img src={captcha.image} alt="کپچا" className="rounded border border-gray-400" />
-                            )}
-                            <button type="button" onClick={fetchCaptcha} className="text-xs font-bold text-blue-700 hover:underline">
-                                🔄 تصویر جدید
-                            </button>
+        <div className="min-h-screen game-bg flex items-center justify-center p-4">
+            {/* دکوری پس‌زمینه - جای عکس تپه/درخت رو اینجا میتونی بذاری */}
+            <div className="w-full max-w-md">
+                <div className="panel overflow-hidden">
+                    <div className="bg-gradient-to-b from-ink-800 to-ink-900 px-8 py-7 text-center">
+                        <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gold-500/15 border border-gold-500/40 flex items-center justify-center text-3xl">
+                            🏰
                         </div>
-                        <input
-                            type="text" required value={captchaAnswer}
-                            onChange={(e) => setCaptchaAnswer(e.target.value)}
-                            placeholder="کد داخل تصویر را وارد کنید"
-                            className="w-full p-2 border rounded mt-2 text-center tracking-widest font-bold"
-                        />
+                        <h1 className="text-2xl font-extrabold text-parchment-50">ورود به بازی</h1>
+                        <p className="text-xs text-parchment-400 mt-1">دنیای تراوین منتظر شماست</p>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-[#593d2b] hover:bg-[#4a3224] text-white p-3 rounded transition disabled:bg-gray-400"
-                    >
-                        {loading ? "در حال ورود..." : "ورود"}
-                    </button>
-                </form>
+                    <div className="p-7">
+                        {error && (
+                            <div className="bg-rose-50 border border-rose-300 text-rose-700 p-3 rounded-lg mb-4 text-sm text-center">
+                                {error}
+                            </div>
+                        )}
 
-                <div className="mt-6 text-center text-sm">
-                    <span>اکانت ندارید؟ </span>
-                    <a href="/register" className="text-blue-600 font-bold">
-                        ثبت‌نام
-                    </a>
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <div>
+                                <label className="field-label">نام کاربری یا ایمیل</label>
+                                <input
+                                    className="field"
+                                    value={login} onChange={(e) => setLogin(e.target.value)}
+                                    placeholder="example@domain.com" required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="field-label">رمز عبور</label>
+                                <input
+                                    type="password" className="field"
+                                    value={password} onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••" required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="field-label">تایید امنیتی</label>
+                                <div className="flex items-center gap-3">
+                                    {captchaLoading ? (
+                                        <div className="w-32 h-[52px] bg-parchment-200 animate-pulse rounded-lg" />
+                                    ) : (
+                                        <img src={captcha.image} alt="کپچا" className="rounded-lg border border-parchment-300" />
+                                    )}
+                                    <button type="button" onClick={fetchCaptcha} className="text-xs font-bold text-brand-600 hover:underline">
+                                        🔄 تصویر جدید
+                                    </button>
+                                </div>
+                                <input
+                                    type="text" required value={captchaAnswer}
+                                    onChange={(e) => setCaptchaAnswer(e.target.value)}
+                                    placeholder="کد داخل تصویر را وارد کنید"
+                                    className="field mt-2 text-center tracking-widest font-bold"
+                                />
+                            </div>
+
+                            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+                                {loading ? "در حال ورود..." : "ورود به بازی"}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 text-center text-sm text-ink-600">
+                            <span>اکانت ندارید؟ </span>
+                            <a href="/register" className="text-brand-600 font-bold hover:underline">ثبت‌نام</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

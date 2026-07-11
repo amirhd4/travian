@@ -2,67 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background-color: #f4f4f4;
-  font-family: Tahoma, Arial, sans-serif;
+@font-face {
+  font-family: Tahoma;
+  /*src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2');*/
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: Tahoma;
+  /*src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2');*/
+  font-weight: 700;
+  font-display: swap;
 }
 
+html, body {
+  font-family: 'Vazirmatn', Tahoma, sans-serif;
+  background-color: #eef2e6;
+  color: #2b2318;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #b3721f #f1e4c6;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: #f1e4c6; }
+*::-webkit-scrollbar-thumb { background: #b3721f; border-radius: 999px; }
+
 @layer components {
-  /* تابلوی چوبی آویزان - شبیه تابلوهای روی درخت در تراوین */
+  /* ===== پس‌زمینه‌ی عمومی صفحات بازی ===== */
+  .game-bg {
+    @apply w-full min-h-screen;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(255,255,255,0.35), transparent 60%),
+      linear-gradient(180deg, #bfe0c9 0%, #dcecc4 35%, #cfe0a8 65%, #a9c97f 100%);
+  }
+
+  /* ===== کارت اصلی محتوا ===== */
+  .panel {
+    @apply relative bg-parchment-50 rounded-2xl shadow-card border border-parchment-300;
+  }
+  .panel-header {
+    @apply flex items-center justify-between gap-3 px-5 py-4 border-b border-parchment-300 bg-gradient-to-l from-parchment-100 to-parchment-50 rounded-t-2xl;
+  }
+  .panel-title {
+    @apply text-lg font-bold text-ink-800 flex items-center gap-2;
+  }
+  .panel-body { @apply p-5; }
+
+  /* ===== تابلوی چوبی (نسخه‌ی مدرن‌تر WoodSign) ===== */
   .wood-sign {
-    @apply relative bg-parchment border-4 border-wood rounded-lg shadow-lg p-3;
-    background-image: linear-gradient(135deg, #f4ebd0 0%, #ecdfc0 100%);
-  }
-  .wood-sign::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    right: 50%;
-    transform: translateX(50%);
-    width: 14px; height: 14px;
-    background: #3d2b1a;
-    border-radius: 50%;
-    box-shadow: 0 0 0 3px #7a5230;
+    @apply relative bg-parchment-50 border border-parchment-300 rounded-2xl shadow-card p-4;
   }
 
-  /* دکمه‌ی دایره‌ای آیکونی برای ناوبری */
-  .wood-icon-btn {
-    @apply relative flex items-center justify-center rounded-full border-2 border-wood-light bg-white shadow-md transition transform hover:scale-105;
+  /* ===== دکمه‌ها ===== */
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 font-bold rounded-full px-5 py-2.5
+           transition-all duration-150 select-none disabled:opacity-40 disabled:cursor-not-allowed
+           active:scale-[0.97];
   }
-  .wood-icon-btn.active {
-    @apply border-travian-gold ring-2 ring-travian-gold;
+  .btn-primary {
+    @apply btn text-white bg-gradient-to-b from-brand-500 to-brand-700 shadow-soft
+           hover:from-brand-400 hover:to-brand-600;
+  }
+  .btn-gold {
+    @apply btn text-ink-900 bg-gradient-to-b from-gold-400 to-gold-600 shadow-soft
+           hover:from-gold-300 hover:to-gold-500;
+  }
+  .btn-danger {
+    @apply btn text-white bg-gradient-to-b from-rose-500 to-rose-700 shadow-soft
+           hover:from-rose-400 hover:to-rose-600;
+  }
+  .btn-ghost {
+    @apply btn text-ink-700 bg-white/70 border border-parchment-300 hover:bg-white;
+  }
+  .btn-icon {
+    @apply relative flex items-center justify-center w-11 h-11 rounded-full bg-white/90
+           border border-parchment-300 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card;
+  }
+  .btn-icon.active {
+    @apply bg-gradient-to-b from-gold-300 to-gold-500 border-gold-600 shadow-glow;
   }
 
-  /* نوار پیشرفت منابع (خط قرمز مثل تصویر) */
-  .resource-progress-track {
-    @apply w-full h-1.5 rounded-full bg-gray-300 overflow-hidden mt-0.5;
+  /* ===== ورودی‌ها ===== */
+  .field {
+    @apply w-full rounded-lg border border-parchment-300 bg-white/90 px-3 py-2
+           text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200;
   }
-  .resource-progress-fill {
-    @apply h-full bg-red-600;
-  }
+  .field-label { @apply block text-xs font-bold text-ink-600 mb-1; }
 
-  /* دکمه‌ی سبز اصلی (مثل دکمه‌ی ثبت‌نام) */
-  .btn-travian-green {
-    @apply bg-gradient-to-b from-green-500 to-green-700 text-white font-bold rounded-full px-6 py-2 border-b-4 border-green-900 shadow-md hover:brightness-105 active:border-b-0 active:translate-y-1 transition;
-  }
+  /* ===== نشان/بج ===== */
+  .badge { @apply inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full; }
+  .badge-green { @apply badge bg-brand-100 text-brand-700; }
+  .badge-gold  { @apply badge bg-gold-100 text-gold-700 bg-opacity-60; }
+  .badge-red   { @apply badge bg-rose-100 text-rose-700; }
 
-  /* پس‌زمینه‌ی آسمان و چمن */
-  .game-sky-bg {
-    background: linear-gradient(180deg, #bfe0f5 0%, #d9ecd0 30%, #a8c97f 55%, #7fa855 78%, #5a7a3a 100%);
-  }
+  /* ===== نوار پیشرفت منابع ===== */
+  .progress-track { @apply w-full h-2 rounded-full bg-ink-900/10 overflow-hidden; }
+  .progress-fill   { @apply h-full rounded-full bg-gradient-to-l from-rose-400 to-rose-600 transition-all; }
 
-  /* درخت‌های تزئینی دو طرف صفحه، پشت همه چیز */
-  .side-tree-left, .side-tree-right {
-    @apply hidden 2xl:block fixed top-0 h-full w-44 z-[90] pointer-events-none bg-no-repeat bg-contain;
-  }
-  .side-tree-left { left: 0; background-position: top left; }
-  .side-tree-right { right: 0; background-position: top right; }
-
-  /* اسلات تجهیزات قهرمان، شبیه گرید تراوین */
+  /* ===== اسلات تجهیزات قهرمان ===== */
   .equip-slot {
-    @apply w-full aspect-square rounded border-2 border-wood-light bg-white/70 flex items-center justify-center relative overflow-hidden transition hover:border-amber-600 cursor-pointer;
+    @apply w-full aspect-square rounded-xl border-2 border-dashed border-parchment-300 bg-white/70
+           flex items-center justify-center relative overflow-hidden transition
+           hover:border-gold-500 cursor-pointer;
   }
-  .equip-slot.filled {
-    @apply border-amber-600 bg-amber-50;
-  }
+  .equip-slot.filled { @apply border-solid border-gold-500 bg-gold-50; }
 }

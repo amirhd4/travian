@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
-import Navbar from '../components/Navbar';
 import ResourceBar from '../components/ResourceBar';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 
 const GRID_RADIUS = 2;
@@ -26,8 +28,8 @@ export default function Colonize() {
 
     const [villageName, setVillageName] = useState('دهکده جدید');
     const [submitting, setSubmitting] = useState(false);
+    const [alertMsg, setAlertMsg] = useState(null);
 
-    // پیش‌فرض: پایتخت به‌عنوان دهکده مبدا
     useEffect(() => {
         if (villages.length > 0 && !sourceId) {
             const capital = villages.find((v) => v.is_capital) || villages[0];
@@ -44,34 +46,28 @@ export default function Colonize() {
             const settlers = data.filter((t) => t.is_settler).reduce((sum, t) => sum + t.count, 0);
             setSettlerCount(settlers);
         } catch (error) {
-            console.error('خطا در دریافت نیروهای مهاجر', error);
+            console.error(error);
             setSettlerCount(0);
         } finally {
             setLoadingSettlers(false);
         }
     }, []);
 
-    useEffect(() => {
-        if (sourceId) fetchSettlers(sourceId);
-    }, [sourceId, fetchSettlers]);
+    useEffect(() => { if (sourceId) fetchSettlers(sourceId); }, [sourceId, fetchSettlers]);
 
     const fetchMap = useCallback(async () => {
         setLoadingMap(true);
         try {
-            const { data } = await api.get('game/world-map/', {
-                params: { x: center.x, y: center.y, radius: GRID_RADIUS },
-            });
+            const { data } = await api.get('game/world-map/', { params: { x: center.x, y: center.y, radius: GRID_RADIUS } });
             setMapVillages(data);
         } catch (error) {
-            console.error('خطا در دریافت نقشه', error);
+            console.error(error);
         } finally {
             setLoadingMap(false);
         }
     }, [center]);
 
-    useEffect(() => {
-        if (!autoFind) fetchMap();
-    }, [autoFind, fetchMap]);
+    useEffect(() => { if (!autoFind) fetchMap(); }, [autoFind, fetchMap]);
 
     const handleSourceChange = (id) => {
         setSourceId(id);
@@ -92,30 +88,23 @@ export default function Colonize() {
         e.preventDefault();
         if (!sourceId) return;
         if (!autoFind && !selectedTarget) {
-            alert('لطفا یک نقطه خالی روی نقشه انتخاب کنید یا حالت جستجوی خودکار را فعال کنید.');
+            setAlertMsg({ tone: 'error', text: 'لطفا یک نقطه خالی روی نقشه انتخاب کنید یا حالت جستجوی خودکار را فعال کنید.' });
             return;
         }
-
         setSubmitting(true);
         try {
-            const payload = {
-                source_village_id: sourceId,
-                name: villageName || 'دهکده جدید',
-            };
+            const payload = { source_village_id: sourceId, name: villageName || 'دهکده جدید' };
             if (!autoFind && selectedTarget) {
                 payload.target_x = selectedTarget.x;
                 payload.target_y = selectedTarget.y;
             }
             const { data } = await api.post('game/found-village/', payload);
-            alert(data.message);
-
-            // به‌روزرسانی لیست دهکده‌ها و انتخاب دهکده تازه‌تاسیس‌شده به‌عنوان فعال
             const villagesRes = await api.get('game/villages/');
             setVillages(villagesRes.data);
             setActiveVillageId(data.village.id);
             navigate('/village');
         } catch (error) {
-            alert(error.response?.data?.error || 'خطا در تاسیس دهکده');
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در تاسیس دهکده' });
         } finally {
             setSubmitting(false);
         }
@@ -124,94 +113,72 @@ export default function Colonize() {
     const hasEnoughSettlers = settlerCount !== null && settlerCount >= SETTLERS_REQUIRED;
 
     return (
-        <div className="w-full min-h-screen bg-emerald-900 pt-28 flex flex-col items-center pb-10">
+        <div
+            className="w-full min-h-screen pt-24 pb-16 flex flex-col items-center"
+            style={{
+                // پیشنهاد عکس: همون world-map-bg.jpg برای هماهنگی با WorldMap
+                backgroundImage: "linear-gradient(180deg, rgba(15,35,20,.55), rgba(15,35,20,.75)), url('/assets/maps/world-map-bg.jpg')",
+                backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#12321c',
+            }}
+        >
             <ResourceBar />
             <Navbar />
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="تاسیس دهکده" />
 
-            <div className="bg-amber-100 p-6 rounded-xl shadow-2xl border-4 border-amber-800 max-w-2xl w-full">
-                <h2 className="text-2xl font-bold text-amber-900 mb-2 text-center">🏕️ تاسیس دهکده جدید</h2>
-                <p className="text-sm text-amber-800 text-center mb-6">
+            <div className="panel !bg-parchment-50/95 backdrop-blur max-w-2xl w-full mx-4 mt-2 p-6">
+                <h2 className="text-xl font-extrabold text-ink-800 mb-2 text-center">🏕️ تاسیس دهکده جدید</h2>
+                <p className="text-sm text-ink-500 text-center mb-6">
                     برای تاسیس یک دهکده جدید به {SETTLERS_REQUIRED} نیروی مهاجر در دهکده مبدا نیاز دارید.
                 </p>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
-                    {/* انتخاب دهکده مبدا */}
                     <div>
-                        <label className="block text-sm font-bold text-amber-900 mb-1">دهکده مبدا:</label>
-                        <select
-                            value={sourceId}
-                            onChange={(e) => handleSourceChange(e.target.value)}
-                            className="w-full p-2 border border-amber-400 rounded bg-white"
-                        >
+                        <label className="field-label">دهکده مبدا</label>
+                        <select value={sourceId} onChange={(e) => handleSourceChange(e.target.value)} className="field">
                             {villages.map((v) => (
                                 <option key={v.id} value={v.id}>
                                     {v.is_capital ? '👑 ' : '🏘️ '}{v.name} ({v.x_coord}|{v.y_coord})
                                 </option>
                             ))}
                         </select>
-
-                        <p className={`text-xs font-bold mt-1 ${hasEnoughSettlers ? 'text-green-700' : 'text-red-700'}`}>
-                            {loadingSettlers
-                                ? 'در حال بررسی تعداد مهاجران...'
-                                : `مهاجران موجود: ${settlerCount ?? 0} از ${SETTLERS_REQUIRED} لازم`}
+                        <p className={`text-xs font-bold mt-1 ${hasEnoughSettlers ? 'text-brand-700' : 'text-rose-600'}`}>
+                            {loadingSettlers ? 'در حال بررسی...' : `مهاجران موجود: ${settlerCount ?? 0} از ${SETTLERS_REQUIRED} لازم`}
                         </p>
                     </div>
 
-                    {/* نام دهکده جدید */}
                     <div>
-                        <label className="block text-sm font-bold text-amber-900 mb-1">نام دهکده جدید:</label>
-                        <input
-                            type="text"
-                            value={villageName}
-                            onChange={(e) => setVillageName(e.target.value)}
-                            className="w-full p-2 border border-amber-400 rounded bg-white"
-                        />
+                        <label className="field-label">نام دهکده جدید</label>
+                        <input type="text" value={villageName} onChange={(e) => setVillageName(e.target.value)} className="field" />
                     </div>
 
-                    {/* انتخاب مکان */}
                     <div>
-                        <label className="flex items-center gap-2 text-sm font-bold text-amber-900 mb-3">
-                            <input
-                                type="checkbox"
-                                checked={autoFind}
-                                onChange={(e) => { setAutoFind(e.target.checked); setSelectedTarget(null); }}
-                            />
+                        <label className="flex items-center gap-2 text-sm font-bold text-ink-700 mb-3 cursor-pointer">
+                            <input type="checkbox" checked={autoFind} onChange={(e) => { setAutoFind(e.target.checked); setSelectedTarget(null); }} />
                             جستجوی خودکار نزدیک‌ترین مکان آزاد روی نقشه
                         </label>
 
                         {!autoFind && (
-                            <div className="bg-white/60 border border-amber-300 rounded p-3">
+                            <div className="bg-parchment-100 border border-parchment-300 rounded-xl p-3">
                                 <div className="flex justify-between items-center mb-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setCenter((c) => ({ ...c, y: c.y + (GRID_RADIUS * 2 + 1) }))}
-                                        className="text-xs bg-amber-700 text-white px-2 py-1 rounded"
-                                    >⬆ شمال</button>
-                                    <span className="text-xs font-bold text-amber-900">مرکز: ({center.x}|{center.y})</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => setCenter((c) => ({ ...c, y: c.y - (GRID_RADIUS * 2 + 1) }))}
-                                        className="text-xs bg-amber-700 text-white px-2 py-1 rounded"
-                                    >⬇ جنوب</button>
+                                    <button type="button" onClick={() => setCenter((c) => ({ ...c, y: c.y + (GRID_RADIUS * 2 + 1) }))} className="btn-ghost text-xs !px-2 !py-1">⬆ شمال</button>
+                                    <span className="text-xs font-bold text-ink-700">مرکز: ({center.x}|{center.y})</span>
+                                    <button type="button" onClick={() => setCenter((c) => ({ ...c, y: c.y - (GRID_RADIUS * 2 + 1) }))} className="btn-ghost text-xs !px-2 !py-1">⬇ جنوب</button>
                                 </div>
 
                                 {loadingMap ? (
-                                    <p className="text-center text-xs py-6">در حال بارگذاری نقشه...</p>
+                                    <p className="text-center text-xs py-6 text-ink-500">در حال بارگذاری نقشه...</p>
                                 ) : (
                                     <div className="grid grid-cols-5 gap-1">
                                         {grid.map((cell, i) => {
                                             const isSelected = selectedTarget?.x === cell.x && selectedTarget?.y === cell.y;
                                             return (
-                                                <button
-                                                    type="button"
-                                                    key={i}
-                                                    disabled={cell.occupied}
+                                                <button type="button" key={i} disabled={cell.occupied}
                                                     onClick={() => setSelectedTarget({ x: cell.x, y: cell.y })}
-                                                    className={`h-14 text-[10px] rounded border flex flex-col items-center justify-center transition
-                                                        ${cell.occupied ? 'bg-red-200 border-red-400 text-red-700 cursor-not-allowed' :
-                                                          isSelected ? 'bg-green-400 border-green-700 text-white font-bold' :
-                                                          'bg-yellow-50 border-yellow-300 hover:bg-yellow-200 cursor-pointer'}`}
-                                                >
+                                                    className={`h-14 text-[10px] rounded-lg border-2 flex flex-col items-center justify-center transition ${
+                                                        cell.occupied ? 'bg-rose-100 border-rose-300 text-rose-600 cursor-not-allowed' :
+                                                        isSelected ? 'bg-brand-400 border-brand-600 text-white font-bold' :
+                                                        'bg-white border-parchment-300 hover:border-gold-400 cursor-pointer'
+                                                    }`}>
                                                     <span>{cell.x}|{cell.y}</span>
                                                     {cell.occupied && <span className="truncate w-full px-1">{cell.name}</span>}
                                                 </button>
@@ -220,30 +187,19 @@ export default function Colonize() {
                                     </div>
                                 )}
                                 <div className="flex justify-between mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setCenter((c) => ({ ...c, x: c.x - (GRID_RADIUS * 2 + 1) }))}
-                                        className="text-xs bg-amber-700 text-white px-2 py-1 rounded"
-                                    >⬅ غرب</button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setCenter((c) => ({ ...c, x: c.x + (GRID_RADIUS * 2 + 1) }))}
-                                        className="text-xs bg-amber-700 text-white px-2 py-1 rounded"
-                                    >شرق ➡</button>
+                                    <button type="button" onClick={() => setCenter((c) => ({ ...c, x: c.x - (GRID_RADIUS * 2 + 1) }))} className="btn-ghost text-xs !px-2 !py-1">⬅ غرب</button>
+                                    <button type="button" onClick={() => setCenter((c) => ({ ...c, x: c.x + (GRID_RADIUS * 2 + 1) }))} className="btn-ghost text-xs !px-2 !py-1">شرق ➡</button>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={submitting || !hasEnoughSettlers}
-                        className="w-full bg-amber-800 text-white p-3 rounded font-bold hover:bg-amber-900 transition disabled:bg-gray-400"
-                    >
+                    <button type="submit" disabled={submitting || !hasEnoughSettlers} className="btn-gold w-full py-3">
                         {submitting ? 'در حال تاسیس...' : '🏕️ تاسیس دهکده'}
                     </button>
                 </form>
             </div>
+            <Footer />
         </div>
     );
 }

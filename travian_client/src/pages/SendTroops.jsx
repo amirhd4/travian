@@ -1,9 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
-import ResourceBar from '../components/ResourceBar';
-import Navbar from '../components/Navbar';
+import PageShell from '../components/PageShell';
+import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
+
+const MOVEMENT_OPTIONS = [
+    { value: 'ATTACK', label: '🪓 حمله کامل', hint: 'تسخیر / نقشه ساخت' },
+    { value: 'RAID', label: '💰 غارت منابع', hint: 'برداشت سریع منابع' },
+    { value: 'REINFORCEMENT', label: '🛡️ پشتیبانی نظامی', hint: 'تقویت دفاع متحد' },
+    { value: 'SCOUT', label: '🔍 شناسایی', hint: 'گزارش از دهکده هدف' },
+];
 
 export default function SendTroops() {
     const location = useLocation();
@@ -20,6 +27,7 @@ export default function SendTroops() {
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
     const [heroStatus, setHeroStatus] = useState(null);
+    const [alertMsg, setAlertMsg] = useState(null);
 
     useEffect(() => {
         api.get('combat/hero/').then(({ data }) => setHeroStatus(data)).catch(() => {});
@@ -32,7 +40,7 @@ export default function SendTroops() {
             const { data } = await api.get('combat/village-troops/', { params: { village_id: activeVillageId } });
             setAvailableTroops(data);
         } catch (error) {
-            console.error('خطا در دریافت نیروهای دهکده', error);
+            console.error(error);
         } finally {
             setFetching(false);
         }
@@ -48,13 +56,12 @@ export default function SendTroops() {
     const handleSend = async (e) => {
         e.preventDefault();
         if (!activeVillageId) {
-            alert("دهکده فعال هنوز مشخص نشده، لطفا لحظاتی صبر کنید و دوباره تلاش کنید.");
+            setAlertMsg({ tone: 'error', text: 'دهکده فعال هنوز مشخص نشده، لطفا لحظاتی صبر کنید.' });
             return;
         }
-
         const payload = Object.fromEntries(Object.entries(troops).filter(([, v]) => v > 0));
         if (Object.keys(payload).length === 0) {
-            alert('حداقل یک نوع نیرو انتخاب کنید.');
+            setAlertMsg({ tone: 'error', text: 'حداقل یک نوع نیرو انتخاب کنید.' });
             return;
         }
 
@@ -67,86 +74,88 @@ export default function SendTroops() {
                 troops_payload: payload,
                 send_hero: sendHero,
             });
-            alert(response.data.message);
-            navigate('/village');
+            navigate('/village', { state: { flash: response.data.message } });
         } catch (error) {
-            alert("خطا: " + (error.response?.data?.error || "ارتباط با سرور برقرار نشد"));
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'ارتباط با سرور برقرار نشد' });
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="w-full min-h-screen bg-stone-100 pt-28 flex flex-col items-center pb-10">
-            <ResourceBar />
-            <Navbar />
+        <PageShell maxWidth="max-w-xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="اعزام نیرو" />
 
-            <div className="bg-white p-8 rounded-lg shadow-xl border border-gray-300 max-w-lg w-full">
-                <h2 className="text-xl font-bold text-gray-800 mb-2 border-b pb-2">⚔️ نقطه گردهمایی نظامی</h2>
-                <p className="text-sm text-gray-600 mb-6">هدف حمله: <span className="font-bold text-red-600">{targetName}</span></p>
+            <div className="panel">
+                <div className="panel-header">
+                    <span className="panel-title">⚔️ نقطه گردهمایی نظامی</span>
+                </div>
+                <div className="panel-body">
+                    <p className="text-sm text-ink-600 mb-6">
+                        هدف حمله: <span className="font-bold text-rose-600">{targetName}</span>
+                    </p>
 
-                <form onSubmit={handleSend} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">نوع عملیات تاکتیکی:</label>
-                        <select
-                            value={movementType}
-                            onChange={(e) => setMovementType(e.target.value)}
-                            className="w-full p-2 border rounded bg-gray-50 focus:border-amber-600 outline-none font-semibold"
-                        >
-                            <option value="ATTACK">🪓 حمله کامل (تسخیر / نقشه ساخت)</option>
-                            <option value="RAID">💰 غارت منابع</option>
-                            <option value="REINFORCEMENT">🛡️ پشتیبانی نظامی</option>
-                            <option value="SCOUT">🔍 شناسایی</option>
-                        </select>
-                    </div>
+                    <form onSubmit={handleSend} className="space-y-5">
+                        <div>
+                            <label className="field-label">نوع عملیات تاکتیکی</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {MOVEMENT_OPTIONS.map((opt) => (
+                                    <button
+                                        type="button" key={opt.value}
+                                        onClick={() => setMovementType(opt.value)}
+                                        className={`text-right p-3 rounded-xl border-2 transition ${movementType === opt.value ? 'border-gold-500 bg-gold-50' : 'border-parchment-300 bg-white hover:border-parchment-400'}`}
+                                    >
+                                        <span className="block font-bold text-sm text-ink-800">{opt.label}</span>
+                                        <span className="block text-[11px] text-ink-500">{opt.hint}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                    <div className="border p-4 rounded bg-gray-50 space-y-3">
-                        <h3 className="text-sm font-bold text-gray-600 mb-1">انتخاب تعداد نیروهای اعزامی:</h3>
-                        {fetching ? (
-                            <p className="text-xs text-gray-500">در حال بارگذاری نیروهای موجود...</p>
-                        ) : availableTroops.length === 0 ? (
-                            <p className="text-xs text-gray-500">این دهکده هیچ نیرویی ندارد.</p>
+                        <div className="rounded-xl border border-parchment-300 bg-parchment-50 p-4 space-y-3">
+                            <h3 className="field-label">تعداد نیروهای اعزامی</h3>
+                            {fetching ? (
+                                <p className="text-xs text-ink-500">در حال بارگذاری نیروهای موجود...</p>
+                            ) : availableTroops.length === 0 ? (
+                                <p className="text-xs text-ink-500">این دهکده هیچ نیرویی ندارد.</p>
+                            ) : (
+                                availableTroops.map((t) => (
+                                    <div key={t.troop_type_id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-parchment-200">
+                                        <span className="text-sm font-medium text-ink-700">
+                                            {t.name} <span className="text-xs text-ink-400">(موجود: {t.count})</span>
+                                        </span>
+                                        <input
+                                            type="number" min="0" max={t.count}
+                                            value={troops[t.troop_type_id] || ''}
+                                            onChange={(e) => handleInputChange(t.troop_type_id, e.target.value, t.count)}
+                                            className="field w-24 text-center font-bold"
+                                        />
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {heroStatus && !heroStatus.is_alive ? (
+                            <p className="text-xs text-rose-700 font-bold bg-rose-50 border border-rose-300 rounded-xl p-3">
+                                ⚰️ قهرمان شما از پای درآمده و قادر به اعزام نیست.
+                            </p>
+                        ) : heroStatus && (heroStatus.is_on_adventure || heroStatus.is_away) ? (
+                            <p className="text-xs text-orange-700 font-bold bg-orange-50 border border-orange-300 rounded-xl p-3">
+                                🚫 قهرمان شما هم‌اکنون در دسترس نیست.
+                            </p>
                         ) : (
-                            availableTroops.map((t) => (
-                                <div key={t.troop_type_id} className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">
-                                        {t.name} <span className="text-xs text-gray-400">(موجود: {t.count})</span>
-                                    </span>
-                                    <input
-                                        type="number" min="0" max={t.count}
-                                        value={troops[t.troop_type_id] || ''}
-                                        onChange={(e) => handleInputChange(t.troop_type_id, e.target.value, t.count)}
-                                        className="w-24 p-1 border rounded text-center font-bold"
-                                    />
-                                </div>
-                            ))
+                            <label className="flex items-center gap-2 text-sm font-bold text-ink-700 bg-gold-50 border border-gold-300 rounded-xl p-3 cursor-pointer">
+                                <input type="checkbox" checked={sendHero} onChange={(e) => setSendHero(e.target.checked)} />
+                                🦸 اعزام قهرمان همراه این نیرو
+                            </label>
                         )}
-                    </div>
 
-                    {heroStatus && !heroStatus.is_alive ? (
-                        <p className="text-xs text-red-600 font-bold bg-red-50 border border-red-300 rounded p-3">
-                            ⚰️ قهرمان شما از پای درآمده و قادر به اعزام نیست.
-                        </p>
-                    ) : heroStatus && (heroStatus.is_on_adventure || heroStatus.is_away) ? (
-                        <p className="text-xs text-orange-600 font-bold bg-orange-50 border border-orange-300 rounded p-3">
-                            🚫 قهرمان شما هم‌اکنون در دسترس نیست (ماجراجویی یا ماموریت نظامی دیگر).
-                        </p>
-                    ) : (
-                        <label className="flex items-center gap-2 text-sm font-bold text-gray-700 bg-amber-50 border border-amber-300 rounded p-3 cursor-pointer">
-                            <input type="checkbox" checked={sendHero} onChange={(e) => setSendHero(e.target.checked)} />
-                            🦸 اعزام قهرمان همراه این نیرو (لازم برای تسخیر یا برداشتن نقشه‌ی ساخت)
-                        </label>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={loading || !activeVillageId}
-                        className="w-full bg-red-700 text-white p-3 rounded font-bold hover:bg-red-800 transition disabled:bg-gray-400"
-                    >
-                        {loading ? "در حال اعزام ارتش..." : "🚀 تایید و حرکت نیروها"}
-                    </button>
-                </form>
+                        <button type="submit" disabled={loading || !activeVillageId} className="btn-danger w-full py-3">
+                            {loading ? "در حال اعزام ارتش..." : "🚀 تایید و حرکت نیروها"}
+                        </button>
+                    </form>
+                </div>
             </div>
-        </div>
+        </PageShell>
     );
 }

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '../api/axiosConfig';
-import Navbar from '../components/Navbar';
-import ResourceBar from '../components/ResourceBar';
+import PageShell from '../components/PageShell';
 import WoodSign from '../components/WoodSign';
+import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
+import api from '../api/axiosConfig';
 
 function formatDuration(totalSeconds) {
     if (totalSeconds <= 0) return '00:00:00';
@@ -20,6 +20,7 @@ export default function Blacksmith() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(null);
     const [errorMsg, setErrorMsg] = useState('');
+    const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchData = useCallback(async () => {
         if (!activeVillageId) return;
@@ -35,22 +36,15 @@ export default function Blacksmith() {
         }
     }, [activeVillageId]);
 
-    useEffect(() => {
-        setLoading(true);
-        fetchData();
-    }, [fetchData]);
+    useEffect(() => { setLoading(true); fetchData(); }, [fetchData]);
 
-    // شمارش معکوس محلی هر ثانیه برای آیتم‌های در حال ارتقا
     useEffect(() => {
         const interval = setInterval(() => {
             setData((prev) => ({
                 ...prev,
                 troops: prev.troops.map((t) => {
                     if (!t.is_upgrading || !t.upgrade_ends_at) return t;
-                    const remaining = Math.max(
-                        0,
-                        Math.round((new Date(t.upgrade_ends_at).getTime() - Date.now()) / 1000)
-                    );
+                    const remaining = Math.max(0, Math.round((new Date(t.upgrade_ends_at).getTime() - Date.now()) / 1000));
                     return { ...t, _remaining: remaining };
                 }),
             }));
@@ -58,7 +52,6 @@ export default function Blacksmith() {
         return () => clearInterval(interval);
     }, []);
 
-    // همگام‌سازی دوره‌ای هر ۲۰ ثانیه با سرور
     useEffect(() => {
         const interval = setInterval(fetchData, 20000);
         return () => clearInterval(interval);
@@ -67,114 +60,77 @@ export default function Blacksmith() {
     const handleUpgrade = async (troopTypeId) => {
         setSubmitting(troopTypeId);
         try {
-            const response = await api.post('combat/blacksmith/', {
-                village_id: activeVillageId,
-                troop_type_id: troopTypeId,
-            });
-            alert(response.data.message);
+            const response = await api.post('combat/blacksmith/', { village_id: activeVillageId, troop_type_id: troopTypeId });
+            setAlertMsg({ tone: 'success', text: response.data.message });
             fetchData();
         } catch (error) {
-            alert(error.response?.data?.error || 'خطا در شروع ارتقا');
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در شروع ارتقا' });
         } finally {
             setSubmitting(null);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="w-full min-h-screen bg-stone-200 pt-28 flex items-center justify-center">
-                <p className="font-bold text-gray-500">در حال بارگذاری آهنگری...</p>
-            </div>
-        );
-    }
+    if (loading) return <PageShell><p className="text-center font-bold text-ink-500 mt-10">در حال بارگذاری آهنگری...</p></PageShell>;
 
     return (
-        <div className="w-full min-h-screen bg-stone-200 pt-28 flex flex-col items-center pb-10">
-            <ResourceBar />
-            <Navbar />
+        <PageShell maxWidth="max-w-3xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="آهنگری" />
 
-            <div className="max-w-3xl w-full">
-                <WoodSign title="🔨 آهنگری">
-                    {!data.has_blacksmith ? (
-                        <p className="text-center text-sm font-bold text-red-700 py-6">
-                            {errorMsg || 'ابتدا باید ساختمان آهنگری را در این دهکده بسازید.'}
+            <WoodSign title="آهنگری" icon="🔨">
+                {!data.has_blacksmith ? (
+                    <p className="text-center text-sm font-bold text-rose-700 py-6">
+                        {errorMsg || 'ابتدا باید ساختمان آهنگری را در این دهکده بسازید.'}
+                    </p>
+                ) : (
+                    <>
+                        <p className="text-center text-xs text-ink-600 mb-4 leading-relaxed">
+                            سطح آهنگری این دهکده: <span className="font-bold text-ink-800">{data.blacksmith_level}</span><br />
+                            هر لول ارتقای یک نوع نیرو، قدرت حمله و دفاع همان نیرو را — وقتی از این دهکده اعزام شود یا در آن مستقر باشد — به میزان ۲٪ افزایش می‌دهد (حداکثر ۲۰ لول).
                         </p>
-                    ) : (
-                        <>
-                            <p className="text-center text-xs text-wood-dark mb-4 leading-relaxed">
-                                سطح آهنگری این دهکده: <span className="font-bold">{data.blacksmith_level}</span>
-                                <br />
-                                هر لول ارتقای یک نوع نیرو، قدرت حمله و دفاع همان نیرو را — وقتی از این دهکده اعزام
-                                شود یا در آن مستقر باشد — به میزان ۲٪ افزایش می‌دهد (حداکثر ۲۰ لول).
-                            </p>
 
-                            <div className="space-y-3">
-                                {data.troops.map((t) => {
-                                    const remaining =
-                                        t._remaining ??
-                                        Math.max(0, Math.round((new Date(t.upgrade_ends_at).getTime() - Date.now()) / 1000));
-                                    const isMax = t.level >= t.max_level;
+                        <div className="space-y-3">
+                            {data.troops.map((t) => {
+                                const remaining = t._remaining ?? Math.max(0, Math.round((new Date(t.upgrade_ends_at).getTime() - Date.now()) / 1000));
+                                const isMax = t.level >= t.max_level;
 
-                                    return (
-                                        <div
-                                            key={t.troop_type_id}
-                                            className="flex items-center gap-4 bg-white/70 border border-wood-light rounded-lg p-3"
-                                        >
-                                            {/*
-                                              آیکون نیرو.
-                                              مسیر پیشنهادی برای عکس‌ها: public/assets/troops/unit_{troop_type_id}.png
-                                              (مثلا public/assets/troops/unit_1.png برای اولین نیروی رومی)
-                                              اگر عکس موجود نباشد، جای آن خالی نمایش داده می‌شود و کل کارت به هم نمی‌ریزد.
-                                            */}
-                                            <img
-                                                src={`/assets/troops/unit_${t.troop_type_id}.png`}
-                                                alt={t.name}
-                                                className="w-14 h-14 object-contain bg-stone-100 rounded border border-wood-light flex-shrink-0"
-                                                onError={(e) => {
-                                                    e.target.style.visibility = 'hidden';
-                                                }}
-                                            />
-
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-bold text-wood-dark">{t.name}</p>
-                                                <p className="text-xs text-gray-500">
-                                                    سطح فعلی: {t.level} از {t.max_level}
+                                return (
+                                    <div key={t.troop_type_id} className="flex items-center gap-4 bg-white/80 border border-parchment-300 rounded-xl p-3">
+                                        {/* پیشنهاد عکس: /assets/troops/unit_{troop_type_id}.png */}
+                                        <img
+                                            src={`/assets/troops/unit_${t.troop_type_id}.png`} alt={t.name}
+                                            className="w-14 h-14 object-contain bg-parchment-100 rounded-lg border border-parchment-300 flex-shrink-0"
+                                            onError={(e) => { e.target.style.visibility = 'hidden'; }}
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-ink-800">{t.name}</p>
+                                            <p className="text-xs text-ink-500">سطح فعلی: {t.level} از {t.max_level}</p>
+                                            {!isMax && t.next_level_cost && (
+                                                <p className="text-[10px] text-ink-600 mt-1 flex gap-3 flex-wrap">
+                                                    <span>🪵 {t.next_level_cost.wood}</span>
+                                                    <span>🧱 {t.next_level_cost.clay}</span>
+                                                    <span>⚒️ {t.next_level_cost.iron}</span>
+                                                    <span>🌾 {t.next_level_cost.crop}</span>
                                                 </p>
-                                                {!isMax && t.next_level_cost && (
-                                                    <p className="text-[10px] text-gray-600 mt-1 flex gap-3 flex-wrap">
-                                                        <span>🪵 {t.next_level_cost.wood}</span>
-                                                        <span>🧱 {t.next_level_cost.clay}</span>
-                                                        <span>⚒️ {t.next_level_cost.iron}</span>
-                                                        <span>🌾 {t.next_level_cost.crop}</span>
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div className="text-center min-w-[140px] flex-shrink-0">
-                                                {isMax ? (
-                                                    <span className="text-xs font-bold text-green-700">🏆 حداکثر لول</span>
-                                                ) : t.is_upgrading ? (
-                                                    <span className="font-mono font-bold text-blue-700 text-sm" dir="ltr">
-                                                        {formatDuration(remaining)}
-                                                    </span>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleUpgrade(t.troop_type_id)}
-                                                        disabled={submitting === t.troop_type_id}
-                                                        className="btn-travian-green text-xs px-4 py-1.5 disabled:opacity-50"
-                                                    >
-                                                        {submitting === t.troop_type_id ? '...' : `ارتقا به لول ${t.level + 1}`}
-                                                    </button>
-                                                )}
-                                            </div>
+                                            )}
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </>
-                    )}
-                </WoodSign>
-            </div>
-        </div>
+                                        <div className="text-center min-w-[140px] flex-shrink-0">
+                                            {isMax ? (
+                                                <span className="badge-green">🏆 حداکثر لول</span>
+                                            ) : t.is_upgrading ? (
+                                                <span className="font-mono font-bold text-blue-700 text-sm" dir="ltr">{formatDuration(remaining)}</span>
+                                            ) : (
+                                                <button onClick={() => handleUpgrade(t.troop_type_id)} disabled={submitting === t.troop_type_id} className="btn-primary text-xs !px-4 !py-2">
+                                                    {submitting === t.troop_type_id ? '...' : `ارتقا به لول ${t.level + 1}`}
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </WoodSign>
+        </PageShell>
     );
 }

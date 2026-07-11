@@ -5,7 +5,7 @@ import api from "../api/axiosConfig.js";
 import SideInfoBoards from "./SideInfoBoards.jsx";
 
 const NAV_ITEMS = [
-    { path: '/village', icon: '🌾', label: 'منابع'},
+    { path: '/village', icon: '🌾', label: 'منابع' },
     { path: '/dorf2', icon: '🏛️', label: 'مرکز دهکده' },
     { path: '/world-map', icon: '🗺️', label: 'نقشه' },
     { path: '/colonize', icon: '🏕️', label: 'تاسیس' },
@@ -21,7 +21,7 @@ const NAV_ITEMS = [
     { path: '/hero', icon: '🦸', label: 'قهرمان' },
     { path: '/gold-shop', icon: '💰', label: 'فروشگاه طلا' },
     { path: '/plus', icon: '👑', label: 'پلاس' },
-    { path: '/blacksmith', icon: '🔨', label: 'آهنگری' }
+    { path: '/blacksmith', icon: '🔨', label: 'آهنگری' },
 ];
 
 export default function Navbar() {
@@ -40,9 +40,7 @@ export default function Navbar() {
             try {
                 const { data } = await api.get('game/quests/');
                 setPendingQuests(data.filter((q) => q.is_completed && !q.is_reward_claimed).length);
-            } catch (error) {
-                // بی‌صدا نادیده گرفته می‌شود
-            }
+            } catch { /* silent */ }
         };
         fetchQuestCount();
         const interval = setInterval(fetchQuestCount, 30000);
@@ -50,23 +48,21 @@ export default function Navbar() {
     }, []);
 
     const handleLogout = async () => {
-        try { await api.post('auth/logout/'); } catch (error) { /* ignore */ }
+        try { await api.post('auth/logout/'); } catch { /* ignore */ }
         finally { clearUser(); navigate('/login'); }
     };
 
     return (
         <>
-            <div className="side-tree-left" />
-            <div className="side-tree-right" />
             <SideInfoBoards />
-            {/* تغییر: پدینگ از py-2 به py-1 کاهش یافت */}
-            <div className="fixed top-14 left-0 w-full bg-gradient-to-b from-parchment-dark to-[#d9c9a0] border-b-2 border-wood-light shadow-lg z-[100] px-2 py-1">
-                <div className="flex flex-wrap items-center justify-center gap-1.5 max-w-6xl mx-auto">
+            <div className="fixed top-0 left-0 w-full z-[100] bg-ink-900/95 backdrop-blur border-b border-gold-600/40 shadow-card">
+                <div className="max-w-7xl mx-auto flex items-center gap-2 px-3 py-2 overflow-x-auto">
                     {villages.length > 0 && (
                         <select
                             value={activeVillageId || ''}
                             onChange={(e) => setActiveVillageId(Number(e.target.value))}
-                            className="bg-white text-wood-dark font-bold text-[11px] rounded-full px-2.5 py-1.5 border-2 border-wood-light focus:outline-none cursor-pointer ml-1"
+                            className="bg-white text-ink-800 font-bold text-xs rounded-full px-3 py-2
+                                       border border-gold-500/60 focus:outline-none cursor-pointer flex-shrink-0"
                             title="دهکده فعال"
                         >
                             {villages.map((v) => (
@@ -77,37 +73,41 @@ export default function Navbar() {
                         </select>
                     )}
 
-                    {NAV_ITEMS.map((item) => (
+                    <div className="w-px h-8 bg-ink-700 flex-shrink-0 mx-1" />
+
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {NAV_ITEMS.map((item) => (
+                            <button
+                                key={item.path}
+                                onClick={() => navigate(item.path)}
+                                title={item.label}
+                                className={`btn-icon flex-shrink-0 ${location.pathname === item.path ? 'active' : '!bg-ink-800/60 !border-ink-700 text-parchment-100'}`}
+                            >
+                                <span className="text-base">{item.icon}</span>
+                            </button>
+                        ))}
+
                         <button
-                            key={item.path}
-                            onClick={() => navigate(item.path)}
-                            className={`wood-icon-btn w-10 h-10 ${location.pathname === item.path ? 'active' : ''}`}
-                            title={item.label}
+                            onClick={() => navigate('/quests')}
+                            title="کوئست‌ها"
+                            className={`btn-icon flex-shrink-0 ${location.pathname === '/quests' ? 'active' : '!bg-ink-800/60 !border-ink-700 text-parchment-100'}`}
                         >
-                            <span className="text-base">{item.icon}</span>
+                            <span className="text-base">🎯</span>
+                            {pendingQuests > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                    {pendingQuests}
+                                </span>
+                            )}
                         </button>
-                    ))}
 
-                    <button
-                        onClick={() => navigate('/quests')}
-                        className={`wood-icon-btn w-10 h-10 ${location.pathname === '/quests' ? 'active' : ''}`}
-                        title="کوئست‌ها"
-                    >
-                        <span className="text-base">🎯</span>
-                        {pendingQuests > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center animate-bounce">
-                                {pendingQuests}
-                            </span>
-                        )}
-                    </button>
-
-                    <button
-                        onClick={handleLogout}
-                        className="wood-icon-btn w-10 h-10 border-red-700 bg-red-50 text-red-700 ml-1"
-                        title="خروج"
-                    >
-                        <span className="text-base">🚪</span>
-                    </button>
+                        <button
+                            onClick={handleLogout}
+                            title="خروج"
+                            className="btn-icon flex-shrink-0 !bg-rose-600/90 !border-rose-700 text-white"
+                        >
+                            <span className="text-base">🚪</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </>

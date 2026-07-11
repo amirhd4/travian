@@ -8,27 +8,33 @@ import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
 import Footer from "../components/Footer.jsx";
 
-// مختصات مزارع منابع (Dorf1)
 const DORF1_SLOTS = {
-    1: { x: 150, y: 100 }, 2: { x: 250, y: 70 }, 3: { x: 370, y: 70 }, 4: { x: 470, y: 100 }, // چوب‌بری‌ها
-    5: { x: 520, y: 180 }, 6: { x: 540, y: 280 }, 7: { x: 480, y: 360 }, 8: { x: 380, y: 400 }, // گودال‌های خشت
-    9: { x: 240, y: 400 }, 10: { x: 140, y: 360 }, 11: { x: 80, y: 280 }, 12: { x: 100, y: 180 }, // معادن آهن
-    13: { x: 210, y: 150 }, 14: { x: 310, y: 130 }, 15: { x: 410, y: 150 }, 16: { x: 430, y: 250 }, // گندم‌زارها
-    17: { x: 360, y: 320 }, 18: { x: 260, y: 320 }  // گندم‌زارها
+    1: { x: 150, y: 100 }, 2: { x: 250, y: 70 }, 3: { x: 370, y: 70 }, 4: { x: 470, y: 100 },
+    5: { x: 520, y: 180 }, 6: { x: 540, y: 280 }, 7: { x: 480, y: 360 }, 8: { x: 380, y: 400 },
+    9: { x: 240, y: 400 }, 10: { x: 140, y: 360 }, 11: { x: 80, y: 280 }, 12: { x: 100, y: 180 },
+    13: { x: 210, y: 150 }, 14: { x: 310, y: 130 }, 15: { x: 410, y: 150 }, 16: { x: 430, y: 250 },
+    17: { x: 360, y: 320 }, 18: { x: 260, y: 320 },
 };
 
+// رنگ متفاوت برای هر دسته منبع - وقتی عکس نیست هم قابل تشخیصه
+const RESOURCE_COLORS = {
+    'چوب‌بری': 0x2f6b3a,
+    'گودال خاک رس': 0xb5652f,
+    'معدن آهن': 0x5b6470,
+    'مزرعه گندم': 0xd9a62e,
+};
+const RESOURCE_ICONS = {
+    'چوب‌بری': '🪵', 'گودال خاک رس': '🧱', 'معدن آهن': '⚒️', 'مزرعه گندم': '🌾',
+};
+
+// مسیر پیشنهادی عکس هر مزرعه: /assets/buildings/{name}.png (اگر نبود، دایره‌ی رنگی جایگزین می‌شود)
 const getAssetPath = (building) => {
     if (building.level === 0 && !building.is_upgrading) return null;
-
     const nameMap = {
-        'چوب‌بری': 'woodcutter',
-        'گودال خاک رس': 'claypit',
-        'معدن آهن': 'ironmine',
-        'مزرعه گندم': 'cropland',
+        'چوب‌بری': 'woodcutter', 'گودال خاک رس': 'claypit',
+        'معدن آهن': 'ironmine', 'مزرعه گندم': 'cropland',
     };
-
-    const engName = nameMap[building.name] || 'default_building';
-    return `/assets/buildings/${engName}.png`;
+    return `/assets/buildings/${nameMap[building.name] || 'default_building'}.png`;
 };
 
 function remainingSeconds(endTimeIso) {
@@ -45,7 +51,6 @@ export default function ResourceFields() {
     const [loading, setLoading] = useState(true);
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [upgrading, setUpgrading] = useState(false);
-    const [now, setNow] = useState(Date.now());
 
     const pixiContainerRef = useRef(null);
     const pixiAppRef = useRef(null);
@@ -63,66 +68,50 @@ export default function ResourceFields() {
         }
     }, [activeVillageId]);
 
-    useEffect(() => {
-        setLoading(true);
-        fetchBuildings();
-    }, [fetchBuildings]);
-
-    useEffect(() => {
-        if (lastMessage?.type === 'building_completed') fetchBuildings();
-    }, [lastMessage, fetchBuildings]);
-
+    useEffect(() => { setLoading(true); fetchBuildings(); }, [fetchBuildings]);
+    useEffect(() => { if (lastMessage?.type === 'building_completed') fetchBuildings(); }, [lastMessage, fetchBuildings]);
     useEffect(() => {
         const interval = setInterval(fetchBuildings, 30000);
         return () => clearInterval(interval);
     }, [fetchBuildings]);
 
     useEffect(() => {
-        const interval = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    useEffect(() => {
         if (loading || !pixiContainerRef.current) return;
-
         let isMounted = true;
         const app = new PIXI.Application();
 
         async function initPixi() {
             await app.init({
-                width: 620,
-                height: 460,
-                backgroundColor: 0x000000,
+                width: 660, height: 500,
+                backgroundColor: 0x8ab961,
                 resolution: window.devicePixelRatio || 1,
-                autoDensity: true,
-                antialias: true,
+                autoDensity: true, antialias: true,
             });
-
-            if (!isMounted) {
-                app.destroy(true, { children: true });
-                return;
-            }
-
+            if (!isMounted) { app.destroy(true, { children: true }); return; }
             pixiAppRef.current = app;
             pixiContainerRef.current.innerHTML = '';
             pixiContainerRef.current.appendChild(app.canvas);
-
             renderScene(app);
         }
 
         async function renderScene(app) {
             app.stage.removeChildren();
 
+            // پس‌زمینه: تلاش برای بارگذاری عکس، وگرنه گرادیانت چمنزار زیبا
             try {
                 const bgTexture = await PIXI.Assets.load('/assets/maps/f3-rtl.jpg');
                 const bgSprite = new PIXI.Sprite(bgTexture);
                 bgSprite.width = app.screen.width;
                 bgSprite.height = app.screen.height;
                 app.stage.addChild(bgSprite);
-            } catch (e) {
-                const fallbackBg = new PIXI.Graphics();
-                fallbackBg.rect(0, 0, app.screen.width, app.screen.height).fill({ color: 0x8ab961 });
-                app.stage.addChild(fallbackBg);
+            } catch {
+                const bg = new PIXI.Graphics();
+                bg.rect(0, 0, app.screen.width, app.screen.height).fill({ color: 0x8fbf6b });
+                for (let i = 0; i < 40; i++) {
+                    bg.circle(Math.random() * app.screen.width, Math.random() * app.screen.height, Math.random() * 3 + 1)
+                        .fill({ color: 0x7aab58, alpha: 0.5 });
+                }
+                app.stage.addChild(bg);
             }
 
             const activeBuildings = buildings.filter(b => DORF1_SLOTS[b.position]);
@@ -134,44 +123,59 @@ export default function ResourceFields() {
                 container.y = coords.y;
 
                 const assetPath = getAssetPath(b);
+                let hasImage = false;
                 if (assetPath) {
                     const sprite = PIXI.Sprite.from(assetPath);
                     sprite.anchor.set(0.5);
-                    sprite.width = 60;
-                    sprite.height = 60;
+                    sprite.width = 64; sprite.height = 64;
+                    sprite.on?.('error', () => { hasImage = false; });
                     container.addChild(sprite);
-                } else {
-                    const circle = new PIXI.Graphics();
-                    circle.circle(0, 0, 25).fill({ color: 0xffffff, alpha: 0.3 }).stroke({ width: 2, color: 0x000000 });
-                    container.addChild(circle);
+                    hasImage = true;
                 }
 
+                // دایره‌ی رنگی پایه (همیشه رسم می‌شود، زیر عکس - اگر عکس نبود این دیده می‌شود)
+                const baseColor = RESOURCE_COLORS[b.name] || 0x999999;
+                const circle = new PIXI.Graphics();
+                circle.circle(0, 0, 30)
+                    .fill({ color: baseColor, alpha: b.level > 0 ? 0.9 : 0.35 })
+                    .stroke({ width: 3, color: 0xffffff, alpha: 0.9 });
+                container.addChildAt(circle, 0);
+
+                const icon = new PIXI.Text({
+                    text: RESOURCE_ICONS[b.name] || '❔',
+                    style: { fontSize: 26 },
+                });
+                icon.anchor.set(0.5);
+                container.addChild(icon);
+
+                // بج سطح - بزرگ‌تر و خواناتر از قبل
                 if (b.level > 0 || b.is_upgrading) {
                     const badge = new PIXI.Graphics();
-                    badge.circle(0, 0, 12).fill({ color: 0xffcc00 }).stroke({ width: 2, color: 0x000000 });
-                    badge.x = 20; badge.y = 20;
+                    badge.circle(0, 0, 15).fill({ color: 0xf5b638 }).stroke({ width: 2.5, color: 0x1c1710 });
+                    badge.x = 24; badge.y = 24;
 
                     const lvlText = new PIXI.Text({
                         text: b.level.toString(),
-                        style: { fontFamily: 'Tahoma', fontSize: 12, fill: 0x000000, fontWeight: 'bold' }
+                        style: { fontFamily: 'Vazirmatn, Tahoma', fontSize: 15, fill: 0x1c1710, fontWeight: 'bold' }
                     });
                     lvlText.anchor.set(0.5);
-                    lvlText.x = 20; lvlText.y = 20;
-
+                    lvlText.x = 24; lvlText.y = 24;
                     container.addChild(badge, lvlText);
                 }
 
                 if (b.is_upgrading) {
-                    const buildIcon = PIXI.Sprite.from('/assets/ui/hammer.png');
-                    buildIcon.anchor.set(0.5);
-                    buildIcon.x = -20; buildIcon.y = -20;
-                    buildIcon.width = 20; buildIcon.height = 20;
-                    container.addChild(buildIcon);
+                    const ring = new PIXI.Graphics();
+                    ring.circle(0, 0, 33).stroke({ width: 3, color: 0xf5b638, alpha: 0.9 });
+                    container.addChild(ring);
+                    const hammer = new PIXI.Text({ text: '🔨', style: { fontSize: 16 } });
+                    hammer.anchor.set(0.5);
+                    hammer.x = -24; hammer.y = -24;
+                    container.addChild(hammer);
                 }
 
                 container.eventMode = 'static';
                 container.cursor = 'pointer';
-                container.on('pointerover', () => { container.scale.set(1.05); });
+                container.on('pointerover', () => { container.scale.set(1.08); });
                 container.on('pointerout', () => { container.scale.set(1); });
                 container.on('pointerdown', () => setSelectedSlot(b));
 
@@ -180,13 +184,9 @@ export default function ResourceFields() {
         }
 
         initPixi();
-
         return () => {
             isMounted = false;
-            if (pixiAppRef.current) {
-                pixiAppRef.current.destroy(true, { children: true });
-                pixiAppRef.current = null;
-            }
+            if (pixiAppRef.current) { pixiAppRef.current.destroy(true, { children: true }); pixiAppRef.current = null; }
         };
     }, [loading, buildings]);
 
@@ -194,10 +194,7 @@ export default function ResourceFields() {
         if (!selectedSlot || !activeVillageId) return;
         setUpgrading(true);
         try {
-            await api.post('game/upgrade-building/', {
-                village_id: activeVillageId,
-                position: selectedSlot.position,
-            });
+            await api.post('game/upgrade-building/', { village_id: activeVillageId, position: selectedSlot.position });
             setSelectedSlot(null);
             fetchBuildings();
         } catch (error) {
@@ -209,85 +206,97 @@ export default function ResourceFields() {
 
     const canAfford = (building) => {
         if (!villageInfo || !building.next_level_cost) return false;
-        const r = villageInfo.resources;
-        const c = building.next_level_cost;
+        const r = villageInfo.resources, c = building.next_level_cost;
         return r.wood >= c.wood && r.clay >= c.clay && r.iron >= c.iron && r.crop >= c.crop;
     };
 
-    const upgradingBuildings = buildings.filter(b => b.is_upgrading).sort((a, b) => new Date(a.upgrade_end_time) - new Date(b.upgrade_end_time));
+    const upgradingBuildings = buildings.filter(b => b.is_upgrading)
+        .sort((a, b) => new Date(a.upgrade_end_time) - new Date(b.upgrade_end_time));
 
     return (
-        // تغییر ۱: تبدیل کل صفحه به یک باکس ثابت به اندازه کل مرورگر (h-screen و overflow-hidden)
-        <div className="w-full h-screen overflow-hidden flex flex-col items-center pt-24" style={{ backgroundImage: "url('/assets/bgs/bgResources-rtl.jpg')", backgroundSize: "cover", backgroundPosition: "center" }}>
+        <div className="game-bg pt-24 pb-24 flex flex-col items-center">
             <ResourceBar />
             <Navbar />
 
             {loading ? (
-                <p className="font-bold text-[#3d2b1a] mt-10">در حال بارگذاری دهکده...</p>
+                <p className="font-bold text-ink-700 mt-16">در حال بارگذاری دهکده...</p>
             ) : (
-                // تغییر ۲: باکس وسط حالا تمام فضای خالی را پر می‌کند (flex-1) و محتوا را کاملاً وسط‌چین و فشرده نگه می‌دارد
-                <div className="flex-1 flex flex-col items-center justify-center w-full max-w-4xl px-4 min-h-0 pb-4">
+                <div className="w-full max-w-4xl px-4 flex flex-col items-center gap-4 mt-4">
                     {villageInfo && (
-                        <p className="text-xs font-bold text-[#3d2b1a] bg-[#f4ebd0] px-3 py-1 rounded-full mb-2 border-2 border-[#593d2b] shrink-0">
-                            👥 جمعیت: {villageInfo.population?.toLocaleString() ?? '—'}
-                        </p>
+                        <div className="flex items-center gap-3">
+                            <span className="badge-green text-sm px-4 py-1.5">
+                                👥 جمعیت: {villageInfo.population?.toLocaleString() ?? '—'}
+                            </span>
+                            <span className="badge-gold text-sm px-4 py-1.5">
+                                {villageInfo.name}
+                            </span>
+                        </div>
                     )}
 
-                    {/* کانتینر اصلی بازی */}
-                    <div className="shadow-2xl border-8 border-[#593d2b] rounded-lg overflow-hidden relative bg-black shrink-0" ref={pixiContainerRef} style={{ width: '620px', height: '460px', maxWidth: '100%' }} />
+                    <div className="rounded-2xl overflow-hidden shadow-card border-4 border-ink-800 bg-ink-900"
+                         ref={pixiContainerRef} style={{ width: '660px', height: '500px', maxWidth: '100%' }} />
 
                     {upgradingBuildings.length > 0 && (
-                        <div className="bg-[#f4ebd0] border-4 border-[#593d2b] rounded-lg shadow-xl mt-4 p-3 w-[620px] max-w-full shrink-0">
-                            <h3 className="font-bold text-[#593d2b] mb-2 border-b-2 border-[#d9c49a] pb-1 text-xs">🔨 صف ساخت‌وساز</h3>
-                            <ul className="text-xs">
+                        <div className="panel w-full max-w-[660px]">
+                            <div className="panel-header !py-2.5">
+                                <span className="panel-title text-sm">🔨 صف ساخت‌وساز</span>
+                            </div>
+                            <div className="panel-body !py-2 space-y-1">
                                 {upgradingBuildings.map((b) => (
-                                    <li key={b.id} className="flex justify-between items-center py-1 border-b border-dashed border-gray-300 last:border-0">
-                                        <span className="font-bold text-[#3d2b1a]">{b.name} (سطح {b.level + 1})</span>
-                                        <span className="font-mono text-red-600 font-bold" dir="ltr">
+                                    <div key={b.id} className="flex justify-between items-center py-1.5 border-b border-parchment-200 last:border-0 text-sm">
+                                        <span className="font-bold text-ink-700">{b.name} (سطح {b.level + 1})</span>
+                                        <span className="font-mono font-bold text-rose-600" dir="ltr">
                                             {formatDuration(remainingSeconds(b.upgrade_end_time))}
                                         </span>
-                                    </li>
+                                    </div>
                                 ))}
-                            </ul>
+                            </div>
                         </div>
                     )}
                 </div>
             )}
 
             {selectedSlot && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] p-4">
-                    <div className="bg-[#f4ebd0] border-4 border-[#593d2b] rounded-xl shadow-2xl max-w-sm w-full p-6 relative">
-                        <button onClick={() => setSelectedSlot(null)} className="absolute top-2 right-3 text-2xl font-bold text-red-700">×</button>
-                        <h3 className="text-xl font-bold text-[#593d2b] mb-1">{selectedSlot.level > 0 ? selectedSlot.name : 'زمین خالی'}</h3>
-                        <p className="text-sm text-gray-600 mb-4">سطح فعلی: <span className="font-bold">{selectedSlot.level}</span></p>
+                <div className="fixed inset-0 bg-ink-900/70 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+                    <div className="panel max-w-sm w-full p-6 relative">
+                        <button onClick={() => setSelectedSlot(null)}
+                            className="absolute top-3 left-3 w-8 h-8 rounded-full bg-rose-100 text-rose-600 font-bold hover:bg-rose-200 transition">×</button>
+
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-2xl">{RESOURCE_ICONS[selectedSlot.name] || '🏗️'}</span>
+                            <h3 className="text-xl font-extrabold text-ink-800">
+                                {selectedSlot.level > 0 ? selectedSlot.name : 'زمین خالی'}
+                            </h3>
+                        </div>
+                        <p className="text-sm text-ink-600 mb-4">سطح فعلی: <span className="font-bold">{selectedSlot.level}</span></p>
 
                         {selectedSlot.is_upgrading ? (
-                            <div className="bg-yellow-100 border border-yellow-400 rounded p-3 text-center mb-4">
-                                <p className="text-sm font-bold text-yellow-800 mb-1">در حال ارتقا...</p>
+                            <div className="bg-gold-50 border border-gold-300 rounded-lg p-3 text-center mb-4">
+                                <p className="text-sm font-bold text-gold-700">در حال ارتقا...</p>
                             </div>
                         ) : selectedSlot.is_max_level ? (
-                            <div className="bg-green-100 border border-green-500 rounded p-3 text-center mb-4">
-                                <p className="text-sm font-bold text-green-800">🏆 این مزارع به حداکثر سطح رسیده است.</p>
+                            <div className="bg-brand-50 border border-brand-300 rounded-lg p-3 text-center mb-4">
+                                <p className="text-sm font-bold text-brand-700">🏆 این مزرعه به حداکثر سطح رسیده است.</p>
                             </div>
                         ) : (
-                            <div className="bg-white/60 rounded border border-[#d9c49a] p-3 mb-4 text-sm">
-                                <p className="font-bold text-[#593d2b] mb-2">هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
+                            <div className="bg-parchment-100 rounded-lg border border-parchment-300 p-4 mb-4 text-sm">
+                                <p className="font-bold text-ink-800 mb-2">هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
                                 <div className="grid grid-cols-2 gap-2 text-xs font-bold mb-3">
-                                    <span className="flex items-center gap-1">🪵 {selectedSlot.next_level_cost.wood}</span>
-                                    <span className="flex items-center gap-1">🧱 {selectedSlot.next_level_cost.clay}</span>
-                                    <span className="flex items-center gap-1">🧲 {selectedSlot.next_level_cost.iron}</span>
-                                    <span className="flex items-center gap-1">🌾 {selectedSlot.next_level_cost.crop}</span>
+                                    <span>🪵 {selectedSlot.next_level_cost.wood}</span>
+                                    <span>🧱 {selectedSlot.next_level_cost.clay}</span>
+                                    <span>⚒️ {selectedSlot.next_level_cost.iron}</span>
+                                    <span>🌾 {selectedSlot.next_level_cost.crop}</span>
                                 </div>
-                                <p className="text-xs text-gray-700 flex items-center gap-1">⏱ زمان ساخت: {formatDuration(selectedSlot.next_level_time_seconds)}</p>
-                                {!canAfford(selectedSlot) && <p className="text-xs text-red-600 font-bold mt-3">منابع کافی ندارید.</p>}
+                                <p className="text-xs text-ink-600">⏱ زمان ساخت: {formatDuration(selectedSlot.next_level_time_seconds)}</p>
+                                {!canAfford(selectedSlot) && <p className="text-xs text-rose-600 font-bold mt-3">منابع کافی ندارید.</p>}
                             </div>
                         )}
 
-                        <div className="flex justify-center">
-                            <button onClick={handleUpgrade} disabled={selectedSlot.is_upgrading || upgrading || !canAfford(selectedSlot)} className="bg-[#593d2b] text-[#f4ebd0] px-8 py-2 rounded-full font-bold hover:bg-[#4a3224] disabled:bg-gray-400 disabled:text-gray-200 transition-colors shadow-md">
-                                {upgrading ? "صبر کنید..." : "ارتقا به سطح " + (selectedSlot.level + 1)}
-                            </button>
-                        </div>
+                        <button onClick={handleUpgrade}
+                            disabled={selectedSlot.is_upgrading || upgrading || selectedSlot.is_max_level || !canAfford(selectedSlot)}
+                            className="btn-primary w-full py-3">
+                            {upgrading ? "صبر کنید..." : `ارتقا به سطح ${selectedSlot.level + 1}`}
+                        </button>
                     </div>
                 </div>
             )}

@@ -4,10 +4,10 @@ import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 
 const RESOURCE_CONFIG = [
-    { key: 'wood', icon: '🪵', maxKey: 'maxStorage' },
-    { key: 'clay', icon: '🧱', maxKey: 'maxStorage' },
-    { key: 'iron', icon: '⚒️', maxKey: 'maxStorage' },
-    { key: 'crop', icon: '🌾', maxKey: 'maxGranary' },
+    { key: 'wood', icon: '🪵', label: 'چوب', maxKey: 'maxStorage' },
+    { key: 'clay', icon: '🧱', label: 'خشت', maxKey: 'maxStorage' },
+    { key: 'iron', icon: '⚒️', label: 'آهن', maxKey: 'maxStorage' },
+    { key: 'crop', icon: '🌾', label: 'گندم', maxKey: 'maxGranary' },
 ];
 
 function useLiveClock() {
@@ -46,7 +46,7 @@ export default function ResourceBar() {
                 console.error("خطا در دریافت منابع دهکده", error);
             }
         };
-        fetchVillageResources().then(r => null);
+        fetchVillageResources();
         const syncInterval = setInterval(fetchVillageResources, 15000);
         return () => { cancelled = true; clearInterval(syncInterval); };
     }, [activeVillageId, setProduction, updateResources, setCapacities]);
@@ -59,41 +59,45 @@ export default function ResourceBar() {
     const isStarving = production.crop < 0 && resources.crop <= 0;
 
     return (
-        <div className="absolute top-0 left-0 w-full z-10 bg-parchment/95 border-b-2 border-wood-light shadow-md">
-            <div className="flex items-center justify-between px-3 py-1">
+        <div className="fixed top-0 left-0 w-full z-[110] bg-gradient-to-b from-ink-900 to-ink-800 text-parchment-100 shadow-lg">
+            <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-1.5">
                 <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-white border-2 border-wood-light flex items-center justify-center text-sm">👤</div>
-                    <span className="text-[10px] font-bold text-wood">{user?.username}</span>
+                    <div className="w-8 h-8 rounded-full bg-gold-500/20 border border-gold-500/50 flex items-center justify-center text-sm">👤</div>
+                    <span className="text-xs font-bold text-parchment-200">{user?.username}</span>
                 </div>
-                <span className="text-[11px] font-bold text-wood-dark flex items-center gap-1" dir="ltr">
+
+                <span className="text-xs font-bold text-gold-300 flex items-center gap-1 font-mono" dir="ltr">
                     🕐 {now.toLocaleTimeString('fa-IR')}
                 </span>
-                <span className="text-xs font-bold text-wood flex items-center gap-1">
-                    <span className="w-6 h-6 rounded-full bg-amber-100 border border-amber-500 flex items-center justify-center">💰</span>
-                    <span className="text-amber-700">{(user?.gold_coins ?? 0).toLocaleString()}</span>
+
+                <span className="text-xs font-bold flex items-center gap-1.5">
+                    <span className="w-6 h-6 rounded-full bg-gold-500/20 border border-gold-500/50 flex items-center justify-center">💰</span>
+                    <span className="text-gold-300">{(user?.gold_coins ?? 0).toLocaleString()}</span>
                 </span>
             </div>
-            <div className="flex flex-wrap justify-center gap-4 px-3 pb-1.5">
-                {RESOURCE_CONFIG.map(({ key, icon, maxKey }) => {
+
+            <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-3 sm:gap-6 px-3 pb-2">
+                {RESOURCE_CONFIG.map(({ key, icon, label, maxKey }) => {
                     const value = Math.floor(resources[key]);
                     const prod = Math.round(production[key]);
                     const max = maxKey === 'maxGranary' ? maxGranary : maxStorage;
                     const percent = Math.min(100, (value / (max || 1)) * 100);
                     const isCrop = key === 'crop';
                     return (
-                        <div key={key} className="flex flex-col items-center min-w-[85px]">
-                            <div className="w-7 h-7 rounded-full bg-white border-2 border-wood-light flex items-center justify-center text-xs mb-0.5">
-                                {isCrop && isStarving ? '⚠️' : icon}
+                        <div key={key} className="flex flex-col items-center min-w-[80px]">
+                            <div className="flex items-center gap-1 mb-0.5">
+                                <span className="text-sm">{isCrop && isStarving ? '⚠️' : icon}</span>
+                                <span className="text-[10px] text-parchment-400">{label}</span>
                             </div>
-                            <span className="text-xs font-bold text-wood-dark">{value.toLocaleString()}</span>
-                            <div className="resource-progress-track">
+                            <span className="text-sm font-bold text-parchment-50">{value.toLocaleString()}</span>
+                            <div className="progress-track w-20 !bg-white/10">
                                 <div
-                                    className={`resource-progress-fill ${isCrop && prod < 0 ? 'bg-red-700 animate-pulse' : ''}`}
+                                    className={`progress-fill ${isCrop && prod < 0 ? 'animate-pulse' : ''}`}
                                     style={{ width: `${percent}%` }}
                                 />
                             </div>
-                            <span className={`text-[10px] font-bold ${prod < 0 ? 'text-red-600' : 'text-green-700'}`}>
-                                {prod >= 0 ? '+' : ''}{prod}/ساعت
+                            <span className={`text-[10px] font-bold ${prod < 0 ? 'text-rose-400' : 'text-brand-300'}`}>
+                                {prod >= 0 ? '+' : ''}{prod}/س
                             </span>
                         </div>
                     );

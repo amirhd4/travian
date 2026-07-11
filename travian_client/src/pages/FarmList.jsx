@@ -1,14 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axiosConfig';
-import Navbar from '../components/Navbar';
-import ResourceBar from '../components/ResourceBar';
+import PageShell from '../components/PageShell';
+import LoadingState from '../components/LoadingState';
+import EmptyState from '../components/EmptyState';
+import { AlertModal, ConfirmModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 
-const statusIcon = (status) => ({
-    SUCCESS: '✅',
-    FAILED: '❌',
-    NEVER: '⏳',
-}[status] || '⏳');
+const statusIcon = (status) => ({ SUCCESS: '✅', FAILED: '❌', NEVER: '⏳' }[status] || '⏳');
 
 export default function FarmList() {
     const villages = useGameStore((state) => state.villages);
@@ -26,12 +24,15 @@ export default function FarmList() {
     const [formTroops, setFormTroops] = useState({});
     const [submitting, setSubmitting] = useState(false);
 
+    const [alertMsg, setAlertMsg] = useState(null);
+    const [confirmState, setConfirmState] = useState(null); // { message, onConfirm, danger }
+
     const fetchEntries = useCallback(async () => {
         try {
             const { data } = await api.get('combat/farm-list/');
             setEntries(data);
         } catch (error) {
-            console.error('خطا در دریافت لیست مزرعه', error);
+            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -42,199 +43,167 @@ export default function FarmList() {
             const { data } = await api.get('combat/troop-types/');
             setCatalog(data);
         } catch (error) {
-            console.error('خطا در دریافت فهرست نیروها', error);
+            console.error(error);
         }
     }, []);
 
-    useEffect(() => {
-        fetchEntries();
-        fetchCatalog();
-    }, [fetchEntries, fetchCatalog]);
-
-    useEffect(() => {
-        if (activeVillageId && !formSourceId) setFormSourceId(activeVillageId);
-    }, [activeVillageId, formSourceId]);
+    useEffect(() => { fetchEntries(); fetchCatalog(); }, [fetchEntries, fetchCatalog]);
+    useEffect(() => { if (activeVillageId && !formSourceId) setFormSourceId(activeVillageId); }, [activeVillageId, formSourceId]);
 
     const handleAddEntry = async (e) => {
         e.preventDefault();
-        const troopsPayload = Object.fromEntries(
-            Object.entries(formTroops).filter(([, v]) => parseInt(v) > 0)
-        );
+        const troopsPayload = Object.fromEntries(Object.entries(formTroops).filter(([, v]) => parseInt(v) > 0));
         if (Object.keys(troopsPayload).length === 0) {
-            alert('حداقل یک نوع نیرو مشخص کنید.');
+            setAlertMsg({ tone: 'error', text: 'حداقل یک نوع نیرو مشخص کنید.' });
             return;
         }
         setSubmitting(true);
         try {
             await api.post('combat/farm-list/', {
-                source_village_id: formSourceId,
-                target_village_id: formTargetId,
-                troops_payload: troopsPayload,
+                source_village_id: formSourceId, target_village_id: formTargetId, troops_payload: troopsPayload,
             });
-            setFormTargetId('');
-            setFormTroops({});
-            setShowForm(false);
+            setFormTargetId(''); setFormTroops({}); setShowForm(false);
             fetchEntries();
         } catch (error) {
-            alert(error.response?.data?.error || 'خطا در افزودن ردیف');
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در افزودن ردیف' });
         } finally {
             setSubmitting(false);
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('این ردیف از لیست مزرعه حذف شود؟')) return;
+    const doDelete = async (id) => {
+        setConfirmState(null);
         try {
             await api.delete(`combat/farm-list/${id}/`);
             fetchEntries();
         } catch (error) {
-            alert(error.response?.data?.error || 'خطا در حذف ردیف');
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در حذف ردیف' });
         }
+    };
+
+    const handleDelete = (id) => {
+        setConfirmState({ message: 'این ردیف از لیست مزرعه حذف شود؟', danger: true, onConfirm: () => doDelete(id) });
     };
 
     const handleRun = async (id) => {
         setRunningId(id);
         try {
             const { data } = await api.post('combat/farm-list/run/', { entry_id: id });
-            alert(data.message);
+            setAlertMsg({ tone: 'success', text: data.message });
             fetchEntries();
         } catch (error) {
-            alert(error.response?.data?.error || 'خطا در اجرای غارت');
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در اجرای غارت' });
         } finally {
             setRunningId(null);
         }
     };
 
-    const handleRunAll = async () => {
-        if (entries.length === 0) return;
-        if (!window.confirm(`همه‌ی ${entries.length} ردیف لیست مزرعه اجرا شود؟`)) return;
+    const doRunAll = async () => {
+        setConfirmState(null);
         setRunningAll(true);
         try {
             const { data } = await api.post('combat/farm-list/run/', { run_all: true });
-            alert(data.message);
+            setAlertMsg({ tone: 'success', text: data.message });
             fetchEntries();
         } catch (error) {
-            alert(error.response?.data?.error || 'خطا در اجرای لیست مزرعه');
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در اجرای لیست مزرعه' });
         } finally {
             setRunningAll(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="w-full min-h-screen bg-stone-200 pt-28 flex items-center justify-center">
-                <p className="font-bold text-gray-500">در حال بارگذاری لیست مزرعه...</p>
-            </div>
-        );
-    }
+    const handleRunAll = () => {
+        if (entries.length === 0) return;
+        setConfirmState({ message: `همه‌ی ${entries.length} ردیف لیست مزرعه اجرا شود؟`, onConfirm: doRunAll });
+    };
+
+    if (loading) return <PageShell><LoadingState label="در حال بارگذاری لیست مزرعه..." /></PageShell>;
 
     return (
-        <div className="w-full min-h-screen bg-stone-200 pt-28 flex flex-col items-center pb-10">
-            <ResourceBar />
-            <Navbar />
+        <PageShell maxWidth="max-w-3xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="لیست مزرعه" />
+            <ConfirmModal
+                open={!!confirmState}
+                message={confirmState?.message}
+                danger={confirmState?.danger}
+                onConfirm={confirmState?.onConfirm}
+                onCancel={() => setConfirmState(null)}
+            />
 
-            <div className="max-w-3xl w-full space-y-6">
-                <div className="bg-white p-6 rounded-lg shadow-md border border-gray-300">
-                    <div className="flex justify-between items-center mb-4 border-b pb-2">
-                        <h2 className="text-xl font-bold text-gray-800">🌾 لیست مزرعه</h2>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setShowForm((v) => !v)}
-                                className="text-xs font-bold bg-blue-700 text-white px-3 py-2 rounded hover:bg-blue-800"
-                            >
-                                {showForm ? 'بستن فرم' : '➕ افزودن هدف'}
-                            </button>
-                            <button
-                                onClick={handleRunAll}
-                                disabled={runningAll || entries.length === 0}
-                                className="text-xs font-bold bg-red-700 text-white px-3 py-2 rounded hover:bg-red-800 disabled:bg-gray-400"
-                            >
-                                {runningAll ? 'در حال اعزام...' : '⚔️ اجرای همه'}
-                            </button>
-                        </div>
+            <div className="panel">
+                <div className="panel-header">
+                    <span className="panel-title">🌾 لیست مزرعه</span>
+                    <div className="flex gap-2">
+                        <button onClick={() => setShowForm((v) => !v)} className="btn-primary text-xs !px-3 !py-1.5">
+                            {showForm ? 'بستن فرم' : '➕ افزودن هدف'}
+                        </button>
+                        <button onClick={handleRunAll} disabled={runningAll || entries.length === 0} className="btn-danger text-xs !px-3 !py-1.5">
+                            {runningAll ? 'در حال اعزام...' : '⚔️ اجرای همه'}
+                        </button>
                     </div>
+                </div>
 
+                <div className="panel-body">
                     {showForm && (
-                        <form onSubmit={handleAddEntry} className="bg-stone-50 border rounded p-4 mb-4 space-y-3">
+                        <form onSubmit={handleAddEntry} className="bg-parchment-100 border border-parchment-300 rounded-xl p-4 mb-4 space-y-3">
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">دهکده مبدا:</label>
-                                    <select
-                                        value={formSourceId}
-                                        onChange={(e) => setFormSourceId(e.target.value)}
-                                        className="w-full p-2 border rounded"
-                                    >
-                                        {villages.map((v) => (
-                                            <option key={v.id} value={v.id}>{v.name} ({v.x_coord}|{v.y_coord})</option>
-                                        ))}
+                                    <label className="field-label">دهکده مبدا</label>
+                                    <select value={formSourceId} onChange={(e) => setFormSourceId(e.target.value)} className="field">
+                                        {villages.map((v) => <option key={v.id} value={v.id}>{v.name} ({v.x_coord}|{v.y_coord})</option>)}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-600 mb-1">شناسه دهکده هدف:</label>
-                                    <input
-                                        type="number" required
-                                        value={formTargetId}
-                                        onChange={(e) => setFormTargetId(e.target.value)}
-                                        className="w-full p-2 border rounded"
-                                    />
+                                    <label className="field-label">شناسه دهکده هدف</label>
+                                    <input type="number" required value={formTargetId} onChange={(e) => setFormTargetId(e.target.value)} className="field" />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-600 mb-2">ترکیب نیرو برای هر بار غارت:</label>
+                                <label className="field-label mb-2">ترکیب نیرو برای هر بار غارت</label>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                                     {catalog.map((unit) => (
                                         <div key={unit.id}>
-                                            <label className="block text-[10px] text-gray-500 mb-1">{unit.name}</label>
+                                            <label className="block text-[10px] text-ink-500 mb-1">{unit.name}</label>
                                             <input
                                                 type="number" min="0"
                                                 value={formTroops[unit.id] || ''}
                                                 onChange={(e) => setFormTroops((prev) => ({ ...prev, [unit.id]: e.target.value }))}
-                                                className="w-full p-1 border rounded text-center text-sm"
+                                                className="field text-center text-sm"
                                             />
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <button
-                                type="submit" disabled={submitting}
-                                className="w-full bg-green-700 text-white p-2 rounded font-bold hover:bg-green-800 disabled:bg-gray-400"
-                            >
+                            <button type="submit" disabled={submitting} className="btn-primary w-full">
                                 {submitting ? 'در حال افزودن...' : 'افزودن به لیست مزرعه'}
                             </button>
                         </form>
                     )}
 
                     {entries.length === 0 ? (
-                        <p className="text-sm text-gray-500 text-center py-6">لیست مزرعه شما خالی است.</p>
+                        <EmptyState icon="🌾" title="لیست مزرعه شما خالی است." />
                     ) : (
                         <div className="space-y-2">
                             {entries.map((entry) => (
-                                <div key={entry.id} className="flex items-center justify-between border p-3 rounded bg-stone-50">
+                                <div key={entry.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 p-3 rounded-xl">
                                     <div>
-                                        <p className="font-bold text-sm">
+                                        <p className="font-bold text-sm text-ink-800">
                                             {statusIcon(entry.last_run_status)} {entry.source_name} ➡ {entry.target_name} ({entry.target_coords})
                                         </p>
-                                        <p className="text-xs text-gray-500 mt-1">
+                                        <p className="text-xs text-ink-500 mt-1">
                                             {Object.entries(entry.troops_payload).map(([tid, qty]) => `#${tid}×${qty}`).join(' | ')}
                                         </p>
                                         {entry.last_loot_summary && (
-                                            <p className="text-xs text-blue-700 mt-1">آخرین نتیجه: {entry.last_loot_summary}</p>
+                                            <p className="text-xs text-brand-700 mt-1">آخرین نتیجه: {entry.last_loot_summary}</p>
                                         )}
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleRun(entry.id)}
-                                            disabled={runningId === entry.id}
-                                            className="text-xs font-bold bg-amber-600 text-white px-3 py-2 rounded hover:bg-amber-700 disabled:bg-gray-400"
-                                        >
+                                    <div className="flex gap-2 flex-shrink-0">
+                                        <button onClick={() => handleRun(entry.id)} disabled={runningId === entry.id} className="btn-gold text-xs !px-3 !py-1.5">
                                             {runningId === entry.id ? '...' : '⚔️ اجرا'}
                                         </button>
-                                        <button
-                                            onClick={() => handleDelete(entry.id)}
-                                            className="text-xs font-bold bg-red-100 text-red-700 px-3 py-2 rounded hover:bg-red-200"
-                                        >
+                                        <button onClick={() => handleDelete(entry.id)} className="btn text-xs !px-3 !py-1.5 !bg-rose-100 !text-rose-700 hover:!bg-rose-200">
                                             🗑️
                                         </button>
                                     </div>
@@ -244,6 +213,6 @@ export default function FarmList() {
                     )}
                 </div>
             </div>
-        </div>
+        </PageShell>
     );
 }

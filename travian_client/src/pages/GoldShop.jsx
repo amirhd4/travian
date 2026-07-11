@@ -1,22 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
-import Navbar from '../components/Navbar';
-import ResourceBar from '../components/ResourceBar';
+import PageShell from '../components/PageShell';
+import LoadingState from '../components/LoadingState';
 import WoodSign from '../components/WoodSign';
+import { AlertModal } from '../components/Modal';
 
 export default function GoldShop() {
     const navigate = useNavigate();
     const [data, setData] = useState({ packages: [], active_discount_percent: 0 });
     const [loading, setLoading] = useState(true);
     const [buying, setBuying] = useState(null);
+    const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchPackages = useCallback(async () => {
         try {
             const res = await api.get('game/gold-packages/');
             setData(res.data);
         } catch (error) {
-            console.error('خطا در دریافت بسته‌های طلا', error);
+            console.error(error);
         } finally {
             setLoading(false);
         }
@@ -30,56 +32,43 @@ export default function GoldShop() {
             const { data } = await api.post('game/payment/create/', { package_id: packageId });
             navigate(`/checkout/${data.authority}`);
         } catch (error) {
-            alert(error.response?.data?.error || 'خطا در شروع پرداخت');
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در شروع پرداخت' });
         } finally {
             setBuying(null);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="w-full min-h-screen game-sky-bg pt-32 flex items-center justify-center">
-                <p className="font-bold text-wood-dark">در حال بارگذاری فروشگاه...</p>
-            </div>
-        );
-    }
+    if (loading) return <PageShell><LoadingState label="در حال بارگذاری فروشگاه..." /></PageShell>;
 
     return (
-        <div className="w-full min-h-screen game-sky-bg pt-32 flex flex-col items-center pb-10">
-            <ResourceBar />
-            <Navbar />
+        <PageShell maxWidth="max-w-4xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="فروشگاه طلا" />
 
-            <div className="max-w-3xl w-full px-4">
-                <WoodSign title="💰 فروشگاه طلا">
-                    {data.active_discount_percent > 0 && (
-                        <p className="text-center text-xs font-bold text-red-600 bg-red-50 border border-red-300 rounded p-2 mb-3">
-                            🎉 تخفیف ویژه‌ی فعال: {data.active_discount_percent}٪ طلای اضافه روی هر خرید!
-                        </p>
-                    )}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
-                        {data.packages.map((pkg) => (
-                            <div key={pkg.id} className="bg-white border-2 border-wood-light rounded-lg p-4 text-center shadow">
-                                <p className="text-2xl mb-1">💰</p>
-                                <p className="font-bold text-wood-dark text-sm">{pkg.name}</p>
-                                <p className="text-amber-700 font-extrabold text-lg mt-1">{pkg.gold_amount}</p>
-                                {data.active_discount_percent > 0 && (
-                                    <p className="text-[10px] text-green-700 font-bold">
-                                        (+{Math.round(pkg.gold_amount * data.active_discount_percent / 100)} هدیه)
-                                    </p>
-                                )}
-                                <p className="text-xs text-gray-500 mt-2">{Number(pkg.price).toLocaleString()} تومان</p>
-                                <button
-                                    onClick={() => handleBuy(pkg.id)}
-                                    disabled={buying === pkg.id}
-                                    className="btn-travian-green w-full mt-3 text-xs disabled:opacity-50"
-                                >
-                                    {buying === pkg.id ? '...' : 'خرید'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </WoodSign>
-            </div>
-        </div>
+            <WoodSign title="فروشگاه طلا" icon="💰">
+                {data.active_discount_percent > 0 && (
+                    <p className="text-center text-xs font-bold text-rose-600 bg-rose-50 border border-rose-300 rounded-xl p-2.5 mb-4">
+                        🎉 تخفیف ویژه فعال: {data.active_discount_percent}٪ طلای اضافه روی هر خرید!
+                    </p>
+                )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+                    {data.packages.map((pkg) => (
+                        <div key={pkg.id} className="bg-white border-2 border-parchment-300 rounded-xl p-4 text-center shadow-soft hover:border-gold-400 transition">
+                            <p className="text-3xl mb-1">💰</p>
+                            <p className="font-bold text-ink-800 text-sm">{pkg.name}</p>
+                            <p className="text-gold-600 font-extrabold text-xl mt-1">{pkg.gold_amount}</p>
+                            {data.active_discount_percent > 0 && (
+                                <p className="text-[10px] text-brand-700 font-bold">
+                                    (+{Math.round(pkg.gold_amount * data.active_discount_percent / 100)} هدیه)
+                                </p>
+                            )}
+                            <p className="text-xs text-ink-500 mt-2">{Number(pkg.price).toLocaleString()} تومان</p>
+                            <button onClick={() => handleBuy(pkg.id)} disabled={buying === pkg.id} className="btn-gold w-full mt-3 text-xs !py-2">
+                                {buying === pkg.id ? '...' : 'خرید'}
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </WoodSign>
+        </PageShell>
     );
 }
