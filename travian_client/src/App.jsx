@@ -25,6 +25,8 @@ import PlusAccount from "./pages/PlusAccount.jsx";
 import Blacksmith from "./pages/Blacksmith.jsx";
 import ResourceFields from "./pages/ResourceFields.jsx";
 import VillageCenter from "./pages/VillageCenter.jsx";
+import GameLayout from "./layouts/GameLayouts.jsx";
+import { Outlet } from "react-router-dom";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -83,38 +85,37 @@ function App() {
                 <Route path="/" element={<Navigate to="/login" />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/village" element={<ResourceFields />} />
-                <Route path="/dorf2" element={<VillageCenter />} />
+
                 <Route
-                    path="/world-map"
-                    element={<PrivateRoute><WorldMap /></PrivateRoute>}
-                />
-                <Route
-                    path="/send-troops"
-                    element={<PrivateRoute><SendTroops /></PrivateRoute>}
-                />
-                <Route
-                    path="/reports"
-                    element={<PrivateRoute><Reports /></PrivateRoute>}
-                />
-                <Route
-                    path="/statistics"
-                    element={<PrivateRoute><Statistics /></PrivateRoute>}
-                />
-                <Route path="/marketplace" element={<PrivateRoute><Marketplace /></PrivateRoute>} />
-                <Route path="/world-wonder" element={<PrivateRoute><WorldWonder /></PrivateRoute>} />
-                <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
-                <Route path="/barracks" element={<PrivateRoute><Barracks /></PrivateRoute>} />
-                <Route path="/embassy" element={<PrivateRoute><Embassy /></PrivateRoute>} />
-                <Route path="/movements" element={<PrivateRoute><Movements /></PrivateRoute>} />
-                <Route path="/hero" element={<PrivateRoute><Hero /></PrivateRoute>} />
-                <Route path="/colonize" element={<PrivateRoute><Colonize /></PrivateRoute>} />
-                <Route path="/farm-list" element={<PrivateRoute><FarmList /></PrivateRoute>} />
-                <Route path="/quests" element={<PrivateRoute><Quests /></PrivateRoute>} />
-                <Route path="/gold-shop" element={<PrivateRoute><GoldShop /></PrivateRoute>} />
-                <Route path="/checkout/:authority" element={<PrivateRoute><Checkout /></PrivateRoute>} />
-                <Route path="/plus" element={<PrivateRoute><PlusAccount /></PrivateRoute>} />
-                <Route path="/blacksmith" element={<PrivateRoute><Blacksmith /></PrivateRoute>} />
+                    element={
+                        <PrivateRoute>
+                            <GameLayout />
+                        </PrivateRoute>
+                    }
+                >
+
+                    <Route path="/village" element={<ResourceFields />} />
+                    <Route path="/dorf2" element={<VillageCenter />} />
+                    <Route path="/world-map" element={<WorldMap />} />
+                    <Route path="/send-troops" element={<SendTroops />} />
+                    <Route path="/reports" element={<Reports />} />
+                    <Route path="/statistics" element={<Statistics />} />
+                    <Route path="/marketplace" element={<Marketplace />} />
+                    <Route path="/world-wonder" element={<WorldWonder />} />
+                    <Route path="/messages" element={<Messages />} />
+                    <Route path="/barracks" element={<Barracks />} />
+                    <Route path="/embassy" element={<Embassy />} />
+                    <Route path="/movements" element={<Movements />} />
+                    <Route path="/hero" element={<Hero />} />
+                    <Route path="/colonize" element={<Colonize />} />
+                    <Route path="/farm-list" element={<FarmList />} />
+                    <Route path="/quests" element={<Quests />} />
+                    <Route path="/gold-shop" element={<GoldShop />} />
+                    <Route path="/checkout/:authority" element={<Checkout />} />
+                    <Route path="/plus" element={<PlusAccount />} />
+                    <Route path="/blacksmith" element={<Blacksmith />} />
+
+                </Route>
             </Routes>
         </Router>
     );

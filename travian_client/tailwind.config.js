@@ -24,6 +24,9 @@ export default {
           900: '#233f1c',
         },
         gold: {
+          50:  '#fff9e8',
+          100: '#fff2c9',
+          200: '#ffe7a3',
           300: '#ffe08a',
           400: '#ffcc4d',
           500: '#f5b638',

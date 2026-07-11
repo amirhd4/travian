@@ -59,7 +59,7 @@ export default function ResourceBar() {
     const isStarving = production.crop < 0 && resources.crop <= 0;
 
     return (
-        <div className="fixed top-0 left-0 w-full z-[110] bg-gradient-to-b from-ink-900 to-ink-800 text-parchment-100 shadow-lg">
+        <div className="w-full shrink-0 bg-gradient-to-b from-ink-900 to-ink-800 text-parchment-100 shadow-lg">
             <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-1.5">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-gold-500/20 border border-gold-500/50 flex items-center justify-center text-sm">👤</div>

@@ -214,10 +214,7 @@ export default function ResourceFields() {
         .sort((a, b) => new Date(a.upgrade_end_time) - new Date(b.upgrade_end_time));
 
     return (
-        <div className="game-bg pt-24 pb-24 flex flex-col items-center">
-            <ResourceBar />
-            <Navbar />
-
+        <div className="game-bg flex flex-col items-center">
             {loading ? (
                 <p className="font-bold text-ink-700 mt-16">در حال بارگذاری دهکده...</p>
             ) : (
@@ -300,7 +297,6 @@ export default function ResourceFields() {
                     </div>
                 </div>
             )}
-            <Footer />
         </div>
     );
 }

@@ -4,7 +4,7 @@ export default function Footer() {
     const user = useGameStore((state) => state.user);
 
     return (
-        <footer className="fixed bottom-0 left-0 w-full z-[100] bg-ink-900/95 backdrop-blur border-t border-ink-800 text-parchment-100">
+        <footer className="w-full shrink-0 h-36 bg-ink-900/95 backdrop-blur border-t border-ink-800 text-parchment-100">
             <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs">
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1.5">

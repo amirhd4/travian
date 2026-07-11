@@ -204,14 +204,13 @@ export default function VillageCenter() {
 
     return (
         <div
-            className="w-full min-h-screen flex flex-col items-center pt-24 pb-16"
+            className="w-full h-full flex flex-col items-center"
             style={{
                 // پیشنهاد عکس: /assets/bgs/bgVillage-rtl.jpg (آسمان+کوه، هماهنگ با bgResources)
                 backgroundImage: "url('/assets/bgs/bgVillage-rtl.jpg')",
                 backgroundSize: "cover", backgroundPosition: "center", backgroundColor: '#cfe0a8',
             }}
         >
-            <ResourceBar /><Navbar />
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="مرکز دهکده" />
 
             {loading ? (
@@ -279,7 +278,6 @@ export default function VillageCenter() {
                     </>
                 )}
             </Modal>
-            <Footer />
         </div>
     );
 }

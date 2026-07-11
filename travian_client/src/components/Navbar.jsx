@@ -55,7 +55,7 @@ export default function Navbar() {
     return (
         <>
             <SideInfoBoards />
-            <div className="fixed top-0 left-0 w-full z-[100] bg-ink-900/95 backdrop-blur border-b border-gold-600/40 shadow-card">
+            <div className="w-full shrink-0 bg-ink-900/95 backdrop-blur border-b border-gold-600/40 shadow-card">
                 <div className="max-w-7xl mx-auto flex items-center gap-2 px-3 py-2 overflow-x-auto">
                     {villages.length > 0 && (
                         <select
