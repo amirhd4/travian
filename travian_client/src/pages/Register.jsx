@@ -91,7 +91,7 @@ export default function Register() {
             <div className="w-full max-w-xl panel overflow-hidden">
                 <div className="bg-gradient-to-b from-ink-800 to-ink-900 px-8 py-6 text-center">
                     <h1 className="text-2xl font-extrabold text-parchment-50">ثبت‌نام در بازی</h1>
-                    <p className="text-xs text-parchment-400 mt-1">دنیای خودت رو بساز</p>
+                    <p className="text-xs text-parchment-200 mt-1">دنیای خودت رو بساز</p>
                 </div>
 
                 <div className="p-7">

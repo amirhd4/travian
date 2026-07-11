@@ -3,7 +3,7 @@ import useGameStore from "../store/useGameStore";
 
 // نکته امنیتی مرورگرها: برای اینکه کوکی httpOnly (با تنظیم SameSite=Lax) در محیط لوکال به درستی کار کند،
 // فرانت و بک‌باند باید دقیقا روی یک هاست‌نیم (مثلا هر دو localhost یا هر دو 127.0.0.1) باشند.
-const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const baseURL = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000`;
 
 const api = axios.create({
     baseURL: `${baseURL}/api/`,

@@ -69,7 +69,9 @@ export default function Login() {
                             🏰
                         </div>
                         <h1 className="text-2xl font-extrabold text-parchment-50">ورود به بازی</h1>
-                        <p className="text-xs text-parchment-400 mt-1">دنیای تراوین منتظر شماست</p>
+                        <p className="text-sm text-parchment-200 mt-1">
+                            دنیای تراوین منتظر شماست
+                        </p>
                     </div>
 
                     <div className="p-7">

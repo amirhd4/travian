@@ -587,11 +587,15 @@ def _convert_to_ww_site(village):
 
 @app.task
 def resolve_hero_adventure(hero_id, adventure_id):
-    try:
-        hero = Hero.objects.select_for_update().get(id=hero_id)
-        adventure = Adventure.objects.get(id=adventure_id, is_completed=False)
-    except (Hero.DoesNotExist, Adventure.DoesNotExist):
-        return "ماجراجویی یافت نشد یا قبلا پردازش شده است."
+    with transaction.atomic():
+        try:
+            hero = Hero.objects.select_for_update().get(id=hero_id)
+            adventure = Adventure.objects.select_for_update().get(
+                id=adventure_id,
+                is_completed=False
+            )
+        except (Hero.DoesNotExist, Adventure.DoesNotExist):
+            return "ماجراجویی یافت نشد یا قبلا پردازش شده است."
 
     with transaction.atomic():
         result = resolve_adventure(hero, adventure)
