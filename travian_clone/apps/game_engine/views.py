@@ -349,15 +349,16 @@ class PaymentWebhookView(APIView):
 
         if status == 'OK':
             try:
-                transaction = Transaction.objects.get(authority=authority)
+                # ✅ FIX: قبلا اسمش transaction بود و ماژول django.db.transaction را shadow می‌کرد
+                payment_transaction = Transaction.objects.get(authority=authority)
             except Transaction.DoesNotExist:
                 return Response({"error": "تراکنش یافت نشد"}, status=404)
 
-            if transaction.status == 'SUCCESS':
+            if payment_transaction.status == 'SUCCESS':
                 return Response({"message": "قبلا تایید شده"}, status=200)
 
-            package = transaction.package
-            player = transaction.player
+            package = payment_transaction.package
+            player = payment_transaction.player
 
             active_discount = Discount.objects.filter(
                 start_time__lte=timezone.now(),
@@ -371,16 +372,13 @@ class PaymentWebhookView(APIView):
 
             player.gold_coins += final_gold
             player.save()
-            transaction.status = 'SUCCESS'
-            transaction.save()
+            payment_transaction.status = 'SUCCESS'
+            payment_transaction.save()
 
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 f"player_{player.id}",
-                {
-                    "type": "send_game_update",
-                    "message": {"type": "gold_added", "amount": final_gold}
-                }
+                {"type": "send_game_update", "message": {"type": "gold_added", "amount": final_gold}}
             )
 
             return Response({"status": "Verification Successful"}, status=200)
@@ -871,14 +869,15 @@ class MockCompletePaymentView(APIView):
     def post(self, request):
         authority = request.data.get('authority')
         try:
-            transaction = Transaction.objects.get(authority=authority, player=request.user)
+            # ✅ FIX: rename از transaction به payment_transaction
+            payment_transaction = Transaction.objects.get(authority=authority, player=request.user)
         except Transaction.DoesNotExist:
             return Response({"error": "تراکنش یافت نشد."}, status=404)
 
-        if transaction.status == 'SUCCESS':
+        if payment_transaction.status == 'SUCCESS':
             return Response({"message": "این تراکنش قبلا تایید شده است."})
 
-        package = transaction.package
+        package = payment_transaction.package
         active_discount = Discount.objects.filter(
             start_time__lte=timezone.now(), end_time__gte=timezone.now(), is_active=True
         ).first()
@@ -891,8 +890,8 @@ class MockCompletePaymentView(APIView):
         player.gold_coins += final_gold
         player.save()
 
-        transaction.status = 'SUCCESS'
-        transaction.save()
+        payment_transaction.status = 'SUCCESS'
+        payment_transaction.save()
 
         return Response({"message": f"{final_gold} سکه‌ی طلا با موفقیت به حساب شما اضافه شد.", "gold_coins": player.gold_coins})
 
@@ -932,4 +931,215 @@ class BuyPlusView(APIView):
             "message": f"اکانت پلاس برای {days} روز فعال/تمدید شد!",
             "expires_at": player.plus_expires_at,
             "gold_coins": player.gold_coins,
+        })
+
+
+class CulturePointsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .utils import calculate_player_culture_points_per_hour, required_culture_points_for_nth_village
+
+        player = request.user
+        villages_count = Village.objects.filter(player=player, is_farm_village=False).count()
+        next_village_number = villages_count + 1
+        required_cp = required_culture_points_for_nth_village(next_village_number)
+
+        return Response({
+            "culture_points": round(player.culture_points, 1),
+            "culture_points_per_hour": round(calculate_player_culture_points_per_hour(player), 2),
+            "villages_count": villages_count,
+            "next_village_required_cp": required_cp,
+            "can_found_next_village": player.culture_points >= required_cp,
+        })
+
+
+class VillageRenameView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        village_id = request.data.get('village_id')
+        new_name = (request.data.get('name') or '').strip()
+
+        if not new_name or len(new_name) > 50:
+            return Response({"error": "نام دهکده باید بین ۱ تا ۵۰ کاراکتر باشد."}, status=400)
+
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        village.name = new_name
+        village.save(update_fields=['name'])
+        return Response({"message": "نام دهکده با موفقیت تغییر کرد.", "name": village.name})
+
+
+NPC_TRADE_COOLDOWN_SECONDS = 3600
+NPC_GOLD_COST_PER_1000 = 3
+
+
+class NpcTradeView(APIView):
+    """تبدیل فوری منابع دهکده به مقادیر متعادل (هر ۴ منبع مساوی) با هزینه‌ی طلا.
+    شبیه تاجر NPC تراوین اصلی؛ هر دهکده یک ساعت cooldown دارد."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        village_id = request.data.get('village_id')
+
+        with transaction.atomic():
+            try:
+                village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+            update_village_resources(village)
+
+            if village.last_npc_trade_at:
+                remaining = NPC_TRADE_COOLDOWN_SECONDS - (timezone.now() - village.last_npc_trade_at).total_seconds()
+                if remaining > 0:
+                    return Response({"error": f"تاجر NPC هنوز آماده نیست؛ {int(remaining)} ثانیه دیگر صبر کنید."}, status=400)
+
+            total_resource = village.wood + village.clay + village.iron + village.crop
+            if total_resource <= 0:
+                return Response({"error": "منابعی برای تبدیل وجود ندارد."}, status=400)
+
+            gold_cost = max(1, int((total_resource / 1000) * NPC_GOLD_COST_PER_1000))
+            player = request.user
+            if player.gold_coins < gold_cost:
+                return Response({"error": f"سکه طلای کافی ندارید. هزینه: {gold_cost} سکه."}, status=400)
+
+            each_share = total_resource / 4
+            village.wood = min(village.max_storage, each_share)
+            village.clay = min(village.max_storage, each_share)
+            village.iron = min(village.max_storage, each_share)
+            village.crop = min(village.max_granary, each_share)
+            village.last_npc_trade_at = timezone.now()
+            village.save()
+
+            player.gold_coins -= gold_cost
+            player.save(update_fields=['gold_coins'])
+
+        return Response({
+            "message": f"منابع با موفقیت متعادل شدند (هزینه: {gold_cost} سکه طلا).",
+            "resources": {"wood": village.wood, "clay": village.clay, "iron": village.iron, "crop": village.crop},
+            "gold_coins": player.gold_coins,
+        })
+
+class OasisMapView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import Oasis
+        try:
+            center_x = int(request.query_params.get('x', 0))
+            center_y = int(request.query_params.get('y', 0))
+        except (TypeError, ValueError):
+            return Response({"error": "مختصات نامعتبر است."}, status=400)
+        radius = min(max(int(request.query_params.get('radius', 2) or 2), 1), 10)
+
+        oases = Oasis.objects.filter(
+            x_coord__range=(center_x - radius, center_x + radius),
+            y_coord__range=(center_y - radius, center_y + radius),
+        ).select_related('owner_village__player')
+
+        return Response([
+            {
+                "id": o.id,
+                "x_coord": o.x_coord,
+                "y_coord": o.y_coord,
+                "bonus_resource": o.bonus_resource,
+                "bonus_percent": o.bonus_percent,
+                "defense_strength": o.defense_strength,
+                "is_free": o.owner_village_id is None,
+                "owner_name": o.owner_village.name if o.owner_village else None,
+            }
+            for o in oases
+        ])
+
+
+class OasisAttackView(APIView):
+    """
+    ⚠️ نسخه‌ی ساده‌شده: برخلاف حمله‌ی عادی، بدون زمان سفر و به‌صورت فوری نتیجه‌گیری می‌شود.
+    """
+    permission_classes = [IsAuthenticated]
+    MAX_OASES_PER_VILLAGE = 3
+
+    def post(self, request):
+        from .models import Oasis
+        from apps.combat.models import TroopType, VillageTroop
+        from apps.combat.engine import calculate_combat
+
+        village_id = request.data.get('village_id')
+        oasis_id = request.data.get('oasis_id')
+        troops_payload = request.data.get('troops_payload', {})
+
+        if not troops_payload or not any(int(v or 0) > 0 for v in troops_payload.values()):
+            return Response({"error": "حداقل یک نوع نیرو برای حمله به اوسیس انتخاب کنید."}, status=400)
+
+        with transaction.atomic():
+            try:
+                village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+            try:
+                oasis = Oasis.objects.select_for_update().get(id=oasis_id)
+            except Oasis.DoesNotExist:
+                return Response({"error": "اوسیس یافت نشد."}, status=404)
+
+            if oasis.owner_village_id == village.id:
+                return Response({"error": "این اوسیس همین الان متعلق به همین دهکده است."}, status=400)
+
+            residence_ok = VillageBuilding.objects.filter(
+                village=village, building_type__name__in=["عمارت اقامتی", "تالار شهر"], level__gt=0
+            ).exists()
+            if not residence_ok:
+                return Response({"error": "برای تصاحب اوسیس ابتدا باید عمارت اقامتی یا تالار شهر بسازید."}, status=400)
+
+            if oasis.owner_village_id is None:
+                owned_count = Oasis.objects.filter(owner_village=village).count()
+                if owned_count >= self.MAX_OASES_PER_VILLAGE:
+                    return Response({"error": f"هر دهکده حداکثر {self.MAX_OASES_PER_VILLAGE} اوسیس می‌تواند داشته باشد."}, status=400)
+
+            troop_type_cache = {t.id: t for t in TroopType.objects.filter(id__in=[int(k) for k in troops_payload.keys()])}
+            attack_power = 0
+            village_troops = {}
+            for tid_str, qty in troops_payload.items():
+                qty = int(qty or 0)
+                if qty <= 0:
+                    continue
+                troop_type = troop_type_cache.get(int(tid_str))
+                if not troop_type:
+                    return Response({"error": "نوع نیروی نامعتبر."}, status=400)
+                try:
+                    vt = VillageTroop.objects.select_for_update().get(village=village, troop_type=troop_type)
+                except VillageTroop.DoesNotExist:
+                    return Response({"error": f"شما نیروی {troop_type.name} در این دهکده ندارید."}, status=400)
+                if vt.count < qty:
+                    return Response({"error": f"نیروی کافی از {troop_type.name} ندارید."}, status=400)
+                attack_power += qty * troop_type.attack_power
+                village_troops[vt] = qty
+
+            combat_result = calculate_combat(
+                {"points_attack": attack_power},
+                {"points_def_infantry": oasis.defense_strength, "points_def_cavalry": 0},
+                wall_level=0,
+            )
+
+            loss_ratio = combat_result["attacker_loss_percent"] / 100
+            for vt, sent_qty in village_troops.items():
+                vt.count = max(0, vt.count - int(round(sent_qty * loss_ratio)))
+                vt.save()
+
+            if combat_result["victory"] == "attacker":
+                oasis.owner_village = village
+                oasis.save()
+                message = f"🌿 اوسیس ({oasis.x_coord}|{oasis.y_coord}) با موفقیت تصاحب شد!"
+            else:
+                message = f"شکست خوردید؛ اوسیس ({oasis.x_coord}|{oasis.y_coord}) تصاحب نشد و بخشی از نیروها را از دست دادید."
+
+        return Response({
+            "message": message,
+            "victory": combat_result["victory"],
+            "attacker_loss_percent": round(combat_result["attacker_loss_percent"], 1),
         })

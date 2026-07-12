@@ -27,6 +27,31 @@ export default function Barracks() {
     const [trainQty, setTrainQty] = useState({});
     const [submitting, setSubmitting] = useState(null);
 
+    const [trappedTroops, setTrappedTroops] = useState([]);
+    const [releasingId, setReleasingId] = useState(null);
+
+    const fetchTrapped = useCallback(async () => {
+        try {
+            const { data } = await api.get('combat/trapped-troops/');
+            setTrappedTroops(data);
+        } catch (error) { console.error(error); }
+    }, []);
+
+    useEffect(() => { fetchTrapped(); }, [fetchTrapped]);
+
+    const handleRelease = async (id) => {
+        setReleasingId(id);
+        try {
+            const { data } = await api.post(`combat/trapped-troops/${id}/release/`);
+            alert(data.message);
+            fetchTrapped();
+        } catch (error) {
+            alert(error.response?.data?.error || 'خطا در آزادسازی نیرو');
+        } finally {
+            setReleasingId(null);
+        }
+    };
+
     const fetchCatalog = useCallback(async () => {
         try {
             const { data } = await api.get('combat/troop-types/');
@@ -173,6 +198,24 @@ export default function Barracks() {
                     )}
                 </div>
             </div>
+            {trappedTroops.length > 0 && (
+                <div className="panel">
+                    <div className="panel-header"><span className="panel-title">🪤 نیروهای اسیرشده در تله</span></div>
+                    <div className="panel-body space-y-2">
+                        {trappedTroops.map((t) => (
+                            <div key={t.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 rounded-lg p-3">
+                                <div>
+                                    <p className="font-bold text-sm text-ink-800">{t.count}x {t.troop_name}</p>
+                                    <p className="text-xs text-ink-500">مالک اصلی: {t.original_owner} · دهکده‌ی تله: {t.trapper_village_name}</p>
+                                </div>
+                                <button onClick={() => handleRelease(t.id)} disabled={releasingId === t.id} className="btn-ghost text-xs !px-3 !py-1.5">
+                                    {releasingId === t.id ? '...' : '🕊️ آزادسازی'}
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </PageShell>
     );
 }

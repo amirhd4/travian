@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import useGameStore from "../store/useGameStore.js";
 import api from "../api/axiosConfig.js";
 import SideInfoBoards from "./SideInfoBoards.jsx";
+import { useState as useRenameState } from 'react'; // اگر useState از قبل ایمپورت شده این خط لازم نیست، فقط مطمئن شو useState ایمپورت شده
 
 const NAV_ITEMS = [
     { path: '/village', icon: '🌾', label: 'منابع' },
@@ -34,6 +35,40 @@ export default function Navbar() {
     const setActiveVillageId = useGameStore((state) => state.setActiveVillageId);
 
     const [pendingQuests, setPendingQuests] = useState(0);
+
+    const [unreadReports, setUnreadReports] = useState(0);
+
+    useEffect(() => {
+        const fetchUnreadReports = async () => {
+            try {
+                const { data } = await api.get('combat/reports/unread-count/');
+                setUnreadReports(data.unread_count);
+            } catch { /* silent */ }
+        };
+        fetchUnreadReports();
+        const interval = setInterval(fetchUnreadReports, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const setVillages = useGameStore((state) => state.setVillages);
+    const [renaming, setRenaming] = useState(false);
+
+    const handleRename = async () => {
+        const activeVillage = villages.find((v) => v.id === activeVillageId);
+        if (!activeVillage) return;
+        const newName = window.prompt('نام جدید دهکده را وارد کنید:', activeVillage.name);
+        if (!newName || !newName.trim()) return;
+        setRenaming(true);
+        try {
+            await api.post('game/villages/rename/', { village_id: activeVillageId, name: newName.trim() });
+            const { data } = await api.get('game/villages/');
+            setVillages(data);
+        } catch (error) {
+            alert(error.response?.data?.error || 'خطا در تغییر نام دهکده');
+        } finally {
+            setRenaming(false);
+        }
+    };
 
     useEffect(() => {
         const fetchQuestCount = async () => {
@@ -73,6 +108,17 @@ export default function Navbar() {
                         </select>
                     )}
 
+                    {villages.length > 0 && (
+                        <button
+                            onClick={handleRename}
+                            disabled={renaming}
+                            title="تغییر نام دهکده فعال"
+                            className="btn-icon flex-shrink-0 !w-9 !h-9 !bg-ink-800/60 !border-ink-700 text-parchment-100"
+                        >
+                            <span className="text-sm">✏️</span>
+                        </button>
+                    )}
+
                     <div className="w-px h-8 bg-ink-700 flex-shrink-0 mx-1" />
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -81,9 +127,14 @@ export default function Navbar() {
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
                                 title={item.label}
-                                className={`btn-icon flex-shrink-0 ${location.pathname === item.path ? 'active' : '!bg-ink-800/60 !border-ink-700 text-parchment-100'}`}
+                                className={`btn-icon flex-shrink-0 relative ${location.pathname === item.path ? 'active' : '!bg-ink-800/60 !border-ink-700 text-parchment-100'}`}
                             >
                                 <span className="text-base">{item.icon}</span>
+                                {item.path === '/reports' && unreadReports > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                        {unreadReports}
+                                    </span>
+                                )}
                             </button>
                         ))}
 

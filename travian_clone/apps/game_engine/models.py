@@ -40,6 +40,8 @@ class ServerSetting(models.Model):
         'Alliance', on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
     )
 
+    culture_point_speed = models.BigIntegerField(default=1)
+
 
 class Village(models.Model):
     player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='villages')
@@ -67,8 +69,9 @@ class Village(models.Model):
     loyalty = models.FloatField(default=100)
     is_natar_ww_site = models.BooleanField(default=False)
     is_natar_plan_guard = models.BooleanField(default=False)
-    # ✅ جدید: دهکده‌ی فارم (منبع نامحدود برای غارت، متعلق به NPC "Farms")
     is_farm_village = models.BooleanField(default=False)
+
+    last_npc_trade_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         unique_together = ('x_coord', 'y_coord')
@@ -278,3 +281,23 @@ class PlayerQuestProgress(models.Model):
 
     def __str__(self):
         return f"{self.player.username} - {self.quest.title}"
+
+
+class Oasis(models.Model):
+    x_coord = models.IntegerField()
+    y_coord = models.IntegerField()
+
+    RESOURCE_CHOICES = [
+        ('wood', 'چوب'), ('clay', 'خشت'), ('iron', 'آهن'), ('crop', 'گندم'), ('all', 'همه‌ی منابع'),
+    ]
+    bonus_resource = models.CharField(max_length=10, choices=RESOURCE_CHOICES, default='crop')
+    bonus_percent = models.IntegerField(default=25)
+    defense_strength = models.IntegerField(default=150)
+
+    owner_village = models.ForeignKey(Village, on_delete=models.SET_NULL, null=True, blank=True, related_name='oases')
+
+    class Meta:
+        unique_together = ('x_coord', 'y_coord')
+
+    def __str__(self):
+        return f"اوسیس ({self.x_coord}|{self.y_coord})"

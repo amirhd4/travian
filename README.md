@@ -25,6 +25,8 @@ python manage.py makemigrations
 python manage.py migrate
 python manage.py seed_game_data
 python manage.py seed_quests
+python manage.py seed_oases --count 60
+
 
 # for next time
 python mange.py runserver

@@ -25,6 +25,20 @@ export default function WorldMap() {
 
     const [center, setCenter] = useState({ x: 0, y: 0 });
     const [mapVillages, setMapVillages] = useState([]);
+
+    const [oases, setOases] = useState([]);
+    const [selectedOasis, setSelectedOasis] = useState(null);
+    const [oasisTroops, setOasisTroops] = useState({});
+    const [availableTroops, setAvailableTroops] = useState([]);
+    const [attackingOasis, setAttackingOasis] = useState(false);
+    const [oasisAlert, setOasisAlert] = useState(null);
+
+    useEffect(() => {
+        if (!activeVillageId) return;
+        api.get('combat/village-troops/', { params: { village_id: activeVillageId } })
+            .then(({ data }) => setAvailableTroops(data)).catch(() => {});
+    }, [activeVillageId]);
+
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -38,6 +52,8 @@ export default function WorldMap() {
             try {
                 const { data } = await api.get('game/world-map/', { params: { x: center.x, y: center.y, radius: RADIUS } });
                 setMapVillages(data);
+                const oasesRes = await api.get('game/oases/', { params: { x: center.x, y: center.y, radius: RADIUS } });
+                setOases(oasesRes.data);
             } catch (error) {
                 console.error("خطا در دریافت نقشه جهان", error);
             } finally {
@@ -51,6 +67,7 @@ export default function WorldMap() {
     for (let y = center.y + RADIUS; y >= center.y - RADIUS; y--) {
         for (let x = center.x - RADIUS; x <= center.x + RADIUS; x++) {
             const found = mapVillages.find((v) => v.x_coord === x && v.y_coord === y);
+            const oasis = oases.find((o) => o.x_coord === x && o.y_coord === y);
             grid.push({
                 x, y, hasVillage: !!found,
                 name: found ? found.name : "بیابان",
@@ -60,11 +77,14 @@ export default function WorldMap() {
                 id: found ? found.id : null,
                 isWwSite: found ? found.is_natar_ww_site : false,
                 isPlanGuard: found ? found.is_natar_plan_guard : false,
+                oasis,
             });
         }
     }
 
     const cellStyleFor = (cell) => {
+        if (cell.oasis) return cell.oasis.is_free ? 'bg-gradient-to-b from-lime-200 to-lime-300 border-lime-600 text-lime-900 font-bold cursor-pointer' : 'bg-gradient-to-b from-emerald-300 to-emerald-400 border-emerald-700 text-emerald-900 font-bold';
+
         if (cell.isMine) return CELL_STYLES.mine;
         if (cell.isWwSite) return CELL_STYLES.ww;
         if (cell.isPlanGuard) return CELL_STYLES.planGuard;
@@ -74,8 +94,27 @@ export default function WorldMap() {
     };
 
     const handleCellClick = (cell) => {
+        if (cell.oasis) { setSelectedOasis(cell.oasis); return; }
         if (cell.hasVillage && !cell.isMine) {
             navigate('/send-troops', { state: { targetVillageId: cell.id, targetName: cell.name } });
+        }
+    };
+
+    const handleOasisAttack = async () => {
+        const payload = Object.fromEntries(Object.entries(oasisTroops).filter(([, v]) => v > 0));
+        if (Object.keys(payload).length === 0 || !activeVillageId) return;
+        setAttackingOasis(true);
+        try {
+            const { data } = await api.post('game/oases/attack/', {
+                village_id: activeVillageId, oasis_id: selectedOasis.id, troops_payload: payload,
+            });
+            setOasisAlert(data.message);
+            setSelectedOasis(null);
+            setOasisTroops({});
+        } catch (error) {
+            setOasisAlert(error.response?.data?.error || 'خطا در حمله به اوسیس');
+        } finally {
+            setAttackingOasis(false);
         }
     };
 
@@ -130,6 +169,31 @@ export default function WorldMap() {
                 <p className="text-xs text-ink-500 mt-3 text-center">برای اعزام نیرو به هر دهکده، روی آن کلیک کنید.</p>
             </div>
 
+            {selectedOasis && (
+                <div className="fixed inset-0 bg-ink-900/70 flex items-center justify-center z-[300] p-4" onClick={() => setSelectedOasis(null)}>
+                    <div className="panel max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
+                        <h3 className="font-bold text-lg mb-2">🌿 اوسیس ({selectedOasis.x_coord}|{selectedOasis.y_coord})</h3>
+                        <p className="text-xs text-ink-600 mb-3">
+                            بونوس: {selectedOasis.bonus_percent}٪ {selectedOasis.bonus_resource} · قدرت دفاعی تخمینی: {selectedOasis.defense_strength}
+                        </p>
+                        {oasisAlert && <p className="text-xs font-bold text-brand-700 mb-3">{oasisAlert}</p>}
+                        <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+                            {availableTroops.map((t) => (
+                                <div key={t.troop_type_id} className="flex justify-between items-center text-xs">
+                                    <span>{t.name} (موجود: {t.count})</span>
+                                    <input type="number" min="0" max={t.count} className="field w-20 text-center"
+                                        value={oasisTroops[t.troop_type_id] || ''}
+                                        onChange={(e) => setOasisTroops((p) => ({ ...p, [t.troop_type_id]: Math.max(0, Math.min(t.count, parseInt(e.target.value) || 0)) }))} />
+                                </div>
+                            ))}
+                        </div>
+                        <button onClick={handleOasisAttack} disabled={attackingOasis} className="btn-danger w-full">
+                            {attackingOasis ? '...' : '⚔️ حمله به اوسیس (فوری)'}
+                        </button>
+                        <button onClick={() => setSelectedOasis(null)} className="btn-ghost w-full mt-2">بستن</button>
+                    </div>
+                </div>
+            )}
             <Footer />
         </div>
     );

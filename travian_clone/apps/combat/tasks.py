@@ -11,10 +11,11 @@ from travian_core.celery import app
 from apps.game_engine.models import Village, GameLog, VillageBuilding, ServerSetting
 from .models import (
     TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal,
-    Adventure, TroopUpgrade,
+    Adventure, TroopUpgrade, CombatReport, TrappedTroop,
 )
 from .engine import calculate_combat, calculate_catapult_damage
 from .hero_utils import resolve_adventure, generate_adventures_for_player
+from apps.game_engine.utils import calculate_player_total_population, calculate_morale_multiplier
 
 
 CRANNY_PROTECTION_PER_LEVEL = 100  # هر سطح مخفیگاه، این مقدار از هر نوع منبع را از غارت محافظت می‌کند
@@ -106,11 +107,11 @@ def _grant_hero_experience(player, amount):
 
 
 def _is_still_protected(target_village):
-    """بررسی مضاعف محافظت تازه‌واردان در لحظه‌ی نتیجه‌گیری نبرد (علاوه بر چک اولیه
-    هنگام دیسپچ) - برای اطمینان کامل، چون بین لحظه‌ی اعزام و لحظه‌ی رسیدن ممکن
-    است زمان زیادی گذشته باشد و این تابع همیشه وضعیت لحظه‌ی فعلی را چک می‌کند."""
     owner_username = target_village.player.username
     if owner_username in ("Natars", "Farms"):
+        return False
+    # ✅ FIX: همان قانون لغو محافظت با حمله، اینجا هم باید رعایت شود
+    if target_village.player.has_attacked:
         return False
     server_settings = ServerSetting.objects.filter(is_active=True).first()
     protection_days = server_settings.new_player_protection_days if server_settings else 7
@@ -267,6 +268,66 @@ def _resolve_scout(movement):
     return description
 
 
+def _apply_hero_combat_damage(hero, is_winner):
+    """قهرمان در نبردهای واقعی (نه فقط ماجراجویی) هم آسیب می‌بیند و ممکن است از پای درآید."""
+    damage = random.randint(2, 8) if is_winner else random.randint(15, 35)
+    hero.health = max(0, hero.health - damage)
+    hero.last_health_update = timezone.now()
+    if hero.health <= 0:
+        hero.is_alive = False
+    hero.save()
+    return damage, (hero.health <= 0)
+
+
+def _apply_trapper_capture(target_village, attacker_survivors, troop_type_cache, attacker_player):
+    """تله‌ی توتونی: وقتی مدافع پیروز می‌شود، بخشی از بازماندگان مهاجم به‌جای بازگشت
+    به خانه، اسیر و در دهکده‌ی مدافع نگه‌داری می‌شوند."""
+    if target_village.player.tribe != 'TEUTON':
+        return ""
+
+    trapper = VillageBuilding.objects.filter(
+        village=target_village, building_type__name="تله", level__gt=0
+    ).first()
+    if not trapper:
+        return ""
+
+    capacity = trapper.level * 15
+    already_trapped = TrappedTroop.objects.filter(trapper_village=target_village).aggregate(
+        total=Sum('count'))['total'] or 0
+    free_capacity = capacity - already_trapped
+    if free_capacity <= 0:
+        return ""
+
+    total_survivors = sum(attacker_survivors.values())
+    if total_survivors <= 0:
+        return ""
+
+    remaining_to_capture = min(free_capacity, total_survivors)
+    captured_names = []
+
+    for tid in list(attacker_survivors.keys()):
+        if remaining_to_capture <= 0:
+            break
+        qty = attacker_survivors[tid]
+        if qty <= 0:
+            continue
+        take = min(qty, remaining_to_capture)
+        attacker_survivors[tid] -= take
+        remaining_to_capture -= take
+
+        troop_type = troop_type_cache.get(tid)
+        if troop_type:
+            TrappedTroop.objects.create(
+                trapper_village=target_village, original_owner_player=attacker_player,
+                troop_type=troop_type, count=take,
+            )
+            captured_names.append(f"{take}x {troop_type.name}")
+
+    if captured_names:
+        return f"🪤 تله‌ی توتونی {', '.join(captured_names)} از نیروهای مهاجم را اسیر کرد."
+    return ""
+
+
 def _resolve_attack_or_raid(movement):
     source = movement.source_village
     target = Village.objects.select_for_update().get(id=movement.target_village_id)
@@ -280,7 +341,16 @@ def _resolve_attack_or_raid(movement):
         )
     }
 
-    # ✅ ضرایب ارتقای آهنگری مهاجم (بر اساس دهکده‌ی مبدا)، یک‌بار خوانده می‌شود
+    # ✅ جدید: نیروهای اعزامی به‌صورت اسم‌دار برای گزارش ساختاری
+    attacker_troops_sent_named = {}
+    for tid_str, qty in movement.troops_payload.items():
+        qty = int(qty)
+        if qty <= 0:
+            continue
+        tt = troop_type_cache.get(int(tid_str))
+        if tt:
+            attacker_troops_sent_named[tt.name] = attacker_troops_sent_named.get(tt.name, 0) + qty
+
     attacker_upgrade_levels = {
         u.troop_type_id: u.level
         for u in TroopUpgrade.objects.filter(village=source, troop_type_id__in=troop_type_cache.keys())
@@ -289,7 +359,6 @@ def _resolve_attack_or_raid(movement):
     attacker_points_attack = 0
     attacker_survivors = {}
 
-    # ✅ تفکیک کامل قوچ (همیشه هدفش دیوار است) از منجنیق (هدفش قابل انتخاب است)
     ram_units_sent = 0
     catapult_units_sent = 0
 
@@ -310,11 +379,9 @@ def _resolve_attack_or_raid(movement):
         if getattr(troop_type, 'is_catapult', False):
             catapult_units_sent += qty
         elif troop_type.is_siege_weapon and not getattr(troop_type, 'is_ram', False):
-            # نیروهای محاصره‌ای قدیمی seed شده که هنوز is_ram/is_catapult ندارند:
-            # با فرض این‌که منجنیق‌اند در نظر گرفته می‌شوند تا رفتار قبلی حفظ شود.
             catapult_units_sent += qty
 
-    # امتیاز قهرمان مهاجم (بونوس ثابت + بونوس درصدی امتیاز تهاجمی)
+    attacking_hero = None  # ✅ جدید: مقداردهی اولیه صریح
     if movement.hero_participating:
         attacker_points_attack += _hero_attack_bonus(source.player)
         attacking_hero = Hero.objects.filter(player=source.player).first()
@@ -331,6 +398,9 @@ def _resolve_attack_or_raid(movement):
     defender_village_troops = list(
         VillageTroop.objects.select_for_update().filter(village=target).select_related('troop_type')
     )
+    # ✅ جدید: عکس فوری نیروهای مدافع قبل از اعمال تلفات
+    defender_troops_before_named = {vt.troop_type.name: vt.count for vt in defender_village_troops if vt.count > 0}
+
     defender_upgrade_levels = {
         u.troop_type_id: u.level for u in TroopUpgrade.objects.filter(village=target)
     }
@@ -353,6 +423,13 @@ def _resolve_attack_or_raid(movement):
     def_bonus_percent = _hero_def_bonus_percent(target.player, target)
     defender_points_inf *= (1 + def_bonus_percent / 100)
     defender_points_cav *= (1 + def_bonus_percent / 100)
+
+    # ✅ جدید: بونوس روحیه بر اساس اختلاف جمعیت
+    attacker_population = calculate_player_total_population(source.player)
+    defender_population = calculate_player_total_population(target.player)
+    morale_multiplier = calculate_morale_multiplier(attacker_population, defender_population)
+    defender_points_inf *= morale_multiplier
+    defender_points_cav *= morale_multiplier
 
     defender_data = {
         "points_def_infantry": defender_points_inf,
@@ -380,7 +457,10 @@ def _resolve_attack_or_raid(movement):
         vt.count = max(0, remaining)
         vt.save()
 
-    # ------- ✅ آسیب قوچ به دیوار (همیشه، مستقل از منجنیق) -------
+    # ✅ جدید: عکس فوری نیروهای مدافع بعد از اعمال تلفات
+    defender_troops_after_named = {vt.troop_type.name: vt.count for vt in defender_village_troops if vt.count > 0}
+
+    # ------- آسیب قوچ به دیوار -------
     wall_damage_msg = ""
     if victory == "attacker" and wall_building and ram_units_sent > 0:
         old_wall_level = wall_building.level
@@ -389,7 +469,7 @@ def _resolve_attack_or_raid(movement):
         wall_building.save()
         wall_damage_msg = f"\nقوچ‌ها دیوار دهکده را از سطح {old_wall_level} به سطح {wall_building.level} تخریب کردند."
 
-    # ------- ✅ آسیب منجنیق به ساختمان انتخابی یا تصادفی (مستقل از قوچ) -------
+    # ------- آسیب منجنیق -------
     catapult_damage_msg = ""
     if victory == "attacker" and catapult_units_sent > 0:
         target_building_name = movement.catapult_target_building
@@ -418,7 +498,7 @@ def _resolve_attack_or_raid(movement):
                 f"(سطح {old_level} → {catapult_building.level})."
             )
 
-    # ------- غارت منابع (فقط در حرکت از نوع RAID و پیروزی مهاجم) -------
+    # ------- غارت منابع -------
     loot = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
     if movement.movement_type == "RAID" and victory == "attacker":
         cranny_levels_sum = VillageBuilding.objects.filter(
@@ -446,7 +526,7 @@ def _resolve_attack_or_raid(movement):
                 setattr(target, res_name, getattr(target, res_name) - int(share))
             target.save()
 
-    # ------- ✅ تسخیر دهکده با چیف/سناتور/رئیس - حالا برای هر دهکده‌ای (نه فقط ناتار) -------
+    # ------- تسخیر دهکده -------
     conquered = False
     conquest_blocked_reason = ""
     if victory == "attacker" and movement.movement_type == 'ATTACK':
@@ -455,12 +535,10 @@ def _resolve_attack_or_raid(movement):
             if int(qty) > 0 and troop_type_cache.get(int(tid)) and troop_type_cache[int(tid)].is_chief
         ]
         if chief_ids_sent:
-            # عمارت اقامتی باید تخریب و ناموجود باشد تا وفاداری اصلا کم شود
             residence_destroyed = not VillageBuilding.objects.filter(
                 village=target, building_type__name="عمارت اقامتی", level__gt=0
             ).exists()
 
-            # ✅ محافظت تازه‌واردان: چک مضاعف در لحظه‌ی نتیجه‌گیری
             still_protected = _is_still_protected(target)
 
             if residence_destroyed and not still_protected:
@@ -472,7 +550,6 @@ def _resolve_attack_or_raid(movement):
 
                 if target.loyalty <= 0:
                     if target.is_capital:
-                        # ✅ پایتخت هرگز تسخیر نمی‌شود (دقیقا مثل تراوین اصلی)
                         target.loyalty = 1
                         conquest_blocked_reason = "\n👑 این دهکده پایتخت است و هرگز قابل تسخیر نیست."
                     else:
@@ -513,6 +590,32 @@ def _resolve_attack_or_raid(movement):
             else:
                 plan_message = " ⚠️ نقشه‌ی ساخت پیدا شد اما خزانه‌داری مقصد (سطح ۱۰ یا بالاتر در دهکده‌ی خانگی قهرمان) آماده نبود، پس نقشه برداشته نشد."
 
+    # ✅ جدید: آسیب قهرمان‌ها در نبرد واقعی
+    hero_combat_summary = ""
+    if movement.hero_participating and attacking_hero and attacking_hero.is_alive:
+        dmg, died = _apply_hero_combat_damage(attacking_hero, is_winner=(victory == "attacker"))
+        hero_combat_summary += f"\n🦸 قهرمان مهاجم {dmg} آسیب دید" + (" و از پای درآمد!" if died else ".")
+
+    defending_hero = Hero.objects.filter(
+        player=target.player, is_alive=True, home_village=target,
+        is_away=False, is_on_adventure=False, participates_in_defense=True,
+    ).first()
+    if defending_hero:
+        dmg, died = _apply_hero_combat_damage(defending_hero, is_winner=(victory == "defender"))
+        hero_combat_summary += f"\n🦸 قهرمان مدافع {dmg} آسیب دید" + (" و از پای درآمد!" if died else ".")
+
+    # ✅ جدید: تله‌ی توتونی — فقط وقتی مدافع پیروز شده
+    trapped_summary = _apply_trapper_capture(target, attacker_survivors, troop_type_cache, source.player) if victory == "defender" else ""
+
+    # ✅ جدید: بازماندگان اسم‌دار (بعد از تله) برای گزارش ساختاری
+    attacker_troops_survived_named = {}
+    for tid, qty in attacker_survivors.items():
+        if qty <= 0:
+            continue
+        tt = troop_type_cache.get(tid)
+        if tt:
+            attacker_troops_survived_named[tt.name] = attacker_troops_survived_named.get(tt.name, 0) + qty
+
     winner_label = "مهاجم" if victory == "attacker" else "مدافع"
     log_msg = (
         f"نبرد در دهکده {target.name} پایان یافت.\n"
@@ -532,9 +635,36 @@ def _resolve_attack_or_raid(movement):
     if conquered:
         log_msg += f"\n🏆 دهکده {target.name} با موفقیت تسخیر شد و اکنون متعلق به شماست!"
     log_msg += plan_message
+    log_msg += hero_combat_summary  # ✅ جدید
+    if trapped_summary:  # ✅ جدید
+        log_msg += f"\n{trapped_summary}"
 
     GameLog.objects.create(village=source, log_type='COMBAT', description=log_msg)
     GameLog.objects.create(village=target, log_type='COMBAT', description=log_msg)
+
+    # ✅ جدید: گزارش ساختاری جنگ
+    CombatReport.objects.create(
+        attacker_player=source.player,
+        defender_player=target.player,
+        attacker_village_name=source.name,
+        defender_village_name=target.name,
+        attacker_coords=f"{source.x_coord}|{source.y_coord}",
+        defender_coords=f"{target.x_coord}|{target.y_coord}",
+        movement_type=movement.movement_type,
+        victory=victory,
+        attacker_troops_sent=attacker_troops_sent_named,
+        attacker_troops_survived=attacker_troops_survived_named,
+        defender_troops_before=defender_troops_before_named,
+        defender_troops_after=defender_troops_after_named,
+        attacker_loss_percent=combat_result['attacker_loss_percent'],
+        defender_loss_percent=combat_result['defender_loss_percent'],
+        morale_percent=round(morale_multiplier * 100, 1),
+        loot=loot,
+        wall_damage_text=wall_damage_msg.strip(),
+        catapult_damage_text=catapult_damage_msg.strip(),
+        conquered=conquered,
+        trapped_summary=trapped_summary,
+    )
 
     movement.is_completed = True
     movement.save()

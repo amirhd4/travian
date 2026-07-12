@@ -9,18 +9,17 @@ from .tasks import resolve_combat_movement
 
 
 def _get_protection_message_if_blocked(target_village):
-    """
-    ✅ محافظت تازه‌واردان: بازیکنی که کمتر از X روز (قابل‌تنظیم توسط ادمین
-    برای هر سرور، پیش‌فرض ۷ روز) از ثبت‌نامش گذشته، نباید هدف حمله یا
-    غارت قرار بگیرد - دقیقا مثل تراوین اصلی. دهکده‌های ناتار و فارم از
-    این قانون مستثنی هستند (اصلا حسابی که این محافظت را داشته باشد ندارند).
-    """
     owner_username = target_village.player.username
     if owner_username in ("Natars", "Farms"):
         return None
 
+    # ✅ FIX: بازیکنی که خودش قبلا حمله/غارت کرده، محافظتش لغو شده است.
+    if target_village.player.has_attacked:
+        return None
+
     server_settings = ServerSetting.objects.filter(is_active=True).first()
     protection_days = server_settings.new_player_protection_days if server_settings else 7
+    ...  # بقیه بدون تغییر
 
     if protection_days <= 0:
         return None
@@ -56,6 +55,11 @@ def dispatch_troop_movement(
         protection_message = _get_protection_message_if_blocked(target_village)
         if protection_message:
             return False, protection_message
+
+    # ✅ FIX جدید: حمله یا غارت، محافظت تازه‌واردی خودِ مهاجم را فوراً لغو می‌کند
+    if movement_type in ('ATTACK', 'RAID') and not player.has_attacked:
+        player.has_attacked = True
+        player.save(update_fields=['has_attacked'])
 
     hero_participating = False
     if send_hero:

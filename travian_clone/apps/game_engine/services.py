@@ -125,6 +125,9 @@ def _create_default_buildings(village):
     wall_name, wall_level, wall_category = _WALL_DEF
     wall_type = _get_or_create_building_type(wall_name, provides_wall_defense=True, category=wall_category)
     VillageBuilding.objects.create(village=village, building_type=wall_type, position=40, level=wall_level)
+    # ✅ جدید: تله (Trapper) در جایگاه ۴۱ — فقط بازیکنان توتون تاکتیکی ازش استفاده می‌کنند
+    trapper_type = _get_or_create_building_type("تله", category='MILITARY')
+    VillageBuilding.objects.create(village=village, building_type=trapper_type, position=41, level=0)
 
 
 def _get_starting_capacities():
@@ -185,6 +188,16 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         raise ValidationError(
             f"برای تاسیس دهکده جدید به {SETTLERS_REQUIRED} نیروی مهاجر در دهکده مبدا نیاز دارید "
             f"(در حال حاضر {total_settlers} عدد دارید)."
+        )
+
+    from .utils import required_culture_points_for_nth_village
+    current_village_count = Village.objects.filter(player=player, is_farm_village=False).count()
+    target_village_number = current_village_count + 1
+    required_cp = required_culture_points_for_nth_village(target_village_number)
+    if player.culture_points < required_cp:
+        raise ValidationError(
+            f"برای تاسیس دهکده‌ی شماره {target_village_number} به {int(required_cp)} امتیاز فرهنگی نیاز دارید "
+            f"(در حال حاضر {int(player.culture_points)} امتیاز دارید)."
         )
 
     if target_x is not None and target_y is not None:

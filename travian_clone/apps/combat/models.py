@@ -312,3 +312,57 @@ class Adventure(models.Model):
 
     def __str__(self):
         return f"Adventure ({self.x_coord}|{self.y_coord}) - {self.difficulty} for {self.player.username}"
+
+
+class CombatReport(models.Model):
+    """گزارش ساختاری هر نبرد (به‌جای صرفا متن خام در GameLog)."""
+
+    attacker_player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='attack_reports')
+    defender_player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='defense_reports')
+
+    attacker_village_name = models.CharField(max_length=50)
+    defender_village_name = models.CharField(max_length=50)
+    attacker_coords = models.CharField(max_length=20)
+    defender_coords = models.CharField(max_length=20)
+
+    movement_type = models.CharField(max_length=20)
+    victory = models.CharField(max_length=10)  # attacker / defender
+
+    attacker_troops_sent = models.JSONField(default=dict)
+    attacker_troops_survived = models.JSONField(default=dict)
+    defender_troops_before = models.JSONField(default=dict)
+    defender_troops_after = models.JSONField(default=dict)
+
+    attacker_loss_percent = models.FloatField(default=0)
+    defender_loss_percent = models.FloatField(default=0)
+    morale_percent = models.FloatField(default=100)
+
+    loot = models.JSONField(default=dict, blank=True)
+    wall_damage_text = models.CharField(max_length=255, blank=True, default='')
+    catapult_damage_text = models.CharField(max_length=255, blank=True, default='')
+    conquered = models.BooleanField(default=False)
+    trapped_summary = models.CharField(max_length=255, blank=True, default='')
+
+    is_read_by_attacker = models.BooleanField(default=False)
+    is_read_by_defender = models.BooleanField(default=False)
+    # حذف فقط از دید همان طرف است، نه واقعا از دیتابیس (طرف دیگر همچنان می‌بیند)
+    hidden_from_attacker = models.BooleanField(default=False)
+    hidden_from_defender = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class TrappedTroop(models.Model):
+    """نیروهای اسیرشده توسط ساختمان «تله» (فقط بازیکنان توتون واقعا از آن استفاده تاکتیکی می‌کنند)."""
+
+    trapper_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='trapped_troops')
+    original_owner_player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='+')
+    troop_type = models.ForeignKey(TroopType, on_delete=models.CASCADE)
+    count = models.IntegerField(default=0)
+    captured_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.count}x {self.troop_type.name} در تله‌ی {self.trapper_village.name}"

@@ -227,6 +227,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.world_wonder.tasks.regen_natar_village_loyalty",
         "schedule": crontab(minute=0),
     },
+    "accumulate-culture-points-hourly": {
+        "task": "apps.game_engine.tasks.game_tasks.accumulate_culture_points",
+        "schedule": crontab(minute=0),
+    },
 }
 
 CACHES = {

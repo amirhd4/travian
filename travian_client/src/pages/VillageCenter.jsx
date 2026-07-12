@@ -19,6 +19,7 @@ const DORF2_SLOTS = {
     36: { x: 230, y: 390 }, 37: { x: 390, y: 390 }, 38: { x: 310, y: 390 },
     39: { x: 480, y: 140 },
     40: { x: 310, y: 440 },
+    41: { x: 150, y: 400 },
 };
 
 const BUILDING_META = {
@@ -44,6 +45,7 @@ const BUILDING_META = {
     'محل گردهمایی': { asset: 'rally_point', color: 0x2f8a4a, icon: '🚩' },
     'دیوار (Wall)': { asset: 'wall', color: 0x6b6b6b, icon: '🧱' },
     'شگفتی جهان': { asset: 'world_wonder', color: 0xd9b52f, icon: '🏛️' },
+    'تله': { asset: 'trapper', color: 0x4a2f4a, icon: '🪤' },
 };
 
 function remainingSeconds(endTimeIso) {

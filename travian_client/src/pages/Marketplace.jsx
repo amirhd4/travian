@@ -94,6 +94,21 @@ export default function Marketplace() {
         }
     };
 
+    const [npcLoading, setNpcLoading] = useState(false);
+
+    const handleNpcTrade = async () => {
+        if (!activeVillageId) return;
+        setNpcLoading(true);
+        try {
+            const { data } = await api.post('game/npc-trade/', { village_id: activeVillageId });
+            setAlertMsg({ tone: 'success', text: data.message });
+        } catch (error) {
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در تاجر NPC' });
+        } finally {
+            setNpcLoading(false);
+        }
+    };
+
     return (
         <PageShell maxWidth="max-w-lg">
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="بازارچه" />
@@ -138,6 +153,12 @@ export default function Marketplace() {
                             {loading ? 'در حال اعزام تاجران...' : 'ارسال تجار 🐪'}
                         </button>
                     </form>
+                    <div className="mt-4 pt-4 border-t border-parchment-300 text-center">
+                        <p className="text-xs text-ink-500 mb-2">تاجر NPC: منابع این دهکده را با طلا به مقادیر مساوی تبدیل می‌کند (هر ۱ ساعت یک‌بار).</p>
+                        <button onClick={handleNpcTrade} disabled={npcLoading} className="btn-gold text-xs !px-4 !py-2">
+                            {npcLoading ? '...' : '💱 استفاده از تاجر NPC'}
+                        </button>
+                    </div>
                 </div>
             </div>
 

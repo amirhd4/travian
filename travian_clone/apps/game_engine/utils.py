@@ -3,7 +3,8 @@ from django.db import transaction
 from django.utils import timezone
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-from .models import ServerSetting, GameLog, VillageBuilding
+from .models import ServerSetting, GameLog, VillageBuilding, Village
+
 
 STARVATION_LOSS_PERCENT_PER_HOUR = 10
 POPULATION_RESOURCE_DIVISOR = 100
@@ -118,6 +119,18 @@ def _get_hero_resource_bonus(village):
     return hero.resource_production_type, rate_per_hour
 
 
+def _get_oasis_bonus_multipliers(village):
+    multipliers = {'wood': 1.0, 'clay': 1.0, 'iron': 1.0, 'crop': 1.0}
+    for oasis in village.oases.all():
+        pct = oasis.bonus_percent / 100
+        if oasis.bonus_resource == 'all':
+            for key in multipliers:
+                multipliers[key] += pct
+        else:
+            multipliers[oasis.bonus_resource] += pct
+    return multipliers
+
+
 def update_village_resources(village):
     """محاسبه منابع بر اساس زمان سپری‌شده از آخرین آپدیت + بررسی قحطی گندم."""
     now = timezone.now()
@@ -125,15 +138,14 @@ def update_village_resources(village):
     if delta_seconds <= 0:
         return
 
-    settings = ServerSetting.objects.get(is_active=True)
-    speed = settings.server_speed
+    settings = ServerSetting.objects.filter(is_active=True).first()
+    speed = settings.server_speed if settings else 1
 
-    net_crop_rate = village.prod_crop - calculate_crop_upkeep(village)
+    oasis_mult = _get_oasis_bonus_multipliers(village)  # ✅ جدید
+
+    net_crop_rate = (village.prod_crop * oasis_mult['crop']) - calculate_crop_upkeep(village)
 
     if village.loyalty < 100:
-        # ✅ ترمیم وفاداری فقط وقتی اتفاق می‌افتد که عمارت اقامتی این دهکده سرپا باشد
-        # (طبق قانون: اگر عمارت اقامتی با منجنیق تخریب و نابود شده باشد، وفاداری
-        # دیگر خودبه‌خود ترمیم نمی‌شود)
         residence_exists = VillageBuilding.objects.filter(
             village=village, building_type__name="عمارت اقامتی", level__gt=0
         ).exists()
@@ -141,7 +153,6 @@ def update_village_resources(village):
             elapsed_hours_loyalty = (delta_seconds * speed) / 3600
             village.loyalty = min(100.0, village.loyalty + elapsed_hours_loyalty * LOYALTY_REGEN_PER_HOUR)
 
-    # ✅ بونوس منابع قهرمان (امتیازهای «منابع» که در صفحه‌ی قهرمان توزیع شده‌اند)
     hero_resource_type, hero_rate_per_hour = _get_hero_resource_bonus(village)
 
     def _hero_extra(resource_key):
@@ -149,9 +160,9 @@ def update_village_resources(village):
             return hero_rate_per_hour * delta_seconds * speed / 3600
         return 0
 
-    village.wood = min(village.max_storage, village.wood + (village.prod_wood * delta_seconds * speed / 3600) + _hero_extra('wood'))
-    village.clay = min(village.max_storage, village.clay + (village.prod_clay * delta_seconds * speed / 3600) + _hero_extra('clay'))
-    village.iron = min(village.max_storage, village.iron + (village.prod_iron * delta_seconds * speed / 3600) + _hero_extra('iron'))
+    village.wood = min(village.max_storage, village.wood + (village.prod_wood * oasis_mult['wood'] * delta_seconds * speed / 3600) + _hero_extra('wood'))
+    village.clay = min(village.max_storage, village.clay + (village.prod_clay * oasis_mult['clay'] * delta_seconds * speed / 3600) + _hero_extra('clay'))
+    village.iron = min(village.max_storage, village.iron + (village.prod_iron * oasis_mult['iron'] * delta_seconds * speed / 3600) + _hero_extra('iron'))
 
     raw_new_crop = village.crop + (net_crop_rate * delta_seconds * speed / 3600) + _hero_extra('crop')
 
@@ -171,3 +182,54 @@ def update_village_resources(village):
 def is_server_finished():
     active_server = ServerSetting.objects.filter(is_active=True).first()
     return bool(active_server and active_server.is_finished)
+
+
+CULTURE_POINT_DIVISOR = 500
+
+
+def calculate_building_culture_points(building_type, level):
+    """تولید امتیاز فرهنگی در ساعت برای یک ساختمان مشخص در سطح مشخص.
+    فرمول ساده‌شده: هرچه ساختمان گران‌تر/سطح بالاتر، امتیاز فرهنگی بیشتری در ساعت می‌دهد."""
+    if level <= 0:
+        return 0
+    base_total_cost = (
+        building_type.base_wood_cost + building_type.base_clay_cost +
+        building_type.base_iron_cost + building_type.base_crop_cost
+    )
+    total_cost = sum(base_total_cost * (1.5 ** lvl) for lvl in range(level))
+    return total_cost / CULTURE_POINT_DIVISOR
+
+
+def calculate_player_culture_points_per_hour(player):
+    villages = Village.objects.filter(player=player, is_farm_village=False)
+    buildings = VillageBuilding.objects.filter(
+        village__in=villages, level__gt=0
+    ).select_related('building_type')
+    return sum(calculate_building_culture_points(b.building_type, b.level) for b in buildings)
+
+
+def required_culture_points_for_nth_village(n):
+    """امتیاز فرهنگی تجمیعی لازم برای تاسیس n اُمین دهکده (n=2 یعنی دومین دهکده)."""
+    if n <= 1:
+        return 0
+    return 200 * ((n - 1) ** 2)
+
+
+def calculate_player_total_population(player):
+    """جمعیت کل بازیکن روی همه‌ی دهکده‌هایش (برای محاسبه‌ی بونوس روحیه)."""
+    buildings = VillageBuilding.objects.filter(
+        village__player=player, village__is_farm_village=False, level__gt=0
+    ).select_related('building_type')
+    return int(round(sum(calculate_building_population(b.building_type, b.level) for b in buildings)))
+
+
+def calculate_morale_multiplier(attacker_population, defender_population):
+    """اگر جمعیت مهاجم خیلی بیشتر از مدافع باشد، مدافع بونوس دفاعی (روحیه) می‌گیرد
+    تا حساب‌های بزرگ نتوانند بی‌محدودیت حساب‌های کوچک را فارم کنند."""
+    if attacker_population <= 0 or defender_population <= 0:
+        return 1.0
+    if attacker_population <= defender_population:
+        return 1.0
+    ratio = defender_population / attacker_population
+    multiplier = 1 / (0.2 + 0.8 * ratio)
+    return round(min(3.0, max(1.0, multiplier)), 3)

@@ -168,3 +168,21 @@ def complete_trade_return(trade_id):
     """بازگشت تاجرها به دهکده مبدا؛ از این لحظه ظرفیت تاجر مبدا دوباره آزاد می‌شود."""
     ResourceTrade.objects.filter(id=trade_id).update(is_completed=True)
     return f"تاجرهای محموله #{trade_id} به مبدا بازگشتند."
+
+
+@app.task
+def accumulate_culture_points():
+    from apps.authentication.models import Player
+    from apps.game_engine.models import ServerSetting
+    from apps.game_engine.utils import calculate_player_culture_points_per_hour
+
+    settings = ServerSetting.objects.filter(is_active=True).first()
+    cp_speed = settings.culture_point_speed if settings else 1
+
+    players = Player.objects.filter(is_active=True).exclude(username__in=["Natars", "Farms"])
+    for player in players:
+        hourly = calculate_player_culture_points_per_hour(player)
+        if hourly <= 0:
+            continue
+        player.culture_points += hourly * cp_speed
+        player.save(update_fields=['culture_points'])

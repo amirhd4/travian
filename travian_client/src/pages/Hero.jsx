@@ -136,7 +136,7 @@ const TABS = [
     { key: 'attributes', label: '📊 خصیصات' },
     { key: 'inventory', label: '🎒 کوله‌پشتی' },
     { key: 'appearance', label: '🎨 ظاهر' },
-    { key: 'auction', label: '🏺 حراجی' },
+    // { key: 'auction', label: '🏺 حراجی' },
     { key: 'adventures', label: '🗺️ ماجراجویی‌ها' },
 ];
 
@@ -437,7 +437,7 @@ export default function Hero() {
                     )}
 
                     {activeTab === 'appearance' && <AppearanceTab hero={hero} onSave={handleSaveAppearance} />}
-                    {activeTab === 'auction' && <AuctionTab villageId={villages[0]?.id} />}
+                    {/*{activeTab === 'auction' && <AuctionTab villageId={villages[0]?.id} />}*/}
                 </div>
             </div>
         </PageShell>

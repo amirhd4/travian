@@ -3,8 +3,14 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Q
+
 import datetime
-from .models import TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal, TrainingQueue, Adventure, FarmListEntry, TroopUpgrade
+
+from .models import (
+    TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal,
+    TrainingQueue, Adventure, FarmListEntry, TroopUpgrade, CombatReport, TrappedTroop,
+)
 from .movement_utils import dispatch_troop_movement
 from .tasks import resolve_hero_adventure
 from apps.game_engine.engine import schedule_game_event
@@ -761,13 +767,7 @@ class HeroSettingsView(APIView):
 
 
 class HeroReviveView(APIView):
-    """
-    احیای قهرمان مرده. هزینه بر اساس سطح قهرمان محاسبه می‌شود و از منابع
-    دهکده‌ی انتخابی کسر می‌شود. قبل از این ویو، اگر قهرمان از پای درمی‌آمد
-    (is_alive=False)، هیچ راهی برای احیای دوباره‌ی او وجود نداشت.
-    """
     permission_classes = [IsAuthenticated]
-
     BASE_COST_PER_RESOURCE = 500
 
     def _calculate_cost(self, hero):
@@ -785,17 +785,20 @@ class HeroReviveView(APIView):
     def post(self, request):
         village_id = request.data.get('village_id')
 
-        try:
-            hero = Hero.objects.select_for_update().get(player=request.user)
-        except Hero.DoesNotExist:
-            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
-
-        if hero.is_alive:
-            return Response({"error": "قهرمان شما در حال حاضر زنده است."}, status=400)
-
-        cost = self._calculate_cost(hero)
-
+        # ✅ FIX: select_for_update حالا داخل transaction.atomic() است.
+        # قبلا خارج از هر تراکنشی بود و روی Postgres با
+        # TransactionManagementError کرش می‌کرد.
         with transaction.atomic():
+            try:
+                hero = Hero.objects.select_for_update().get(player=request.user)
+            except Hero.DoesNotExist:
+                return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+
+            if hero.is_alive:
+                return Response({"error": "قهرمان شما در حال حاضر زنده است."}, status=400)
+
+            cost = self._calculate_cost(hero)
+
             try:
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
             except Village.DoesNotExist:
@@ -853,3 +856,162 @@ class HeroAppearanceView(APIView):
 
         hero.save()
         return Response({"message": "ظاهر قهرمان با موفقیت ذخیره شد."})
+
+
+class CombatReportListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        direction = request.query_params.get('direction', 'all')
+        qs = CombatReport.objects.filter(
+            Q(attacker_player=request.user, hidden_from_attacker=False) |
+            Q(defender_player=request.user, hidden_from_defender=False)
+        )
+        if direction == 'outgoing':
+            qs = qs.filter(attacker_player=request.user)
+        elif direction == 'incoming':
+            qs = qs.filter(defender_player=request.user)
+
+        qs = qs.order_by('-created_at')[:100]
+
+        def serialize(r):
+            is_attacker = r.attacker_player_id == request.user.id
+            return {
+                "id": r.id,
+                "is_attacker": is_attacker,
+                "movement_type": r.movement_type,
+                "victory": r.victory,
+                "won": (r.victory == "attacker") == is_attacker,
+                "attacker_village_name": r.attacker_village_name,
+                "defender_village_name": r.defender_village_name,
+                "attacker_coords": r.attacker_coords,
+                "defender_coords": r.defender_coords,
+                "attacker_loss_percent": round(r.attacker_loss_percent, 1),
+                "defender_loss_percent": round(r.defender_loss_percent, 1),
+                "morale_percent": r.morale_percent,
+                "conquered": r.conquered,
+                "is_read": r.is_read_by_attacker if is_attacker else r.is_read_by_defender,
+                "created_at": r.created_at,
+            }
+
+        return Response([serialize(r) for r in qs])
+
+
+class CombatReportUnreadCountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = CombatReport.objects.filter(
+            Q(attacker_player=request.user, is_read_by_attacker=False, hidden_from_attacker=False) |
+            Q(defender_player=request.user, is_read_by_defender=False, hidden_from_defender=False)
+        ).count()
+        return Response({"unread_count": count})
+
+
+class CombatReportDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, report_id):
+        try:
+            r = CombatReport.objects.get(
+                Q(id=report_id) & (Q(attacker_player=request.user) | Q(defender_player=request.user))
+            )
+        except CombatReport.DoesNotExist:
+            return Response({"error": "گزارش یافت نشد."}, status=404)
+
+        is_attacker = r.attacker_player_id == request.user.id
+        if is_attacker and not r.is_read_by_attacker:
+            r.is_read_by_attacker = True
+            r.save(update_fields=['is_read_by_attacker'])
+        elif not is_attacker and not r.is_read_by_defender:
+            r.is_read_by_defender = True
+            r.save(update_fields=['is_read_by_defender'])
+
+        return Response({
+            "id": r.id,
+            "is_attacker": is_attacker,
+            "movement_type": r.movement_type,
+            "victory": r.victory,
+            "attacker_village_name": r.attacker_village_name,
+            "defender_village_name": r.defender_village_name,
+            "attacker_coords": r.attacker_coords,
+            "defender_coords": r.defender_coords,
+            "attacker_troops_sent": r.attacker_troops_sent,
+            "attacker_troops_survived": r.attacker_troops_survived,
+            "defender_troops_before": r.defender_troops_before,
+            "defender_troops_after": r.defender_troops_after,
+            "attacker_loss_percent": round(r.attacker_loss_percent, 1),
+            "defender_loss_percent": round(r.defender_loss_percent, 1),
+            "morale_percent": r.morale_percent,
+            "loot": r.loot,
+            "wall_damage_text": r.wall_damage_text,
+            "catapult_damage_text": r.catapult_damage_text,
+            "conquered": r.conquered,
+            "trapped_summary": r.trapped_summary,
+            "created_at": r.created_at,
+        })
+
+    def delete(self, request, report_id):
+        try:
+            r = CombatReport.objects.get(
+                Q(id=report_id) & (Q(attacker_player=request.user) | Q(defender_player=request.user))
+            )
+        except CombatReport.DoesNotExist:
+            return Response({"error": "گزارش یافت نشد."}, status=404)
+
+        if r.attacker_player_id == request.user.id:
+            r.hidden_from_attacker = True
+        else:
+            r.hidden_from_defender = True
+        r.save()
+        return Response({"message": "گزارش حذف شد."})
+
+
+class TrappedTroopsListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        entries = TrappedTroop.objects.filter(
+            trapper_village__player=request.user
+        ).select_related('trapper_village', 'troop_type', 'original_owner_player')
+        return Response([
+            {
+                "id": e.id,
+                "trapper_village_name": e.trapper_village.name,
+                "troop_name": e.troop_type.name,
+                "count": e.count,
+                "original_owner": e.original_owner_player.username,
+                "captured_at": e.captured_at,
+            }
+            for e in entries
+        ])
+
+
+class ReleaseTrappedTroopsView(APIView):
+    """صاحب تله می‌تواند از سر لطف نیروهای اسیر را آزاد کند تا به مالک اصلی بازگردند."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, entry_id):
+        try:
+            entry = TrappedTroop.objects.select_related(
+                'trapper_village', 'troop_type', 'original_owner_player'
+            ).get(id=entry_id, trapper_village__player=request.user)
+        except TrappedTroop.DoesNotExist:
+            return Response({"error": "این نیروی اسیرشده یافت نشد."}, status=404)
+
+        home_village = Village.objects.filter(
+            player=entry.original_owner_player, is_capital=True
+        ).first() or Village.objects.filter(player=entry.original_owner_player).order_by('id').first()
+
+        if home_village:
+            vt, _ = VillageTroop.objects.get_or_create(
+                village=home_village, troop_type=entry.troop_type, defaults={'count': 0}
+            )
+            vt.count += entry.count
+            vt.save()
+            message = f"{entry.count} نیروی {entry.troop_type.name} آزاد شد و به {home_village.name} بازگشت."
+        else:
+            message = f"{entry.count} نیروی {entry.troop_type.name} آزاد شد (مالک اصلی دیگر دهکده‌ای ندارد)."
+
+        entry.delete()
+        return Response({"message": message})

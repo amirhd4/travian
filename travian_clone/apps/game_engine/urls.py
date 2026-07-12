@@ -5,15 +5,21 @@ from .views import (
     FoundVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
     GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
     FarmVillagesListView,
+    CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView,  # ✅ جدید
 )
 
 urlpatterns = [
     path('villages/', VillageListView.as_view(), name='village_list'),
     path('villages/<int:village_id>/', VillageDetailView.as_view(), name='village_detail'),
     path('villages/<int:village_id>/buildings/', VillageBuildingsView.as_view(), name='village_buildings'),
+    path('villages/rename/', VillageRenameView.as_view(), name='village_rename'),  # ✅ جدید
     path('world-map/', WorldMapView.as_view(), name='world_map'),
+    path('oases/', OasisMapView.as_view(), name='oasis_map'),  # ✅ جدید
+    path('oases/attack/', OasisAttackView.as_view(), name='oasis_attack'),  # ✅ جدید
     path('farm-villages/', FarmVillagesListView.as_view(), name='farm_villages'),
     path('found-village/', FoundVillageView.as_view(), name='found_village'),
+    path('culture-points/', CulturePointsView.as_view(), name='culture_points'),  # ✅ جدید
+    path('npc-trade/', NpcTradeView.as_view(), name='npc_trade'),  # ✅ جدید
     path('upgrade-building/', UpgradeBuildingView.as_view(), name='upgrade_building'),
     path('webhook/', PaymentWebhookView.as_view()),
     path('logs/', GameLogListView.as_view(), name='game_logs'),

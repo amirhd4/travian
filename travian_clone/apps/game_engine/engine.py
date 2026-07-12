@@ -6,10 +6,12 @@ from apps.combat.models import TroopType, VillageTroop
 
 
 def schedule_game_event(village_id, event_type, base_duration_seconds, details):
-    settings = ServerSetting.objects.get(is_active=True)
+    # ✅ FIX: قبلا ServerSetting.objects.get(is_active=True) بود؛
+    # نبود سرور فعال یا وجود بیش از یکی، کل فلوی تکمیل ساخت/آموزش را کرش می‌کرد.
+    settings = ServerSetting.objects.filter(is_active=True).first()
+    if settings is None:
+        settings = ServerSetting(server_speed=1, building_speed=1, troop_training_speed=1)
 
-    # ✅ هر نوع رویداد از ضریب سرعت مخصوص خودش استفاده می‌کند (قبلا همه از
-    # server_speed استفاده می‌کردند و building_speed اصلا استفاده نمی‌شد)
     if event_type == "BUILDING_UPGRADE":
         speed = settings.building_speed or 1
     elif event_type == "TROOP_RECRUITMENT":
