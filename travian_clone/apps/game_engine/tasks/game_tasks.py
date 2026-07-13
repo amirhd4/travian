@@ -1,10 +1,14 @@
-from travian_core.celery import app
-from apps.game_engine.models import Village, VillageBuilding, GameLog, ResourceTrade
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
-import random
 from django.core.cache import cache
 from django.core.mail import send_mail
+from travian_core.celery import app
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+import random
+
+from apps.game_engine.models import Village, VillageBuilding, GameLog, ResourceTrade
+from apps.game_engine.utils import recalculate_village_capacities
+
 
 @app.task
 def send_sms_task(phone_number, message):
@@ -50,6 +54,10 @@ def process_game_event(village_id, event_type, details):
             building.is_upgrading = False
             building.upgrade_end_time = None
             building.save()
+
+
+            if building.building_type.name in ("انبار", "سیلوی غله"):
+                recalculate_village_capacities(village)
 
             # ثبت لاگ اتمام ساخت‌وساز زمان‌دار
             GameLog.objects.create(

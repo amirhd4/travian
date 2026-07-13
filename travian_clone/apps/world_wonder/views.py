@@ -4,11 +4,39 @@ from rest_framework.permissions import IsAuthenticated
 from apps.game_engine.models import Village
 from .services import validate_ww_upgrade
 from apps.game_engine.models import Village, ServerSetting
-from .models import WorldWonder
-
+from .models import WorldWonder, WWBuildingPlan
 
 class UpgradeWWView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        ww, _ = WorldWonder.objects.get_or_create(village=village)
+
+        base_cost = 50000
+        multiplier = 1.1 ** ww.level
+        req_res = int(base_cost * multiplier)
+
+        has_valid_plan = WWBuildingPlan.objects.filter(
+            holder_village__player=request.user,
+            holder_village__buildings__building_type__name="خزانه‌داری",
+            holder_village__buildings__level__gte=10,
+        ).exists()
+
+        active_server = ServerSetting.objects.filter(is_active=True).first()
+
+        return Response({
+            "level": ww.level,
+            "is_max_level": ww.level >= 100,
+            "next_level_cost": {"wood": req_res, "clay": req_res, "iron": req_res, "crop": req_res},
+            "has_valid_plan": has_valid_plan,
+            "is_server_finished": bool(active_server and active_server.is_finished),
+        })
 
     def post(self, request):
         active_server = ServerSetting.objects.filter(is_active=True).first()

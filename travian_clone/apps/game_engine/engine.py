@@ -46,6 +46,9 @@ def execute_immediate_event(village_id, event_type, details):
             building.upgrade_end_time = None
             building.save()
 
+            if building.building_type.name in ("انبار", "سیلوی غله"):
+                recalculate_village_capacities(village)
+
             GameLog.objects.create(
                 village=village,
                 log_type='BUILDING',

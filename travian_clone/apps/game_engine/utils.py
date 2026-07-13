@@ -233,3 +233,44 @@ def calculate_morale_multiplier(attacker_population, defender_population):
     ratio = defender_population / attacker_population
     multiplier = 1 / (0.2 + 0.8 * ratio)
     return round(min(3.0, max(1.0, multiplier)), 3)
+
+
+STORAGE_LEVEL_MULTIPLIER = 1.2  # هر سطح، ظرفیت را ۲۰٪ افزایش می‌دهد
+
+
+def calculate_storage_capacity(base_capacity, level):
+    if level <= 0:
+        return base_capacity
+    return int(base_capacity * (STORAGE_LEVEL_MULTIPLIER ** level))
+
+
+def recalculate_village_capacities(village):
+    """بعد از هر ارتقای انبار/سیلوی غله باید صدا زده شود تا ظرفیت واقعی به‌روز شود."""
+    server_settings = ServerSetting.objects.filter(is_active=True).first()
+    base_storage = server_settings.starting_max_storage if server_settings else 800
+    base_granary = server_settings.starting_max_granary if server_settings else 800
+
+    warehouse = VillageBuilding.objects.filter(village=village, building_type__name="انبار").first()
+    granary = VillageBuilding.objects.filter(village=village, building_type__name="سیلوی غله").first()
+
+    village.max_storage = calculate_storage_capacity(base_storage, warehouse.level if warehouse else 0)
+    village.max_granary = calculate_storage_capacity(base_granary, granary.level if granary else 0)
+    village.save(update_fields=['max_storage', 'max_granary'])
+
+
+def get_effective_production_rates(village):
+    settings = ServerSetting.objects.filter(is_active=True).first()
+    speed = settings.server_speed if settings else 1
+
+    oasis_mult = _get_oasis_bonus_multipliers(village)
+    hero_resource_type, hero_rate_per_hour = _get_hero_resource_bonus(village)
+
+    def hero_bonus(key):
+        return hero_rate_per_hour if hero_resource_type == key else 0
+
+    return {
+        'wood': speed * (village.prod_wood * oasis_mult['wood'] + hero_bonus('wood')),
+        'clay': speed * (village.prod_clay * oasis_mult['clay'] + hero_bonus('clay')),
+        'iron': speed * (village.prod_iron * oasis_mult['iron'] + hero_bonus('iron')),
+        'crop': speed * (village.prod_crop * oasis_mult['crop'] - calculate_crop_upkeep(village) + hero_bonus('crop')),
+    }

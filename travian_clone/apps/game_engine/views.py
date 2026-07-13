@@ -5,6 +5,7 @@ from asgiref.sync import async_to_sync
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
+from channels.layers import get_channel_layer
 
 from django.utils import timezone
 import datetime
@@ -13,9 +14,11 @@ import uuid
 
 from .models import Transaction, Discount, GameLog, GoldPackage, Village, VillageBuilding, ServerSetting
 from .engine import schedule_game_event
-from .utils import update_village_resources, calculate_crop_upkeep, calculate_building_population, calculate_village_population, is_server_finished
+from .utils import (
+    update_village_resources, calculate_crop_upkeep, calculate_building_population,
+    calculate_village_population, is_server_finished, get_effective_production_rates,
+)
 from .services import found_new_village
-from channels.layers import get_channel_layer
 from .models import Transaction, Discount, GameLog
 from .serializers import GameLogSerializer
 from .models import Message
@@ -74,7 +77,8 @@ class VillageDetailView(APIView):
 
         update_village_resources(village)
 
-        net_crop_production = village.prod_crop - calculate_crop_upkeep(village)
+        update_village_resources(village)
+        rates = get_effective_production_rates(village)
 
         return Response({
             "id": village.id,
@@ -89,10 +93,10 @@ class VillageDetailView(APIView):
                 "crop": village.crop,
             },
             "production": {
-                "wood": village.prod_wood,
-                "clay": village.prod_clay,
-                "iron": village.prod_iron,
-                "crop": net_crop_production,
+                "wood": round(rates['wood'], 1),
+                "clay": round(rates['clay'], 1),
+                "iron": round(rates['iron'], 1),
+                "crop": round(rates['crop'], 1),
             },
             "max_storage": village.max_storage,
             "max_granary": village.max_granary,
@@ -1142,4 +1146,57 @@ class OasisAttackView(APIView):
             "message": message,
             "victory": combat_result["victory"],
             "attacker_loss_percent": round(combat_result["attacker_loss_percent"], 1),
+        })
+
+
+from .models import GameEvent
+
+class VillagesOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        villages = Village.objects.filter(player=request.user).order_by('name')
+
+        data = []
+        for village in villages:
+            update_village_resources(village)
+            rates = get_effective_production_rates(village)
+            population = calculate_village_population(village)
+
+            building_event = GameEvent.objects.filter(
+                village=village, event_type='BUILDING_UPGRADE', processed=False
+            ).order_by('scheduled_time').first()
+
+            # فرض: مدل TroopMovement فیلدهای target_village / movement_type / is_processed دارد
+            incoming_attacks = TroopMovement.objects.filter(
+                target_village=village, movement_type__in=['ATTACK', 'RAID'], is_processed=False
+            ).count()
+
+            data.append({
+                "id": village.id,
+                "name": village.name,
+                "x": village.x,
+                "y": village.y,
+                "is_capital": village.is_capital,
+                "population": population,
+                "resources": {
+                    "wood": round(village.wood, 1), "clay": round(village.clay, 1),
+                    "iron": round(village.iron, 1), "crop": round(village.crop, 1),
+                },
+                "max_storage": village.max_storage,
+                "max_granary": village.max_granary,
+                "production": {
+                    "wood": round(rates['wood'], 1), "clay": round(rates['clay'], 1),
+                    "iron": round(rates['iron'], 1), "crop": round(rates['crop'], 1),
+                },
+                "has_world_wonder": hasattr(village, 'world_wonder'),
+                "building_queue_active": bool(building_event),
+                "building_queue_finish": building_event.scheduled_time if building_event else None,
+                "incoming_attacks": incoming_attacks,
+            })
+
+        return Response({
+            "villages": data,
+            "village_count": len(data),
+            "total_population": sum(v['population'] for v in data),
         })

@@ -29,9 +29,11 @@ function AppearanceTab({ hero, onSave }) {
     const [hairColor, setHairColor] = useState(hero.appearance?.hair_color || HAIR_COLORS[0]);
     const [saving, setSaving] = useState(false);
 
+    const [hairColorIndex, setHairColorIndex] = useState(hero.appearance?.hair_color || 1);
+
     const handleSave = async () => {
         setSaving(true);
-        try { await onSave({ gender, hair_style: hairStyle, hair_color: hairColor }); }
+        try { await onSave({ gender, hair_style: hairStyle, hair_color: hairColorIndex }); }
         finally { setSaving(false); }
     };
 
@@ -57,9 +59,9 @@ function AppearanceTab({ hero, onSave }) {
 
                 <p className="field-label mb-2">رنگ مو:</p>
                 <div className="flex gap-2 mb-6 flex-wrap">
-                    {HAIR_COLORS.map((c) => (
-                        <button key={c} onClick={() => setHairColor(c)} style={{ backgroundColor: c }}
-                            className={`w-8 h-8 rounded-full border-2 transition ${hairColor === c ? 'border-gold-600 ring-2 ring-gold-300' : 'border-parchment-300'}`} />
+                    {HAIR_COLORS.map((c, idx) => (
+                        <button key={c} onClick={() => setHairColorIndex(idx + 1)} style={{ backgroundColor: c }}
+                            className={`w-8 h-8 rounded-full border-2 transition ${hairColorIndex === idx + 1 ? 'border-gold-600 ring-2 ring-gold-300' : 'border-parchment-300'}`} />
                     ))}
                 </div>
 
