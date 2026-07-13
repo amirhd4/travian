@@ -164,8 +164,8 @@ STATICFILES_DIRS = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
-cors_origins = os.getenv('CORS_ALLOWED_ORIGINS')
-CORS_ALLOWED_ORIGINS = cors_origins.split(',')
+cors_origins = os.getenv('CORS_ALLOWED_ORIGINS', '')
+CORS_ALLOWED_ORIGINS = [o.strip() for o in cors_origins.split(',') if o.strip()]
 # لازمه تا مرورگر بتونه کوکی httpOnly رفرش توکن رو بین فرانت و بک‌اند رد و بدل کنه
 CORS_ALLOW_CREDENTIALS = True
 
@@ -207,9 +207,8 @@ AUTHENTICATION_BACKENDS = [
     "apps.authentication.authentication.UsernameOrEmailBackend",
 ]
 
-CSRF_TRUSTED_ORIGINS = os.getenv(
-    "CSRF_TRUSTED_ORIGINS", ""
-).split(",")
+csrf_origins = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in csrf_origins.split(",") if o.strip()]
 
 
 from celery.schedules import crontab
@@ -230,6 +229,10 @@ CELERY_BEAT_SCHEDULE = {
     "accumulate-culture-points-hourly": {
         "task": "apps.game_engine.tasks.game_tasks.accumulate_culture_points",
         "schedule": crontab(minute=0),
+    },
+    "generate-hero-auctions": {
+        "task": "apps.combat.tasks.generate_hero_auctions",
+        "schedule": crontab(minute=0, hour="*/6"),
     },
 }
 

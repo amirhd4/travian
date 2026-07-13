@@ -30,6 +30,11 @@ export default function Colonize() {
     const [submitting, setSubmitting] = useState(false);
     const [alertMsg, setAlertMsg] = useState(null);
 
+    const [cultureInfo, setCultureInfo] = useState(null);
+    useEffect(() => {
+        api.get('game/culture-points/').then(({ data }) => setCultureInfo(data)).catch(() => {});
+    }, []);
+
     useEffect(() => {
         if (villages.length > 0 && !sourceId) {
             const capital = villages.find((v) => v.is_capital) || villages[0];
@@ -130,6 +135,15 @@ export default function Colonize() {
                 <p className="text-sm text-ink-500 text-center mb-6">
                     برای تاسیس یک دهکده جدید به {SETTLERS_REQUIRED} نیروی مهاجر در دهکده مبدا نیاز دارید.
                 </p>
+
+                {cultureInfo && (
+                    <div className={`rounded-xl border p-3 mb-4 text-center text-sm font-bold ${
+                        cultureInfo.can_found_next_village ? 'bg-brand-50 border-brand-300 text-brand-700' : 'bg-gold-50 border-gold-300 text-gold-700'
+                    }`}>
+                        🏛️ امتیاز فرهنگی: {cultureInfo.culture_points} از {cultureInfo.next_village_required_cp} لازم برای دهکده‌ی شماره {cultureInfo.villages_count + 1}
+                        {cultureInfo.can_found_next_village ? ' — آماده‌ی تاسیس!' : ` (تولید: ${cultureInfo.culture_points_per_hour}/ساعت)`}
+                    </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                     <div>

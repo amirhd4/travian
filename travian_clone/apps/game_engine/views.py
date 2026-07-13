@@ -19,7 +19,6 @@ from .utils import (
     calculate_village_population, is_server_finished, get_effective_production_rates,
 )
 from .services import found_new_village
-from .models import Transaction, Discount, GameLog
 from .serializers import GameLogSerializer
 from .models import Message
 from .serializers import MessageSerializer
@@ -1142,14 +1141,14 @@ class OasisAttackView(APIView):
             else:
                 message = f"شکست خوردید؛ اوسیس ({oasis.x_coord}|{oasis.y_coord}) تصاحب نشد و بخشی از نیروها را از دست دادید."
 
+            GameLog.objects.create(village=village, log_type='COMBAT', description=message)
+
         return Response({
             "message": message,
             "victory": combat_result["victory"],
             "attacker_loss_percent": round(combat_result["attacker_loss_percent"], 1),
         })
 
-
-from .models import GameEvent
 
 class VillagesOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1163,20 +1162,20 @@ class VillagesOverviewView(APIView):
             rates = get_effective_production_rates(village)
             population = calculate_village_population(village)
 
-            building_event = GameEvent.objects.filter(
-                village=village, event_type='BUILDING_UPGRADE', processed=False
-            ).order_by('scheduled_time').first()
+            upgrading_building = VillageBuilding.objects.filter(
+                village=village, is_upgrading=True
+            ).order_by('upgrade_end_time').first()
 
-            # فرض: مدل TroopMovement فیلدهای target_village / movement_type / is_processed دارد
+            from apps.combat.models import TroopMovement
             incoming_attacks = TroopMovement.objects.filter(
-                target_village=village, movement_type__in=['ATTACK', 'RAID'], is_processed=False
+                target_village=village, movement_type__in=['ATTACK', 'RAID'], is_completed=False
             ).count()
 
             data.append({
                 "id": village.id,
                 "name": village.name,
-                "x": village.x,
-                "y": village.y,
+                "x_coord": village.x_coord,
+                "y_coord": village.y_coord,
                 "is_capital": village.is_capital,
                 "population": population,
                 "resources": {
@@ -1190,8 +1189,8 @@ class VillagesOverviewView(APIView):
                     "iron": round(rates['iron'], 1), "crop": round(rates['crop'], 1),
                 },
                 "has_world_wonder": hasattr(village, 'world_wonder'),
-                "building_queue_active": bool(building_event),
-                "building_queue_finish": building_event.scheduled_time if building_event else None,
+                "building_queue_active": bool(upgrading_building),
+                "building_queue_finish": upgrading_building.upgrade_end_time if upgrading_building else None,
                 "incoming_attacks": incoming_attacks,
             })
 

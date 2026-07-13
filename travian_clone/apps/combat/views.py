@@ -267,11 +267,10 @@ class HeroView(APIView):
 
             "inventory": [
                 {
-                    "id": inv.id,
-                    "item_id": inv.item.id,
-                    "name": inv.item.name,
+                    "id": inv.id, "item_id": inv.item.id, "name": inv.item.name,
                     "item_type": inv.item.item_type,
                     "attack_bonus": inv.item.attack_bonus,
+                    "defense_bonus": inv.item.defense_bonus,   # ✅ جدید
                     "speed_bonus": inv.item.speed_bonus,
                     "is_equipped": inv.is_equipped,
                 }
@@ -1015,3 +1014,67 @@ class ReleaseTrappedTroopsView(APIView):
 
         entry.delete()
         return Response({"message": message})
+
+
+class HeroAuctionListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import HeroAuction
+        now = timezone.now()
+        auctions = HeroAuction.objects.filter(
+            is_completed=False, ends_at__gt=now
+        ).select_related('item', 'current_bidder')
+        return Response([
+            {
+                "id": a.id, "item_name": a.item.name, "item_type": a.item.item_type,
+                "attack_bonus": a.item.attack_bonus, "defense_bonus": a.item.defense_bonus,
+                "speed_bonus": a.item.speed_bonus,
+                "current_bid": a.current_bid,
+                "current_bidder": a.current_bidder.username if a.current_bidder else None,
+                "remaining_seconds": max(0, int((a.ends_at - now).total_seconds())),
+            }
+            for a in auctions
+        ])
+
+
+class HeroAuctionBidView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .models import HeroAuction
+        auction_id = request.data.get('auction_id')
+        try:
+            bid_amount = int(request.data.get('bid_amount', 0))
+        except (TypeError, ValueError):
+            return Response({"error": "مقدار پیشنهاد نامعتبر است."}, status=400)
+
+        with transaction.atomic():
+            try:
+                auction = HeroAuction.objects.select_for_update().get(
+                    id=auction_id, is_completed=False, ends_at__gt=timezone.now()
+                )
+            except HeroAuction.DoesNotExist:
+                return Response({"error": "این حراجی یافت نشد یا به پایان رسیده است."}, status=404)
+
+            min_required = auction.current_bid + HeroAuction.MIN_BID_INCREMENT
+            if bid_amount < min_required:
+                return Response({"error": f"پیشنهاد باید حداقل {min_required} سکه طلا باشد."}, status=400)
+
+            bidder = request.user
+            if bidder.gold_coins < bid_amount:
+                return Response({"error": "سکه طلای کافی ندارید."}, status=400)
+
+            bidder.gold_coins -= bid_amount
+            bidder.save(update_fields=['gold_coins'])
+
+            if auction.current_bidder_id:
+                previous_bidder = auction.current_bidder
+                previous_bidder.gold_coins += auction.current_bid
+                previous_bidder.save(update_fields=['gold_coins'])
+
+            auction.current_bid = bid_amount
+            auction.current_bidder = bidder
+            auction.save()
+
+        return Response({"message": "پیشنهاد شما ثبت شد.", "current_bid": auction.current_bid})

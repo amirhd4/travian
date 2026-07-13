@@ -19,7 +19,6 @@ def _get_protection_message_if_blocked(target_village):
 
     server_settings = ServerSetting.objects.filter(is_active=True).first()
     protection_days = server_settings.new_player_protection_days if server_settings else 7
-    ...  # بقیه بدون تغییر
 
     if protection_days <= 0:
         return None

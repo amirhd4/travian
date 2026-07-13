@@ -9,13 +9,19 @@ import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from '../utils/formatter';
 
 const EQUIP_SLOTS = [
-    { key: 'HELMET', label: 'کلاه‌خود' }, { key: 'WEAPON', label: 'سلاح' },
-    { key: 'HORSE', label: 'اسب' }, { key: 'BODY', label: 'زره' },
-    { key: 'SHIELD', label: 'سپر' }, { key: 'LEFT_HAND', label: 'دست چپ' },
-    { key: 'RIGHT_HAND', label: 'دست راست' }, { key: 'SHOES', label: 'کفش' },
+    { key: 'HELMET', label: 'کلاه‌خود' },
+    { key: 'BODY', label: 'زره' },
+    { key: 'SHIELD', label: 'سپر' },
+    { key: 'LEFT_HAND', label: 'دست چپ' },
+    { key: 'RIGHT_HAND', label: 'دست راست' },
+    { key: 'SHOES', label: 'کفش' },
+    { key: 'HORSE', label: 'اسب' },
 ];
+const itemTypeIcon = (type) => ({
+    HELMET: '⛑️', BODY: '🥋', SHIELD: '🛡️', LEFT_HAND: '⚔️',
+    RIGHT_HAND: '🗡️', SHOES: '🥾', HORSE: '🐎',
+}[type] || '🎒');
 const HAIR_COLORS = ['#3d2b1a', '#7a5230', '#c9a063', '#1a1a1a', '#a83232', '#e0e0e0'];
-const itemTypeIcon = (type) => ({ HELMET: '⛑️', WEAPON: '⚔️', HORSE: '🐎' }[type] || '🎒');
 const difficultyStyle = (d) => ({
     EASY: 'border-brand-300 bg-brand-50 text-brand-800',
     NORMAL: 'border-gold-400 bg-gold-50 text-gold-700 bg-opacity-40',
@@ -79,33 +85,36 @@ function AppearanceTab({ hero, onSave }) {
     );
 }
 
-function AuctionTab({ villageId }) {
+function AuctionTab() {
     const [auctions, setAuctions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [bidding, setBidding] = useState(null);
+    const [bidAmounts, setBidAmounts] = useState({});
     const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchAuctions = useCallback(async () => {
-        try {
-            const { data } = await api.get('combat/hero/auction/');
-            setAuctions(data);
-        } catch { setAuctions([]); }
+        try { const { data } = await api.get('combat/hero/auction/'); setAuctions(data); }
+        catch { setAuctions([]); }
         finally { setLoading(false); }
     }, []);
 
     useEffect(() => { fetchAuctions(); }, [fetchAuctions]);
+    useEffect(() => {
+        const interval = setInterval(fetchAuctions, 15000);
+        return () => clearInterval(interval);
+    }, [fetchAuctions]);
 
     const handleBid = async (auctionId) => {
+        const bidAmount = bidAmounts[auctionId];
+        if (!bidAmount) return;
         setBidding(auctionId);
         try {
-            const { data } = await api.post('combat/hero/auction/bid/', { auction_id: auctionId, village_id: villageId });
+            const { data } = await api.post('combat/hero/auction/bid/', { auction_id: auctionId, bid_amount: bidAmount });
             setAlertMsg({ tone: 'success', text: data.message });
             fetchAuctions();
         } catch (error) {
             setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در ثبت پیشنهاد' });
-        } finally {
-            setBidding(null);
-        }
+        } finally { setBidding(null); }
     };
 
     if (loading) return <LoadingState label="در حال بارگذاری حراجی..." />;
@@ -118,13 +127,20 @@ function AuctionTab({ villageId }) {
             ) : (
                 <div className="space-y-2">
                     {auctions.map((a) => (
-                        <div key={a.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 rounded-xl p-3">
-                            <div>
+                        <div key={a.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 rounded-xl p-3 gap-2">
+                            <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm text-ink-800">{a.item_name}</p>
-                                <p className="text-xs text-ink-500">بالاترین پیشنهاد: {a.current_bid} 💰</p>
+                                <p className="text-xs text-ink-500">
+                                    بالاترین پیشنهاد: {a.current_bid} 💰 {a.current_bidder ? `(${a.current_bidder})` : ''}
+                                </p>
+                                <p className="text-[10px] text-ink-400 font-mono" dir="ltr">{formatDuration(a.remaining_seconds)}</p>
                             </div>
+                            <input type="number" min={a.current_bid + 2} placeholder={`حداقل ${a.current_bid + 2}`}
+                                value={bidAmounts[a.id] || ''}
+                                onChange={(e) => setBidAmounts((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                                className="field w-24 text-center text-xs" />
                             <button onClick={() => handleBid(a.id)} disabled={bidding === a.id} className="btn-gold text-xs">
-                                {bidding === a.id ? '...' : 'پیشنهاد 💰'}
+                                {bidding === a.id ? '...' : 'پیشنهاد'}
                             </button>
                         </div>
                     ))}
@@ -138,7 +154,7 @@ const TABS = [
     { key: 'attributes', label: '📊 خصیصات' },
     { key: 'inventory', label: '🎒 کوله‌پشتی' },
     { key: 'appearance', label: '🎨 ظاهر' },
-    // { key: 'auction', label: '🏺 حراجی' },
+    { key: 'auction', label: '🏺 حراجی' },
     { key: 'adventures', label: '🗺️ ماجراجویی‌ها' },
 ];
 
@@ -410,7 +426,11 @@ export default function Hero() {
                                                 <span className="text-xl">{itemTypeIcon(inv.item_type)}</span>
                                                 <div>
                                                     <p className="font-bold text-sm text-ink-800">{inv.name}</p>
-                                                    <p className="text-xs text-ink-500">{inv.attack_bonus > 0 && `⚔️ +${inv.attack_bonus} `}{inv.speed_bonus > 0 && `⚡ +${inv.speed_bonus}`}</p>
+                                                    <p className="text-xs text-ink-500">
+                                                        {inv.attack_bonus > 0 && `⚔️ +${inv.attack_bonus} `}
+                                                        {inv.defense_bonus > 0 && `🛡️ +${inv.defense_bonus} `}
+                                                        {inv.speed_bonus > 0 && `⚡ +${inv.speed_bonus}`}
+                                                    </p>
                                                 </div>
                                             </div>
                                             <button onClick={() => handleEquip(inv)} disabled={busy === inv.id} className="btn-gold text-xs">پوشیدن</button>
@@ -439,7 +459,7 @@ export default function Hero() {
                     )}
 
                     {activeTab === 'appearance' && <AppearanceTab hero={hero} onSave={handleSaveAppearance} />}
-                    {/*{activeTab === 'auction' && <AuctionTab villageId={villages[0]?.id} />}*/}
+                    {activeTab === 'auction' && <AuctionTab />}
                 </div>
             </div>
         </PageShell>

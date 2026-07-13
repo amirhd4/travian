@@ -101,7 +101,8 @@ class Command(BaseCommand):
                 "speed": 4, "carry_capacity": 0,
                 "wood_cost": 950, "clay_cost": 555, "iron_cost": 330, "crop_cost": 220,
                 "crop_upkeep": 3, "base_train_time": 2400,
-                "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
+                "is_settler": False, "is_cavalry": False,
+                "is_siege_weapon": True, "is_ram": True
             },
             {
                 "name": "منجنیق",
@@ -111,6 +112,7 @@ class Command(BaseCommand):
                 "wood_cost": 950, "clay_cost": 1350, "iron_cost": 600, "crop_cost": 180,
                 "crop_upkeep": 3, "base_train_time": 3000,
                 "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
+                "is_catapult": True
             },
             {
                 "name": "سناتور",
@@ -176,7 +178,7 @@ class Command(BaseCommand):
                 "speed": 4, "carry_capacity": 0,
                 "wood_cost": 950, "clay_cost": 555, "iron_cost": 330, "crop_cost": 75,
                 "crop_upkeep": 3, "base_train_time": 2400,
-                "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
+                "is_siege_weapon": True, "is_ram": True, "is_settler": False, "is_cavalry": False,
             },
             {
                 "name": "بالیستا گلی",
@@ -186,6 +188,7 @@ class Command(BaseCommand):
                 "wood_cost": 960, "clay_cost": 1450, "iron_cost": 630, "crop_cost": 90,
                 "crop_upkeep": 3, "base_train_time": 3000,
                 "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
+                "is_catapult": True
             },
             {
                 "name": "رئیس",
@@ -252,6 +255,7 @@ class Command(BaseCommand):
                 "wood_cost": 1050, "clay_cost": 350, "iron_cost": 550, "crop_cost": 160,
                 "crop_upkeep": 3, "base_train_time": 2300,
                 "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
+                "is_ram": True
             },
             {
                 "name": "کاتاپولت توتونی",
@@ -261,6 +265,7 @@ class Command(BaseCommand):
                 "wood_cost": 900, "clay_cost": 1200, "iron_cost": 600, "crop_cost": 260,
                 "crop_upkeep": 3, "base_train_time": 3100,
                 "is_siege_weapon": True, "is_settler": False, "is_cavalry": False,
+                "is_catapult": True
             },
             {
                 "name": "رئیس",
@@ -279,7 +284,7 @@ class Command(BaseCommand):
         for data in troop_defaults_list:
             name = data.pop("name")
             tribe = data.pop("tribe")
-            obj, created = TroopType.objects.get_or_create(
+            obj, created = TroopType.objects.update_or_create(
                 name=name, tribe=tribe, defaults=data
             )
             status = "ساخته شد" if created else "از قبل وجود داشت"
@@ -297,12 +302,16 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"[Animal] {obj.id} - {obj.name}: {status}"))
 
         hero_item_defaults_list = [
-            {"name": "کلاه‌خود آهنین", "item_type": "HELMET", "attack_bonus": 0, "speed_bonus": 0},
-            {"name": "شمشیر جنگی", "item_type": "WEAPON", "attack_bonus": 50, "speed_bonus": 0},
-            {"name": "اسب تندرو", "item_type": "HORSE", "attack_bonus": 0, "speed_bonus": 2},
+            {"name": "کلاه‌خود آهنین", "item_type": "HELMET", "attack_bonus": 0, "defense_bonus": 20, "speed_bonus": 0},
+            {"name": "زره فولادی", "item_type": "BODY", "attack_bonus": 0, "defense_bonus": 35, "speed_bonus": 0},
+            {"name": "سپر بزرگ", "item_type": "SHIELD", "attack_bonus": 0, "defense_bonus": 25, "speed_bonus": 0},
+            {"name": "شمشیر جنگی", "item_type": "LEFT_HAND", "attack_bonus": 50, "defense_bonus": 0, "speed_bonus": 0},
+            {"name": "تبر جنگی", "item_type": "RIGHT_HAND", "attack_bonus": 40, "defense_bonus": 10, "speed_bonus": 0},
+            {"name": "چکمه‌ی سبک", "item_type": "SHOES", "attack_bonus": 0, "defense_bonus": 5, "speed_bonus": 1},
+            {"name": "اسب تندرو", "item_type": "HORSE", "attack_bonus": 0, "defense_bonus": 0, "speed_bonus": 2},
         ]
         for data in hero_item_defaults_list:
             name = data.pop("name")
-            obj, created = HeroItem.objects.get_or_create(name=name, defaults=data)
+            obj, created = HeroItem.objects.update_or_create(name=name, defaults=data)
             status = "ساخته شد" if created else "از قبل وجود داشت"
             self.stdout.write(self.style.SUCCESS(f"[HeroItem] {obj.id} - {obj.name}: {status}"))

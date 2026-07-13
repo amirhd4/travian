@@ -158,10 +158,14 @@ class FarmListEntry(models.Model):
 
 
 class HeroItem(models.Model):
-    """کاتالوگ آیتم‌های قابل تجهیز برای قهرمان (کلاه‌خود، سلاح، اسب)."""
     name = models.CharField(max_length=50)
-    item_type = models.CharField(max_length=20, choices=[('HELMET', 'کلاه‌خود'), ('WEAPON', 'سلاح'), ('HORSE', 'اسب')])
+    item_type = models.CharField(max_length=20, choices=[
+        ('HELMET', 'کلاه‌خود'), ('BODY', 'زره'), ('SHIELD', 'سپر'),
+        ('LEFT_HAND', 'دست چپ'), ('RIGHT_HAND', 'دست راست'),
+        ('SHOES', 'کفش'), ('HORSE', 'اسب'),
+    ])
     attack_bonus = models.IntegerField(default=0)
+    defense_bonus = models.IntegerField(default=0)   # ✅ جدید
     speed_bonus = models.IntegerField(default=0)
 
     def __str__(self):
@@ -366,3 +370,20 @@ class TrappedTroop(models.Model):
 
     def __str__(self):
         return f"{self.count}x {self.troop_type.name} در تله‌ی {self.trapper_village.name}"
+
+
+class HeroAuction(models.Model):
+    """حراجی دوره‌ای آیتم قهرمان که بازیکنان با سکه طلا روی آن پیشنهاد می‌دهند."""
+    item = models.ForeignKey(HeroItem, on_delete=models.CASCADE, related_name='auctions')
+    current_bid = models.PositiveIntegerField(default=10)
+    current_bidder = models.ForeignKey(
+        'authentication.Player', null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
+    )
+    ends_at = models.DateTimeField()
+    is_completed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    MIN_BID_INCREMENT = 2
+
+    def __str__(self):
+        return f"Auction #{self.id} - {self.item.name} ({self.current_bid} گلد)"

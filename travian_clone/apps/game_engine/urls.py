@@ -1,11 +1,13 @@
 from django.urls import path
+
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
     InboxView, MessageReadView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
     FoundVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
     GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
     FarmVillagesListView,
-    CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView,  # ✅ جدید
+    CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView, VillagesOverviewView,
+    HeroAuctionListView, HeroAuctionBidView
 )
 
 urlpatterns = [
@@ -35,4 +37,7 @@ urlpatterns = [
     path('payment/create/', CreatePaymentRequestView.as_view(), name='create_payment'),
     path('payment/mock-complete/', MockCompletePaymentView.as_view(), name='mock_complete_payment'),
     path('plus/', BuyPlusView.as_view(), name='plus'),
+    path('villages-overview/', VillagesOverviewView.as_view(), name='villages_overview'),
+    path('hero/auction/', HeroAuctionListView.as_view(), name='hero_auction_list'),
+    path('hero/auction/bid/', HeroAuctionBidView.as_view(), name='hero_auction_bid'),
 ]

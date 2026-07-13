@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import useGameStore from "../store/useGameStore.js";
 import api from "../api/axiosConfig.js";
 import SideInfoBoards from "./SideInfoBoards.jsx";
-import { useState as useRenameState } from 'react'; // اگر useState از قبل ایمپورت شده این خط لازم نیست، فقط مطمئن شو useState ایمپورت شده
 
 const NAV_ITEMS = [
     { path: '/village', icon: '🌾', label: 'منابع' },
@@ -23,6 +22,7 @@ const NAV_ITEMS = [
     { path: '/gold-shop', icon: '💰', label: 'فروشگاه طلا' },
     { path: '/plus', icon: '👑', label: 'پلاس' },
     { path: '/blacksmith', icon: '🔨', label: 'آهنگری' },
+    { path: '/villages', icon: '🏘️', label: 'همه دهکده‌ها' },
 ];
 
 export default function Navbar() {

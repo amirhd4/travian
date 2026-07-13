@@ -11,7 +11,7 @@ from travian_core.celery import app
 from apps.game_engine.models import Village, GameLog, VillageBuilding, ServerSetting
 from .models import (
     TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal,
-    Adventure, TroopUpgrade, CombatReport, TrappedTroop,
+    Adventure, TroopUpgrade, CombatReport, TrappedTroop, HeroItem, HeroAuction
 )
 from .engine import calculate_combat, calculate_catapult_damage
 from .hero_utils import resolve_adventure, generate_adventures_for_player
@@ -54,8 +54,6 @@ def _hero_attack_bonus(player):
 
 
 def _hero_defense_bonus(player, village):
-    """امتیاز دفاعی قهرمان؛ فقط وقتی قهرمان دقیقا در همین دهکده مستقر است،
-    در ماموریت/ماجراجویی نیست، و گزینه‌ی «مشارکت در دفاع» را غیرفعال نکرده باشد."""
     try:
         hero = Hero.objects.get(
             player=player, is_alive=True, home_village=village,
@@ -63,7 +61,11 @@ def _hero_defense_bonus(player, village):
         )
     except Hero.DoesNotExist:
         return 0
-    return hero.level * 40 + hero.fighting_strength_points * 20
+    equipped_defense_bonus = sum(
+        inv.item.defense_bonus
+        for inv in PlayerHeroItem.objects.filter(hero=hero, is_equipped=True).select_related('item')
+    )
+    return hero.level * 40 + hero.fighting_strength_points * 20 + equipped_defense_bonus
 
 
 def _hero_off_bonus_percent(player, participating):
@@ -774,3 +776,44 @@ def complete_troop_upgrade(upgrade_id):
         "village_id": upgrade.village_id,
     })
     return f"ارتقای {upgrade.troop_type.name} در {upgrade.village.name} به لول {upgrade.level} رسید."
+
+
+@app.task
+def resolve_hero_auction(auction_id):
+    try:
+        auction = HeroAuction.objects.select_for_update().get(id=auction_id, is_completed=False)
+    except HeroAuction.DoesNotExist:
+        return "این حراجی یافت نشد یا قبلا پردازش شده است."
+
+    auction.is_completed = True
+    auction.save()
+
+    if not auction.current_bidder_id:
+        return f"حراجی #{auction.id} بدون برنده به پایان رسید."
+
+    hero, _ = Hero.objects.get_or_create(player=auction.current_bidder)
+    PlayerHeroItem.objects.create(hero=hero, item=auction.item, is_equipped=False)
+
+    _notify_player(auction.current_bidder_id, "AUCTION_WON", {
+        "message": f"شما برنده‌ی حراجی «{auction.item.name}» شدید و به کوله‌پشتی قهرمانتان اضافه شد.",
+    })
+    return f"حراجی #{auction.id} به {auction.current_bidder.username} رسید."
+
+
+@app.task
+def generate_hero_auctions():
+    active_count = HeroAuction.objects.filter(is_completed=False, ends_at__gt=timezone.now()).count()
+    candidate_items = list(HeroItem.objects.all())
+    if not candidate_items:
+        return "هیچ آیتمی برای حراجی وجود ندارد."
+
+    created = 0
+    for _ in range(max(0, 5 - active_count)):
+        item = random.choice(candidate_items)
+        ends_at = timezone.now() + datetime.timedelta(hours=6)
+        auction = HeroAuction.objects.create(
+            item=item, current_bid=random.choice([10, 15, 20, 25]), ends_at=ends_at,
+        )
+        resolve_hero_auction.apply_async(args=[auction.id], eta=ends_at)
+        created += 1
+    return f"{created} حراجی جدید ساخته شد."
