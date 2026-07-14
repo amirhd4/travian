@@ -444,15 +444,12 @@ export default function Hero() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {hero.inventory.filter((inv) => !inv.is_equipped).map((inv) => (
                                         <div key={inv.id} className="flex items-center justify-between border border-parchment-300 p-3 rounded-xl bg-parchment-50">
-                                            <div key={inv.id} className="flex items-center justify-between border border-parchment-300 p-3 rounded-xl bg-parchment-50">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-xl">{itemTypeIcon(inv.item_type)}</span>
-                                                    <div>
-                                                        <p className="font-bold text-sm text-ink-800">{inv.name}</p>
-                                                        <p className="text-xs text-ink-500">{itemBonusSummary(inv).join(' · ')}</p>  {/* ✅ به‌روزشده */}
-                                                    </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xl">{itemTypeIcon(inv.item_type)}</span>
+                                                <div>
+                                                    <p className="font-bold text-sm text-ink-800">{inv.name}</p>
+                                                    <p className="text-xs text-ink-500">{itemBonusSummary(inv).join(' · ')}</p>
                                                 </div>
-                                                <button onClick={() => handleEquip(inv)} disabled={busy === inv.id} className="btn-gold text-xs">پوشیدن</button>
                                             </div>
                                             <button onClick={() => handleEquip(inv)} disabled={busy === inv.id} className="btn-gold text-xs">پوشیدن</button>
                                         </div>

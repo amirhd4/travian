@@ -3,7 +3,7 @@ from django.urls import path
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
     InboxView, MessageReadView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
-    FoundVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
+    FoundVillageView, AbandonVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
     GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
     FarmVillagesListView,
     CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView,
@@ -18,6 +18,7 @@ urlpatterns = [
     path('villages/<int:village_id>/', VillageDetailView.as_view(), name='village_detail'),
     path('villages/<int:village_id>/buildings/', VillageBuildingsView.as_view(), name='village_buildings'),
     path('villages/rename/', VillageRenameView.as_view(), name='village_rename'),  # ✅ جدید
+    path('villages/<int:village_id>/abandon/', AbandonVillageView.as_view(), name='abandon_village'),
     path('world-map/', WorldMapView.as_view(), name='world_map'),
     path('oases/', OasisMapView.as_view(), name='oasis_map'),  # ✅ جدید
     path('oases/attack/', OasisAttackView.as_view(), name='oasis_attack'),  # ✅ جدید
@@ -44,7 +45,6 @@ urlpatterns = [
     path('hero/auction/', HeroAuctionListView.as_view(), name='hero_auction_list'),
     path('hero/auction/bid/', HeroAuctionBidView.as_view(), name='hero_auction_bid'),
     path('oases/release/', OasisReleaseView.as_view(), name='oasis_release'),
-    path('artifacts/', ArtifactListView.as_view(), name='artifact_list'),
     path('artifacts/', ArtifactListView.as_view(), name='artifact_list'),
     path('medals/daily-latest/', LatestDailyMedalsView.as_view(), name='latest_daily_medals'),
     path('medals/mine/', MyMedalsView.as_view(), name='my_medals'),

@@ -18,7 +18,7 @@ from .utils import (
     update_village_resources, calculate_crop_upkeep, calculate_building_population,
     calculate_village_population, is_server_finished, get_effective_production_rates, get_effective_max_level,
 )
-from .services import found_new_village
+from .services import found_new_village, abandon_village, MAX_VILLAGES
 from .serializers import GameLogSerializer
 from .models import Message
 from .serializers import MessageSerializer
@@ -126,26 +126,16 @@ class VillageBuildingsView(APIView):
             if b.building_type.name == "شگفتی جهان" and ww_level is not None:
                 display_level = ww_level
 
-            for b in buildings:
-                display_level = b.level
-                if b.building_type.name == "شگفتی جهان" and ww_level is not None:
-                    display_level = ww_level
+            effective_max_level = get_effective_max_level(village, b.building_type)
+            multiplier = 1.5 ** display_level
+            time_multiplier = 1.2 ** display_level
+            is_max_level = display_level >= effective_max_level
 
-                effective_max_level = get_effective_max_level(village, b.building_type)  # ✅ جدید
-                multiplier = 1.5 ** display_level
-                time_multiplier = 1.2 ** display_level
-                is_max_level = display_level >= effective_max_level
-
-                data.append({
-                "id": b.id,
-                "position": b.position,
-                "name": b.building_type.name,
-                "category": b.building_type.category,
-                "level": display_level,
-                "max_level": effective_max_level,
-                "is_max_level": is_max_level,
-                "is_upgrading": b.is_upgrading,
-                "upgrade_end_time": b.upgrade_end_time,
+            data.append({
+                "id": b.id, "position": b.position, "name": b.building_type.name,
+                "category": b.building_type.category, "level": display_level,
+                "max_level": effective_max_level, "is_max_level": is_max_level,
+                "is_upgrading": b.is_upgrading, "upgrade_end_time": b.upgrade_end_time,
                 "provides_wall_defense": b.building_type.provides_wall_defense,
                 "next_level_cost": None if is_max_level else {
                     "wood": int(b.building_type.base_wood_cost * multiplier),
@@ -153,7 +143,8 @@ class VillageBuildingsView(APIView):
                     "iron": int(b.building_type.base_iron_cost * multiplier),
                     "crop": int(b.building_type.base_crop_cost * multiplier),
                 },
-                "next_level_time_seconds": None if is_max_level else int(b.building_type.base_build_time * time_multiplier),
+                "next_level_time_seconds": None if is_max_level else int(
+                    b.building_type.base_build_time * time_multiplier),
             })
 
         return Response({
@@ -249,6 +240,15 @@ class FoundVillageView(APIView):
                 except Village.DoesNotExist:
                     return Response({"error": "دهکده مبدا یافت نشد یا متعلق به شما نیست."}, status=404)
 
+                current_count = Village.objects.filter(
+                    player=request.user, is_farm_village=False
+                ).count()
+                if current_count >= MAX_VILLAGES:
+                    return Response(
+                        {"error": f"شما به حداکثر {MAX_VILLAGES} دهکده رسیده‌اید."},
+                        status=400
+                    )
+
                 new_village = found_new_village(
                     request.user,
                     source_village,
@@ -272,6 +272,21 @@ class FoundVillageView(APIView):
                 "is_capital": new_village.is_capital,
             }
         })
+
+
+class AbandonVillageView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, village_id):
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+        try:
+            abandon_village(request.user, village)
+        except ValidationError as e:
+            return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
+        return Response({"message": "دهکده با موفقیت رها شد."})
 
 
 class UpgradeBuildingView(APIView):

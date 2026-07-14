@@ -1,5 +1,8 @@
-from datetime import datetime, timezone
 from travian_core.celery import app
+
+from datetime import datetime, timezone
+from django.utils import timezone as dj_timezone
+
 from apps.game_engine.models import ServerSetting
 from .logic import spawn_natar_tribe, spawn_ww_building_plans
 from ..authentication.models import Player
@@ -11,19 +14,14 @@ def check_server_timeline():
         active_server = ServerSetting.objects.get(is_active=True)
     except ServerSetting.DoesNotExist:
         return
-
     if active_server.is_finished:
         return
 
-    age_days = (datetime.now() - active_server.start_date.replace(tzinfo=None)).days
+    age_days = (dj_timezone.now() - active_server.start_date).days
 
     if age_days >= (active_server.duration_days * 0.5) and not Player.objects.filter(username="Natars").exists():
         spawn_natar_tribe()
 
-    if age_days >= (active_server.duration_days * 0.5) and not Player.objects.filter(username="Natars").exists():
-        spawn_natar_tribe()
-
-        # ✅ جدید: آزادسازی کتیبه‌ها طبق درصد قابل‌تنظیم توسط ادمین در ServerSetting
     if (age_days >= (active_server.duration_days * (active_server.artifact_release_duration_percent / 100))
             and not active_server.artifacts_unlocked):
         active_server.artifacts_unlocked = True

@@ -13,6 +13,7 @@ MAP_SEARCH_RADIUS = 200
 MAX_COORDINATE_ATTEMPTS = 500
 
 SETTLERS_REQUIRED = 3
+MAX_VILLAGES = 3
 
 _RESOURCE_FIELD_DEFS = (
     ("چوب‌بری", 4),
@@ -208,6 +209,11 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
             f"(در حال حاضر {int(player.culture_points)} امتیاز دارید)."
         )
 
+    if current_village_count >= MAX_VILLAGES:
+        raise ValidationError(
+            f"شما به حداکثر {MAX_VILLAGES} دهکده رسیده‌اید و امکان تاسیس دهکده جدید وجود ندارد."
+        )
+
     if target_x is not None and target_y is not None:
         if Village.objects.filter(x_coord=target_x, y_coord=target_y).exists():
             raise ValidationError("این مختصات قبلا توسط دهکده دیگری اشغال شده است.")
@@ -247,6 +253,19 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
     _create_default_buildings(new_village)
 
     return new_village
+
+
+def abandon_village(player, village):
+    if village.player_id != player.id:
+        raise ValidationError("این دهکده متعلق به شما نیست.")
+    if village.is_capital:
+        raise ValidationError("امکان رها کردن دهکده پایتخت وجود ندارد.")
+    non_farm_count = Village.objects.filter(
+        player=player, is_farm_village=False
+    ).count()
+    if non_farm_count <= 1:
+        raise ValidationError("امکان رها کردن آخرین دهکده وجود ندارد.")
+    village.delete()
 
 
 def _create_resource_fields_only(village):

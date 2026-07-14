@@ -421,6 +421,7 @@ def _resolve_attack_or_raid(movement):
 
     ram_units_sent = 0
     catapult_units_sent = 0
+    catapult_attack_power = 0
 
     # ✅ جدید: بونوس تخصصی آیتم‌های قهرمان (فقط وقتی قهرمان همراه این حمله باشد)
     infantry_attack_percent = _hero_infantry_attack_percent(source.player, movement.hero_participating)
@@ -452,8 +453,10 @@ def _resolve_attack_or_raid(movement):
             ram_units_sent += qty
         if getattr(troop_type, 'is_catapult', False):
             catapult_units_sent += qty
+            catapult_attack_power += qty * troop_type.attack_power * upgrade_multiplier
         elif troop_type.is_siege_weapon and not getattr(troop_type, 'is_ram', False):
             catapult_units_sent += qty
+            catapult_attack_power += qty * troop_type.attack_power * upgrade_multiplier
 
     attacking_hero = None
     if movement.hero_participating:
@@ -570,21 +573,33 @@ def _resolve_attack_or_raid(movement):
         wall_building.save()
         wall_damage_msg = f"\nقوچ‌ها دیوار دهکده را از سطح {old_wall_level} به سطح {wall_building.level} تخریب کردند."
 
+    _CATAPULT_EXCLUDED_CATEGORIES = ('RESOURCE', 'WALL')
+    _CATAPULT_EXCLUDED_BUILDING_NAMES = ('شگفتی جهان',)
+
     # ------- آسیب منجنیق -------
     catapult_damage_msg = ""
-    if victory == "attacker" and catapult_units_sent > 0:
+    catapult_threshold_met = (
+        attacker_points_attack > 0
+        and catapult_attack_power / attacker_points_attack >= 0.05
+    )
+    if victory == "attacker" and catapult_units_sent > 0 and catapult_threshold_met:
         target_building_name = movement.catapult_target_building
         catapult_building = None
 
         if target_building_name and target_building_name != 'RANDOM':
             catapult_building = VillageBuilding.objects.select_for_update().filter(
                 village=target, building_type__name=target_building_name, level__gt=0
-            ).exclude(building_type__category__in=_CATAPULT_EXCLUDED_CATEGORIES).first()
+            ).exclude(
+                building_type__category__in=_CATAPULT_EXCLUDED_CATEGORIES
+            ).exclude(
+                building_type__name__in=_CATAPULT_EXCLUDED_BUILDING_NAMES
+            ).first()
 
         if catapult_building is None:
             candidates = list(
                 VillageBuilding.objects.select_for_update().filter(village=target, level__gt=0)
                 .exclude(building_type__category__in=_CATAPULT_EXCLUDED_CATEGORIES)
+                .exclude(building_type__name__in=_CATAPULT_EXCLUDED_BUILDING_NAMES)
             )
             if candidates:
                 catapult_building = random.choice(candidates)
@@ -598,6 +613,26 @@ def _resolve_attack_or_raid(movement):
                 f"\nمنجنیق‌ها به ساختمان «{catapult_building.building_type.name}» اصابت کردند "
                 f"(سطح {old_level} → {catapult_building.level})."
             )
+
+        # ------- آسیب واقعی به شگفتی جهان (اگر هدف صاحب شگفتی جهان باشد) -------
+        if victory == "attacker" and (
+            (ram_units_sent > 0) or (catapult_units_sent > 0 and catapult_threshold_met)
+        ):
+            from apps.world_wonder.models import WorldWonder
+            ww_obj = WorldWonder.objects.select_for_update().filter(village=target).first()
+            if ww_obj and ww_obj.level > 0:
+                siege_power = ram_units_sent + catapult_units_sent
+                old_ww_level = ww_obj.level
+                ww_obj.level = calculate_catapult_damage(siege_power, ww_obj.level)
+                ww_obj.save()
+                VillageBuilding.objects.filter(
+                    village=target, building_type__name="شگفتی جهان"
+                ).update(level=ww_obj.level, is_upgrading=False)
+                if ww_obj.level < old_ww_level:
+                    catapult_damage_msg += (
+                        f"\n🏛️ نیروهای محاصره‌ای به شگفتی جهان اصابت کردند "
+                        f"(سطح {old_ww_level} → {ww_obj.level})."
+                    )
 
     # ------- غارت منابع -------
     loot = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
