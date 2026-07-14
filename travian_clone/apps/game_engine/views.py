@@ -1385,3 +1385,98 @@ class PlayerPublicMedalsView(APIView):
             }
             for m in medals
         ])
+
+
+def _generate_unique_pin():  # ✅ جدید
+    import random, string
+    from .models import GoldBankDeposit
+    while True:
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
+        if not GoldBankDeposit.objects.filter(pin_code=code).exists():
+            return code
+
+
+class GoldBankDepositView(APIView):
+    """انتقال طلا به بانک: طلا از حساب کسر و یک کد PIN یک‌بارمصرف صادر می‌شود."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .models import GoldBankDeposit
+
+        email = (request.data.get('email') or '').strip()
+        try:
+            amount = int(request.data.get('amount', 0))
+        except (TypeError, ValueError):
+            amount = 0
+
+        if not email:
+            return Response({"error": "ایمیل مقصد را وارد کنید."}, status=400)
+        if amount <= 0:
+            return Response({"error": "مقدار طلا نامعتبر است."}, status=400)
+
+        with transaction.atomic():
+            player = Player.objects.select_for_update().get(id=request.user.id)
+            if player.gold_coins < amount:
+                return Response({"error": "طلای کافی در حساب ندارید."}, status=400)
+
+            player.gold_coins -= amount
+            player.save(update_fields=['gold_coins'])
+
+            pin_code = _generate_unique_pin()
+            GoldBankDeposit.objects.create(
+                email=email, amount=amount, pin_code=pin_code, depositor=player,
+            )
+
+        return Response({
+            "message": f"{amount} سکه طلا به بانک منتقل شد. کد پین زیر را نگه دارید.",
+            "pin_code": pin_code,
+            "gold_coins": player.gold_coins,
+        })
+
+
+class GoldBankWithdrawView(APIView):
+    """دریافت طلا از بانک با وارد کردن کد PIN."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .models import GoldBankDeposit
+
+        pin_code = (request.data.get('pin_code') or '').strip().upper()
+        if not pin_code:
+            return Response({"error": "کد پین را وارد کنید."}, status=400)
+
+        with transaction.atomic():
+            try:
+                deposit = GoldBankDeposit.objects.select_for_update().get(pin_code=pin_code, is_redeemed=False)
+            except GoldBankDeposit.DoesNotExist:
+                return Response({"error": "این کد پین نامعتبر است یا قبلا استفاده شده."}, status=400)
+
+            player = Player.objects.select_for_update().get(id=request.user.id)
+            player.gold_coins += deposit.amount
+            player.save(update_fields=['gold_coins'])
+
+            deposit.is_redeemed = True
+            deposit.redeemed_by = player
+            deposit.redeemed_at = timezone.now()
+            deposit.save()
+
+        return Response({
+            "message": f"{deposit.amount} سکه طلا با موفقیت به حساب شما اضافه شد.",
+            "gold_coins": player.gold_coins,
+        })
+
+
+class MyGoldBankDepositsView(APIView):
+    """تاریخچه‌ی انتقال‌های خودِ بازیکن (برای مراجعه‌ی بعدی به کد پین)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import GoldBankDeposit
+        deposits = GoldBankDeposit.objects.filter(depositor=request.user).order_by('-created_at')
+        return Response([
+            {
+                "id": d.id, "email": d.email, "amount": d.amount, "pin_code": d.pin_code,
+                "is_redeemed": d.is_redeemed, "created_at": d.created_at, "redeemed_at": d.redeemed_at,
+            }
+            for d in deposits
+        ])

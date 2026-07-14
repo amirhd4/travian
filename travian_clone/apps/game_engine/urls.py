@@ -10,7 +10,7 @@ from .views import (
     OasisReleaseView, VillagesOverviewView,
     ArtifactListView,
     LatestDailyMedalsView, MyMedalsView, ToggleMedalVisibilityView, PlayerPublicMedalsView,  # ✅ جدید
-    HeroAuctionListView, HeroAuctionBidView
+    HeroAuctionListView, HeroAuctionBidView, GoldBankDepositView, GoldBankWithdrawView, MyGoldBankDepositsView
 )
 
 urlpatterns = [
@@ -50,4 +50,7 @@ urlpatterns = [
     path('medals/mine/', MyMedalsView.as_view(), name='my_medals'),
     path('medals/toggle/', ToggleMedalVisibilityView.as_view(), name='toggle_medal'),
     path('medals/player/<int:player_id>/', PlayerPublicMedalsView.as_view(), name='player_medals'),
+    path('gold-bank/deposit/', GoldBankDepositView.as_view(), name='gold_bank_deposit'),
+    path('gold-bank/withdraw/', GoldBankWithdrawView.as_view(), name='gold_bank_withdraw'),
+    path('gold-bank/mine/', MyGoldBankDepositsView.as_view(), name='gold_bank_mine'),
 ]

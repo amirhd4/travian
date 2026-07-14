@@ -3,6 +3,7 @@ from .models import (
     ServerSetting, Village, BuildingType, VillageBuilding, GameLog,
     QuestDefinition, PlayerQuestProgress, Artifact,
     PlayerCombatStats, DailyMedal,
+    PlayerCombatStats, DailyMedal, GoldBankDeposit
 )
 
 admin.site.register(QuestDefinition)
@@ -60,3 +61,10 @@ class PlayerCombatStatsAdmin(admin.ModelAdmin):
 class DailyMedalAdmin(admin.ModelAdmin):
     list_display = ('day_number', 'category', 'rank', 'player', 'is_visible')
     list_filter = ('category', 'day_number', 'is_visible')
+
+
+@admin.register(GoldBankDeposit)  # ✅ جدید
+class GoldBankDepositAdmin(admin.ModelAdmin):
+    list_display = ('pin_code', 'email', 'amount', 'depositor', 'is_redeemed', 'redeemed_by', 'created_at')
+    list_filter = ('is_redeemed',)
+    search_fields = ('pin_code', 'email')
