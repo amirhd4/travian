@@ -15,7 +15,8 @@ from .movement_utils import dispatch_troop_movement
 from .tasks import resolve_hero_adventure
 from apps.game_engine.engine import schedule_game_event
 from .hero_utils import sync_hero_health, calculate_travel_seconds_to_point, DIFFICULTY_SETTINGS
-from apps.game_engine.models import Village, GameLog, VillageBuilding
+from apps.game_engine.models import Village, GameLog, VillageBuilding, ServerSetting
+
 from .utils import get_required_training_building
 
 
@@ -28,6 +29,7 @@ class SendTroopsView(APIView):
         movement_type = request.data.get('movement_type', 'ATTACK')
         payload = request.data.get('troops_payload', {})
         send_hero = bool(request.data.get('send_hero', False))
+        catapult_target_building = request.data.get('catapult_target_building') or None  # ✅ جدید
 
         try:
             source_village = Village.objects.get(id=source_id, player=request.user)
@@ -36,12 +38,15 @@ class SendTroopsView(APIView):
             return Response({"error": "مبدا یا مقصد یافت نشد."}, status=404)
 
         success, result = dispatch_troop_movement(
-            request.user, source_village, target_village, movement_type, payload, send_hero=send_hero
+            request.user, source_village, target_village, movement_type, payload,
+            send_hero=send_hero,
+            catapult_target_building=catapult_target_building,  # ✅ جدید
         )
         if not success:
             return Response({"error": result}, status=400)
 
         return Response({"message": "نیروها با موفقیت اعزام شدند و در زمان مقرر به مقصد می‌رسند."})
+
 
 class BarracksTrainView(APIView):
     permission_classes = [IsAuthenticated]
@@ -98,14 +103,21 @@ class BarracksTrainView(APIView):
                 village.crop -= total_cost['crop']
                 village.save()
 
-                # نکته حیاتی: قبلا این View بلافاصله و بدون هیچ تاخیری نیرو را
-                # به VillageTroop اضافه می‌کرد، یعنی هیچ صف آموزش واقعی‌ای وجود
-                # نداشت (آموزش ۱۰۰۰ سرباز دقیقا هم‌زمان با آموزش ۱ سرباز تمام
-                # می‌شد) و هیچ رکورد قابل مشاهده‌ای از «الان چه چیزی در حال
-                # آموزش است» وجود نداشت. حالا یک ردیف TrainingQueue واقعی
-                # ساخته می‌شود که فرانت‌اند می‌تواند با شمارش معکوس نمایش دهد.
-                total_duration = troop_info.base_train_time * quantity
-                finishes_at = timezone.now() + datetime.timedelta(seconds=total_duration)
+                from apps.game_engine.artifacts import get_training_speed_multiplier  # ✅ جدید
+
+                raw_duration = troop_info.base_train_time * quantity
+                artifact_multiplier = get_training_speed_multiplier(request.user)  # ✅ اثر «جنگ‌آموز»
+                duration_after_artifact = raw_duration / artifact_multiplier
+
+                # ✅ FIX همزمان: قبلا finishes_at (شمارش معکوس UI) اصلا سرعت
+                # آموزش سرور (troop_training_speed) را لحاظ نمی‌کرد؛ فقط زمان
+                # واقعیِ تکمیل (از طریق schedule_game_event) این سرعت را
+                # اعمال می‌کرد -> روی سرورهای پرسرعت، عدد نمایش‌داده‌شده به
+                # بازیکن اشتباه (خیلی بیشتر از واقعیت) بود.
+                server_settings = ServerSetting.objects.filter(is_active=True).first()
+                training_speed = (server_settings.troop_training_speed if server_settings else 1) or 1
+                display_duration = duration_after_artifact / training_speed
+                finishes_at = timezone.now() + datetime.timedelta(seconds=max(0.1, display_duration))
 
                 queue_item = TrainingQueue.objects.create(
                     village=village,
@@ -123,7 +135,8 @@ class BarracksTrainView(APIView):
                 transaction.on_commit(lambda: schedule_game_event(
                     village_id=village.id,
                     event_type="TROOP_RECRUITMENT",
-                    base_duration_seconds=total_duration,
+                    base_duration_seconds=duration_after_artifact,
+                    # ✅ اثر کتیبه از قبل اعمال شده؛ سرعت سرور داخل خودِ schedule_game_event اعمال می‌شود
                     details={"troop_id": troop_info.id, "count": quantity, "queue_id": queue_item.id}
                 ))
 

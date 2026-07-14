@@ -20,6 +20,17 @@ def check_server_timeline():
     if age_days >= (active_server.duration_days * 0.5) and not Player.objects.filter(username="Natars").exists():
         spawn_natar_tribe()
 
+    if age_days >= (active_server.duration_days * 0.5) and not Player.objects.filter(username="Natars").exists():
+        spawn_natar_tribe()
+
+        # ✅ جدید: آزادسازی کتیبه‌ها طبق درصد قابل‌تنظیم توسط ادمین در ServerSetting
+    if (age_days >= (active_server.duration_days * (active_server.artifact_release_duration_percent / 100))
+            and not active_server.artifacts_unlocked):
+        active_server.artifacts_unlocked = True
+        active_server.save()
+        from apps.game_engine.artifacts import spawn_artifact_sites
+        spawn_artifact_sites()
+
     if age_days >= (active_server.duration_days * 0.7) and not active_server.ww_unlocked:
         active_server.ww_unlocked = True
         active_server.save()

@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import ServerSetting, Village, BuildingType, VillageBuilding, GameLog, QuestDefinition, PlayerQuestProgress
+from .models import (
+    ServerSetting, Village, BuildingType, VillageBuilding, GameLog,
+    QuestDefinition, PlayerQuestProgress, Artifact,  # ✅ Artifact
+)
 
 admin.site.register(QuestDefinition)
 admin.site.register(PlayerQuestProgress)
@@ -12,14 +15,22 @@ class ServerSettingAdmin(admin.ModelAdmin):
         'troop_training_speed', 'duration_days', 'new_player_protection_days',
         'starting_max_storage', 'starting_max_granary',
         'farm_village_count', 'farm_village_multiplier',
-        'start_date', 'ww_unlocked', 'is_finished',
+        'start_date', 'ww_unlocked', 'artifacts_unlocked', 'artifact_release_duration_percent',
+        'is_finished',
     )
     list_editable = (
         'is_active', 'server_speed', 'troop_speed', 'building_speed',
         'troop_training_speed', 'new_player_protection_days', 'ww_unlocked',
+        'artifacts_unlocked', 'artifact_release_duration_percent',
         'starting_max_storage', 'starting_max_granary',
         'farm_village_count', 'farm_village_multiplier',
     )
+
+
+@admin.register(Artifact)
+class ArtifactAdmin(admin.ModelAdmin):
+    list_display = ('name', 'effect_type', 'multiplier', 'is_alliance_wide', 'holder_village', 'is_activated', 'activates_at')
+    list_filter = ('effect_type', 'is_activated', 'is_alliance_wide')
 
 
 @admin.register(Village)

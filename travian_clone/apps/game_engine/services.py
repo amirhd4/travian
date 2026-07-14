@@ -7,7 +7,7 @@ import random
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from .models import Village, BuildingType, VillageBuilding, ServerSetting
+from .models import Village, BuildingType, VillageBuilding, ServerSetting, Oasis
 
 MAP_SEARCH_RADIUS = 200
 MAX_COORDINATE_ATTEMPTS = 500
@@ -52,11 +52,19 @@ _WALL_DEF = ("دیوار (Wall)", 0, 'WALL')
 
 
 def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=None):
+    def _is_occupied(x, y):
+        # ✅ FIX: قبلا فقط Village چک می‌شد؛ نتیجه‌اش این بود که دهکده‌ی جدید
+        # می‌توانست دقیقا روی مختصات یک اوسیس موجود ساخته شود.
+        return (
+            Village.objects.filter(x_coord=x, y_coord=y).exists() or
+            Oasis.objects.filter(x_coord=x, y_coord=y).exists()
+        )
+
     if near_x is not None and near_y is not None:
         for _ in range(MAX_COORDINATE_ATTEMPTS):
             x = near_x + random.randint(-search_radius, search_radius)
             y = near_y + random.randint(-search_radius, search_radius)
-            if not Village.objects.filter(x_coord=x, y_coord=y).exists():
+            if not _is_occupied(x, y):
                 return x, y
 
     quadrant_ranges = {
@@ -70,13 +78,13 @@ def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=
         for _ in range(MAX_COORDINATE_ATTEMPTS):
             x = random.randint(*x_range)
             y = random.randint(*y_range)
-            if not Village.objects.filter(x_coord=x, y_coord=y).exists():
+            if not _is_occupied(x, y):
                 return x, y
 
     for _ in range(MAX_COORDINATE_ATTEMPTS):
         x = random.randint(-MAP_SEARCH_RADIUS, MAP_SEARCH_RADIUS)
         y = random.randint(-MAP_SEARCH_RADIUS, MAP_SEARCH_RADIUS)
-        if not Village.objects.filter(x_coord=x, y_coord=y).exists():
+        if not _is_occupied(x, y):
             return x, y
     raise RuntimeError("مختصات آزادی روی نقشه پیدا نشد؛ محدوده نقشه را بزرگ‌تر کنید.")
 

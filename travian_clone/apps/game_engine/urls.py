@@ -6,7 +6,9 @@ from .views import (
     FoundVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
     GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
     FarmVillagesListView,
-    CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView, VillagesOverviewView,
+    CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView,
+    OasisReleaseView, VillagesOverviewView,
+    ArtifactListView,
     HeroAuctionListView, HeroAuctionBidView
 )
 
@@ -40,4 +42,7 @@ urlpatterns = [
     path('villages-overview/', VillagesOverviewView.as_view(), name='villages_overview'),
     path('hero/auction/', HeroAuctionListView.as_view(), name='hero_auction_list'),
     path('hero/auction/bid/', HeroAuctionBidView.as_view(), name='hero_auction_bid'),
+    path('oases/release/', OasisReleaseView.as_view(), name='oasis_release'),
+    path('oases/release/', OasisReleaseView.as_view(), name='oasis_release'),  # ✅ جدید (از پیام قبل)
+    path('artifacts/', ArtifactListView.as_view(), name='artifact_list'),      # ✅ جدید
 ]

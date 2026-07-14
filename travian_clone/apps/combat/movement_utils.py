@@ -62,6 +62,9 @@ def dispatch_troop_movement(
 
     hero_participating = False
     if send_hero:
+        # ✅ FIX: قهرمان فقط همراه حمله/غارت اعزام می‌شود (توضیح کامل در پیام قبل)
+        if movement_type not in ('ATTACK', 'RAID'):
+            return False, "قهرمان فقط می‌تواند همراه حمله یا غارت اعزام شود."
         hero = Hero.objects.filter(player=player).first()
         if not hero or not hero.is_alive:
             return False, "قهرمان شما در دسترس نیست (از پای درآمده یا وجود ندارد)."
@@ -107,7 +110,13 @@ def dispatch_troop_movement(
             village_troop.count -= count_to_send
             village_troop.save()
 
-        travel_seconds = calculate_travel_seconds(source_village, target_village, slowest_speed)
+        from apps.game_engine.artifacts import get_movement_speed_multiplier  # ✅ جدید
+        movement_artifact_multiplier = get_movement_speed_multiplier(player)  # ✅ جدید
+
+        travel_seconds = calculate_travel_seconds(
+            source_village, target_village, slowest_speed,
+            artifact_speed_multiplier=movement_artifact_multiplier,  # ✅ جدید
+        )
         arrival_time = timezone.now() + datetime.timedelta(seconds=travel_seconds)
 
         movement = TroopMovement.objects.create(

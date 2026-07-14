@@ -12,6 +12,27 @@ const MOVEMENT_OPTIONS = [
     { value: 'SCOUT', label: '🔍 شناسایی', hint: 'گزارش از دهکده هدف' },
 ];
 
+const CATAPULT_TARGETS = [
+    { value: '', label: '🎲 تصادفی' },
+    { value: 'انبار', label: 'انبار' },
+    { value: 'سیلوی غله', label: 'سیلوی غله' },
+    { value: 'پادگان', label: 'پادگان' },
+    { value: 'اصطبل', label: 'اصطبل' },
+    { value: 'کارگاه', label: 'کارگاه' },
+    { value: 'بازارچه', label: 'بازارچه' },
+    { value: 'سفارتخانه', label: 'سفارتخانه' },
+    { value: 'خزانه‌داری', label: 'خزانه‌داری' },
+    { value: 'آکادمی', label: 'آکادمی' },
+    { value: 'عمارت اقامتی', label: 'عمارت اقامتی' },
+    { value: 'تالار شهر', label: 'تالار شهر' },
+    { value: 'آهنگری', label: 'آهنگری' },
+    { value: 'کارگاه سنگ‌تراشی', label: 'کارگاه سنگ‌تراشی' },
+    { value: 'عمارت قهرمان', label: 'عمارت قهرمان' },
+    { value: 'آبشخور اسب', label: 'آبشخور اسب' },
+    { value: 'اداره تجارت', label: 'اداره تجارت' },
+    { value: 'پادگان بزرگ', label: 'پادگان بزرگ' },
+];
+
 export default function SendTroops() {
     const location = useLocation();
     const navigate = useNavigate();
@@ -28,6 +49,7 @@ export default function SendTroops() {
     const [fetching, setFetching] = useState(true);
     const [heroStatus, setHeroStatus] = useState(null);
     const [alertMsg, setAlertMsg] = useState(null);
+    const [catapultTarget, setCatapultTarget] = useState('');
 
     useEffect(() => {
         api.get('combat/hero/').then(({ data }) => setHeroStatus(data)).catch(() => {});
@@ -73,6 +95,7 @@ export default function SendTroops() {
                 movement_type: movementType,
                 troops_payload: payload,
                 send_hero: sendHero,
+                catapult_target_building: movementType === 'ATTACK' ? catapultTarget : null,
             });
             navigate('/village', { state: { flash: response.data.message } });
         } catch (error) {
@@ -135,19 +158,30 @@ export default function SendTroops() {
                             )}
                         </div>
 
-                        {heroStatus && !heroStatus.is_alive ? (
-                            <p className="text-xs text-rose-700 font-bold bg-rose-50 border border-rose-300 rounded-xl p-3">
-                                ⚰️ قهرمان شما از پای درآمده و قادر به اعزام نیست.
-                            </p>
-                        ) : heroStatus && (heroStatus.is_on_adventure || heroStatus.is_away) ? (
-                            <p className="text-xs text-orange-700 font-bold bg-orange-50 border border-orange-300 rounded-xl p-3">
-                                🚫 قهرمان شما هم‌اکنون در دسترس نیست.
-                            </p>
-                        ) : (
-                            <label className="flex items-center gap-2 text-sm font-bold text-ink-700 bg-gold-50 border border-gold-300 rounded-xl p-3 cursor-pointer">
-                                <input type="checkbox" checked={sendHero} onChange={(e) => setSendHero(e.target.checked)} />
-                                🦸 اعزام قهرمان همراه این نیرو
-                            </label>
+                        {movementType === 'ATTACK' && (
+                            <div>
+                                <label className="field-label">🎯 هدف منجنیق (در صورت وجود منجنیق در نیروی اعزامی)</label>
+                                <select value={catapultTarget} onChange={(e) => setCatapultTarget(e.target.value)} className="field">
+                                    {CATAPULT_TARGETS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                                </select>
+                            </div>
+                        )}
+
+                        {(movementType === 'ATTACK' || movementType === 'RAID') && (
+                            heroStatus && !heroStatus.is_alive ? (
+                                <p className="text-xs text-rose-700 font-bold bg-rose-50 border border-rose-300 rounded-xl p-3">
+                                    ⚰️ قهرمان شما از پای درآمده و قادر به اعزام نیست.
+                                </p>
+                            ) : heroStatus && (heroStatus.is_on_adventure || heroStatus.is_away) ? (
+                                <p className="text-xs text-orange-700 font-bold bg-orange-50 border border-orange-300 rounded-xl p-3">
+                                    🚫 قهرمان شما هم‌اکنون در دسترس نیست.
+                                </p>
+                            ) : (
+                                <label className="flex items-center gap-2 text-sm font-bold text-ink-700 bg-gold-50 border border-gold-300 rounded-xl p-3 cursor-pointer">
+                                    <input type="checkbox" checked={sendHero} onChange={(e) => setSendHero(e.target.checked)} />
+                                    🦸 اعزام قهرمان همراه این نیرو
+                                </label>
+                            )
                         )}
 
                         <button type="submit" disabled={loading || !activeVillageId} className="btn-danger w-full py-3">

@@ -4,6 +4,7 @@ from travian_core.celery import app
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
+from django.utils import timezone
 import random
 
 from apps.game_engine.models import Village, VillageBuilding, GameLog, ResourceTrade
@@ -194,3 +195,29 @@ def accumulate_culture_points():
             continue
         player.culture_points += hourly * cp_speed
         player.save(update_fields=['culture_points'])
+
+
+@app.task
+def activate_ready_artifacts():
+    """کتیبه‌هایی که تاخیر ۲۴ ساعته‌شان تمام شده را فعال می‌کند و به مالک اطلاع می‌دهد."""
+    from apps.game_engine.models import Artifact
+
+    ready = Artifact.objects.filter(
+        is_activated=False, activates_at__isnull=False, activates_at__lte=timezone.now(),
+        holder_village__isnull=False,
+    ).select_related('holder_village')
+
+    for artifact in ready:
+        artifact.is_activated = True
+        artifact.save(update_fields=['is_activated'])
+
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            async_to_sync(channel_layer.group_send)(
+                f"player_{artifact.holder_village.player_id}",
+                {
+                    "type": "send_game_update",
+                    "update_type": "ARTIFACT_ACTIVATED",
+                    "payload": {"message": f"🏺 کتیبه‌ی «{artifact.name}» اکنون فعال شد."},
+                }
+            )

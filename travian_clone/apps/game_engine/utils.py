@@ -274,3 +274,18 @@ def get_effective_production_rates(village):
         'iron': speed * (village.prod_iron * oasis_mult['iron'] + hero_bonus('iron')),
         'crop': speed * (village.prod_crop * oasis_mult['crop'] - calculate_crop_upkeep(village) + hero_bonus('crop')),
     }
+
+
+RESOURCE_FIELD_MAX_LEVEL_NON_CAPITAL = 10
+
+
+def get_effective_max_level(village, building_type):
+    """
+    سقف واقعی سطح یک ساختمان مشخص، برای یک دهکده‌ی مشخص.
+    طبق قوانین تراوین اصلی: مزارع منابع (دسته RESOURCE) در دهکده‌های غیر
+    پایتخت فقط تا سطح ۱۰ ارتقا می‌یابند؛ در پایتخت و برای سایر ساختمان‌ها
+    (در همه‌ی دهکده‌ها)، سقف همان building_type.max_level (پیش‌فرض ۲۰) است.
+    """
+    if building_type.category == 'RESOURCE' and not village.is_capital:
+        return min(building_type.max_level, RESOURCE_FIELD_MAX_LEVEL_NON_CAPITAL)
+    return building_type.max_level

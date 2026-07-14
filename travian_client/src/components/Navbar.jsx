@@ -23,6 +23,8 @@ const NAV_ITEMS = [
     { path: '/plus', icon: '👑', label: 'پلاس' },
     { path: '/blacksmith', icon: '🔨', label: 'آهنگری' },
     { path: '/villages', icon: '🏘️', label: 'همه دهکده‌ها' },
+    { path: '/world-wonder', icon: '🏆', label: 'شگفتی جهان' },
+    { path: '/artifacts', icon: '🏺', label: 'کتیبه‌ها' },   // ✅ جدید
 ];
 
 export default function Navbar() {

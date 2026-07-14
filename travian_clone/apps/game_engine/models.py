@@ -19,6 +19,9 @@ class ServerSetting(models.Model):
     start_date = models.DateTimeField(auto_now_add=True)
     ww_unlocked = models.BooleanField(default=False)
 
+    artifacts_unlocked = models.BooleanField(default=False)
+    artifact_release_duration_percent = models.FloatField(default=50)
+
     # ✅ ظرفیت پیش‌فرض انبار/سیلو برای دهکده‌های جدید این سرور
     starting_max_storage = models.IntegerField(default=800)
     starting_max_granary = models.IntegerField(default=800)
@@ -41,6 +44,7 @@ class ServerSetting(models.Model):
     )
 
     culture_point_speed = models.BigIntegerField(default=1)
+
 
 
 class Village(models.Model):
@@ -72,6 +76,8 @@ class Village(models.Model):
     is_farm_village = models.BooleanField(default=False)
 
     last_npc_trade_at = models.DateTimeField(null=True, blank=True)
+
+    is_natar_artifact_site = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('x_coord', 'y_coord')
@@ -301,3 +307,43 @@ class Oasis(models.Model):
 
     def __str__(self):
         return f"اوسیس ({self.x_coord}|{self.y_coord})"
+
+
+class Artifact(models.Model):
+    """
+    کتیبه: یک شیء «حساب‌محور» (نه دهکده‌محور). وقتی دهکده‌ی نگه‌دارنده‌اش
+    (holder_village) متعلق به یک بازیکن باشد، اثر ویژه‌اش روی کل حساب آن
+    بازیکن (یا در صورت is_alliance_wide=True، کل اتحادش) اعمال می‌شود.
+
+    هر بار تصاحب - چه اولین‌بار با تسخیر دهکده‌ی ناتار نگهبان، چه بعدا با
+    دزدیدنش از یک بازیکن دیگر - یک تاخیر ۲۴ ساعته‌ی جدید قبل از فعال شدن
+    اثر ایجاد می‌کند (دقیقا مثل تراوین اصلی).
+    """
+    EFFECT_SCOUT_POWER = 'SCOUT_POWER'
+    EFFECT_TRAINING_SPEED = 'TRAINING_SPEED'
+    EFFECT_MOVEMENT_SPEED = 'MOVEMENT_SPEED'
+    EFFECT_CHOICES = [
+        (EFFECT_SCOUT_POWER, 'قدرت جاسوسی (چشمان عقاب)'),
+        (EFFECT_TRAINING_SPEED, 'سرعت آموزش نیرو (جنگ‌آموز)'),
+        (EFFECT_MOVEMENT_SPEED, 'سرعت حرکت نیرو (چکمه خدایان)'),
+    ]
+
+    name = models.CharField(max_length=100)
+    effect_type = models.CharField(max_length=20, choices=EFFECT_CHOICES)
+    multiplier = models.FloatField(default=2.0)
+
+    # کتیبه‌ی «بزرگ»: اثرش روی کل اتحادِ دارنده اعمال می‌شود، نه فقط خودش
+    is_alliance_wide = models.BooleanField(default=False)
+
+    holder_village = models.ForeignKey(
+        Village, on_delete=models.SET_NULL, null=True, blank=True, related_name='artifacts'
+    )
+    is_activated = models.BooleanField(default=False)
+    captured_at = models.DateTimeField(null=True, blank=True)
+    activates_at = models.DateTimeField(null=True, blank=True)
+
+    def is_effective(self):
+        return bool(self.holder_village_id and self.activates_at and timezone.now() >= self.activates_at)
+
+    def __str__(self):
+        return f"{self.name} ({'فعال' if self.is_activated else 'در انتظار فعال‌سازی'})"

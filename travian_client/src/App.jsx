@@ -28,6 +28,7 @@ import VillageCenter from "./pages/VillageCenter.jsx";
 import GameLayout from "./layouts/GameLayouts.jsx";
 import { Outlet } from "react-router-dom";
 import VillagesOverview from "./pages/VillagesOverview.jsx";
+import Artifacts from "./pages/Artifacts.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -116,6 +117,7 @@ function App() {
                     <Route path="/plus" element={<PlusAccount />} />
                     <Route path="/blacksmith" element={<Blacksmith />} />
                     <Route path="/villages" element={<VillagesOverview />} />
+                    <Route path="/artifacts" element={<Artifacts />} />
                 </Route>
             </Routes>
         </Router>

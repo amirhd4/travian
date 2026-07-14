@@ -16,7 +16,7 @@ from .models import Transaction, Discount, GameLog, GoldPackage, Village, Villag
 from .engine import schedule_game_event
 from .utils import (
     update_village_resources, calculate_crop_upkeep, calculate_building_population,
-    calculate_village_population, is_server_finished, get_effective_production_rates,
+    calculate_village_population, is_server_finished, get_effective_production_rates, get_effective_max_level,
 )
 from .services import found_new_village
 from .serializers import GameLogSerializer
@@ -75,8 +75,6 @@ class VillageDetailView(APIView):
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
         update_village_resources(village)
-
-        update_village_resources(village)
         rates = get_effective_production_rates(village)
 
         return Response({
@@ -128,16 +126,23 @@ class VillageBuildingsView(APIView):
             if b.building_type.name == "شگفتی جهان" and ww_level is not None:
                 display_level = ww_level
 
-            multiplier = 1.5 ** display_level
-            time_multiplier = 1.2 ** display_level
-            is_max_level = display_level >= b.building_type.max_level
-            data.append({
+            for b in buildings:
+                display_level = b.level
+                if b.building_type.name == "شگفتی جهان" and ww_level is not None:
+                    display_level = ww_level
+
+                effective_max_level = get_effective_max_level(village, b.building_type)  # ✅ جدید
+                multiplier = 1.5 ** display_level
+                time_multiplier = 1.2 ** display_level
+                is_max_level = display_level >= effective_max_level
+
+                data.append({
                 "id": b.id,
                 "position": b.position,
                 "name": b.building_type.name,
                 "category": b.building_type.category,
                 "level": display_level,
-                "max_level": b.building_type.max_level,
+                "max_level": effective_max_level,
                 "is_max_level": is_max_level,
                 "is_upgrading": b.is_upgrading,
                 "upgrade_end_time": b.upgrade_end_time,
@@ -198,6 +203,7 @@ class WorldMapView(APIView):
                 "is_capital": v.is_capital,
                 "is_natar_ww_site": v.is_natar_ww_site,
                 "is_natar_plan_guard": v.is_natar_plan_guard,
+                "is_natar_artifact_site": v.is_natar_artifact_site,
             }
             for v in villages
         ]
@@ -296,6 +302,13 @@ class UpgradeBuildingView(APIView):
 
             try:
                 building = VillageBuilding.objects.select_for_update().get(village=village, position=position)
+
+                effective_max_level = get_effective_max_level(village, building.building_type)
+                if building.level >= effective_max_level:
+                    return Response(
+                        {"error": f"این ساختمان به حداکثر سطح مجاز ({effective_max_level}) رسیده است."},
+                        status=400
+                    )
             except VillageBuilding.DoesNotExist:
                 return Response({"error": "ساختمانی در این جایگاه یافت نشد."}, status=404)
 
@@ -782,7 +795,20 @@ class ServerStatusView(APIView):
             "duration_days": active_server.duration_days,
             "start_date": active_server.start_date,
             "new_player_protection_days": active_server.new_player_protection_days,
+            "ww_unlocked": active_server.ww_unlocked,                    # ✅ جدید
+            "artifacts_unlocked": active_server.artifacts_unlocked,      # ✅ جدید
         }
+
+        if not active_server.ww_unlocked:  # ✅ جدید
+            data["ww_plans_release_at"] = active_server.start_date + datetime.timedelta(
+                days=active_server.duration_days * 0.7
+            )
+
+        if not active_server.artifacts_unlocked:  # ✅ جدید
+            data["artifacts_release_at"] = active_server.start_date + datetime.timedelta(
+                days=active_server.duration_days * (active_server.artifact_release_duration_percent / 100)
+            )
+
         if active_server.is_finished:
             data["finished_at"] = active_server.finished_at
             data["winner_username"] = active_server.winner_player.username if active_server.winner_player else None
@@ -1082,6 +1108,12 @@ class OasisAttackView(APIView):
         with transaction.atomic():
             try:
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+
+                residence_ok = VillageBuilding.objects.filter(
+                    village=village, building_type__name="عمارت قهرمان", level__gt=0
+                ).exists()
+                if not residence_ok:
+                    return Response({"error": "برای تصاحب اوسیس ابتدا باید عمارت قهرمان بسازید."}, status=400)
             except Village.DoesNotExist:
                 return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
@@ -1199,3 +1231,52 @@ class VillagesOverviewView(APIView):
             "village_count": len(data),
             "total_population": sum(v['population'] for v in data),
         })
+
+
+class OasisReleaseView(APIView):
+    """رها کردن یک اوسیس متعلق به بازیکن (از طریق عمارت قهرمان)."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .models import Oasis
+        oasis_id = request.data.get('oasis_id')
+        try:
+            oasis = Oasis.objects.select_for_update().get(id=oasis_id)
+        except (Oasis.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "اوسیس یافت نشد."}, status=404)
+
+        if not oasis.owner_village or oasis.owner_village.player_id != request.user.id:
+            return Response({"error": "این اوسیس متعلق به شما نیست."}, status=403)
+
+        coords = f"({oasis.x_coord}|{oasis.y_coord})"
+        oasis.owner_village = None
+        oasis.save()
+        return Response({"message": f"اوسیس {coords} با موفقیت رها شد."})
+
+
+class ArtifactListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import Artifact
+        artifacts = Artifact.objects.select_related('holder_village__player').all()
+        data = []
+        for a in artifacts:
+            holder_village = a.holder_village
+            is_claimed = bool(holder_village and holder_village.player.username != "Natars")
+            data.append({
+                "id": a.id,
+                "name": a.name,
+                "effect_type": a.effect_type,
+                "effect_type_display": a.get_effect_type_display(),
+                "multiplier": a.multiplier,
+                "is_alliance_wide": a.is_alliance_wide,
+                "is_claimed": is_claimed,
+                "holder_village_name": holder_village.name if holder_village else None,
+                "holder_coords": f"{holder_village.x_coord}|{holder_village.y_coord}" if holder_village else None,
+                "holder_player": holder_village.player.username if (holder_village and is_claimed) else None,
+                "is_activated": a.is_activated,
+                "activates_at": a.activates_at,
+                "is_mine": bool(is_claimed and holder_village.player_id == request.user.id),
+            })
+        return Response(data)

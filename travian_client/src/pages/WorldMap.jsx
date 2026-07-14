@@ -13,6 +13,7 @@ const CELL_STYLES = {
     mine:      'bg-gradient-to-b from-blue-200 to-blue-300 border-blue-500 text-blue-900 font-bold',
     ww:        'bg-gradient-to-b from-purple-300 to-purple-400 border-purple-600 text-purple-900 font-bold cursor-pointer animate-pulse',
     planGuard: 'bg-gradient-to-b from-orange-300 to-orange-400 border-orange-600 text-orange-900 font-bold cursor-pointer',
+    artifactSite: 'bg-gradient-to-b from-cyan-300 to-cyan-400 border-cyan-600 text-cyan-900 font-bold cursor-pointer animate-pulse',  // ✅ جدید
     natar:     'bg-gradient-to-b from-rose-300 to-rose-400 border-rose-600 text-rose-900 font-bold cursor-pointer',
     village:   'bg-gradient-to-b from-brand-200 to-brand-300 border-brand-500 text-brand-900 hover:brightness-105 cursor-pointer',
     empty:     'bg-parchment-100 border-parchment-300 text-ink-400',
@@ -78,6 +79,7 @@ export default function WorldMap() {
                 isWwSite: found ? found.is_natar_ww_site : false,
                 isPlanGuard: found ? found.is_natar_plan_guard : false,
                 oasis,
+                isArtifactSite: found ? found.is_natar_artifact_site : false,
             });
         }
     }
@@ -87,6 +89,7 @@ export default function WorldMap() {
 
         if (cell.isMine) return CELL_STYLES.mine;
         if (cell.isWwSite) return CELL_STYLES.ww;
+        if (cell.isArtifactSite) return CELL_STYLES.artifactSite;
         if (cell.isPlanGuard) return CELL_STYLES.planGuard;
         if (cell.isNatar) return CELL_STYLES.natar;
         if (cell.hasVillage) return CELL_STYLES.village;
@@ -165,6 +168,7 @@ export default function WorldMap() {
                     <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-rose-300 inline-block" />ناتار</span>
                     <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-purple-300 inline-block" />محل شگفتی جهان</span>
                     <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-orange-300 inline-block" />نگهبان نقشه</span>
+                    <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-cyan-300 inline-block" />محل کتیبه</span>
                 </div>
                 <p className="text-xs text-ink-500 mt-3 text-center">برای اعزام نیرو به هر دهکده، روی آن کلیک کنید.</p>
             </div>

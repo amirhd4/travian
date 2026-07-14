@@ -217,13 +217,17 @@ def _resolve_scout(movement):
     source = movement.source_village
     target = Village.objects.select_for_update().get(id=movement.target_village_id)
 
+    from apps.game_engine.artifacts import get_scout_power_multiplier
+    scout_power_multiplier = get_scout_power_multiplier(source.player)
+
     scout_qty_sent = sum(int(q) for q in movement.troops_payload.values())
+    effective_scout_power = scout_qty_sent * scout_power_multiplier
 
     defending_scouts = VillageTroop.objects.filter(
         village=target, troop_type__is_scout=True
     ).aggregate(total=Sum('count'))['total'] or 0
 
-    caught = defending_scouts >= scout_qty_sent * 2
+    caught = defending_scouts >= effective_scout_power * 2
 
     movement.is_completed = True
     movement.save()
@@ -563,6 +567,9 @@ def _resolve_attack_or_raid(movement):
 
                 if conquered and target.is_natar_ww_site:
                     _convert_to_ww_site(target)
+
+                if conquered:  # ✅ جدید: تصاحب/دزدیده‌شدن کتیبه در صورت وجود در این دهکده
+                    _capture_artifact_if_present(target)
             else:
                 for tid in chief_ids_sent:
                     attacker_survivors[tid] = 0
@@ -699,6 +706,34 @@ def _resolve_attack_or_raid(movement):
         ))
 
     return log_msg
+
+
+def _capture_artifact_if_present(captured_village):
+    """
+    اگر دهکده‌ی تسخیرشده (چه یک دهکده‌ی ناتار نگهبان کتیبه، چه دهکده‌ی هر
+    بازیکن دیگری که از قبل صاحب یک کتیبه بوده) صاحب یک کتیبه باشد، با
+    تسخیرش کتیبه هم به‌طور خودکار متعلق به مالک جدید می‌شود (چون مالک واقعی
+    کتیبه همیشه از طریق holder_village.player خوانده می‌شود، نه یک فیلد
+    جداگانه). هر بار تصاحب، طبق قوانین تراوین اصلی، یک تاخیر ۲۴ ساعته‌ی
+    جدید قبل از فعال شدن اثر ایجاد می‌کند.
+    """
+    from apps.game_engine.models import Artifact
+    artifact = Artifact.objects.filter(holder_village=captured_village).first()
+    if not artifact:
+        return
+
+    artifact.captured_at = timezone.now()
+    artifact.activates_at = timezone.now() + datetime.timedelta(hours=24)
+    artifact.is_activated = False
+    artifact.save()
+
+    GameLog.objects.create(
+        village=captured_village, log_type='SYSTEM',
+        description=(
+            f"🏺 کتیبه‌ی «{artifact.name}» با تسخیر این دهکده تصاحب شد؛ "
+            f"تا ۲۴ ساعت دیگر فعال می‌شود."
+        )
+    )
 
 
 def _convert_to_ww_site(village):
