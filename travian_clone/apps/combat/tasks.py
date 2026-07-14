@@ -11,9 +11,10 @@ from travian_core.celery import app
 from apps.game_engine.models import Village, GameLog, VillageBuilding, ServerSetting
 from .models import (
     TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal,
-    Adventure, TroopUpgrade, CombatReport, TrappedTroop, HeroItem, HeroAuction
+    Adventure, TroopUpgrade, CombatReport, TrappedTroop, HeroItem, HeroAuction,
+    TroopEvasionSetting,
 )
-from .engine import calculate_combat, calculate_catapult_damage, troop_population_value
+from .engine import calculate_combat, calculate_catapult_damage, calculate_demolition_by_defender_casualties, troop_population_value
 from .hero_utils import resolve_adventure, generate_adventures_for_player
 from apps.game_engine.utils import calculate_player_total_population, calculate_morale_multiplier
 
@@ -472,6 +473,10 @@ def _resolve_attack_or_raid(movement):
     attacker_data = {"points_attack": attacker_points_attack}
 
     # ------- قدرت مدافع -------
+    # بررسی فرار نیروها (فقط برای اعضای کلوپ طلایی)
+    evasion_setting = TroopEvasionSetting.objects.filter(village=target).first()
+    troops_evasion_enabled = evasion_setting and evasion_setting.is_enabled
+
     defender_village_troops = list(
         VillageTroop.objects.select_for_update().filter(village=target).select_related('troop_type')
     )
@@ -494,19 +499,25 @@ def _resolve_attack_or_raid(movement):
     infantry_defense_percent = _hero_infantry_defense_percent(target.player, target)
     cavalry_defense_percent = _hero_cavalry_defense_percent(target.player, target)
 
-    for vt in defender_village_troops:
-        multiplier = 1 + (defender_upgrade_levels.get(vt.troop_type_id, 0) * TroopUpgrade.BONUS_PER_LEVEL)
+    # اگر فرار نیروها فعال باشد، نیروها از دفاع غیبت می‌کنند
+    if troops_evasion_enabled:
+        # نیروها فرار می‌کنند و در دفاع شرکت نمی‌کنند
+        defender_points_inf = 0.0
+        defender_points_cav = 0.0
+    else:
+        for vt in defender_village_troops:
+            multiplier = 1 + (defender_upgrade_levels.get(vt.troop_type_id, 0) * TroopUpgrade.BONUS_PER_LEVEL)
 
-        # ✅ جدید: اعمال بونوس تخصصی روی دفاع خودیِ همین نیرو
-        is_true_infantry = not (vt.troop_type.is_cavalry or vt.troop_type.is_siege_weapon or
-                                vt.troop_type.is_settler or vt.troop_type.is_scout or vt.troop_type.is_chief)
-        if vt.troop_type.is_cavalry:
-            multiplier *= (1 + cavalry_defense_percent / 100)
-        elif is_true_infantry:
-            multiplier *= (1 + infantry_defense_percent / 100)
+            # ✅ جدید: اعمال بونوس تخصصی روی دفاع خودیِ همین نیرو
+            is_true_infantry = not (vt.troop_type.is_cavalry or vt.troop_type.is_siege_weapon or
+                                    vt.troop_type.is_settler or vt.troop_type.is_scout or vt.troop_type.is_chief)
+            if vt.troop_type.is_cavalry:
+                multiplier *= (1 + cavalry_defense_percent / 100)
+            elif is_true_infantry:
+                multiplier *= (1 + infantry_defense_percent / 100)
 
-        defender_points_inf += vt.count * vt.troop_type.defense_infantry * multiplier
-        defender_points_cav += vt.count * vt.troop_type.defense_cavalry * multiplier
+            defender_points_inf += vt.count * vt.troop_type.defense_infantry * multiplier
+            defender_points_cav += vt.count * vt.troop_type.defense_cavalry * multiplier
 
     # ✅ جدید: بونوس روحیه بر اساس اختلاف جمعیت
     attacker_population = calculate_player_total_population(source.player)
@@ -577,10 +588,11 @@ def _resolve_attack_or_raid(movement):
     _CATAPULT_EXCLUDED_BUILDING_NAMES = ('شگفتی جهان',)
 
     # ------- آسیب منجنیق -------
-    catapult_damage_msg = ""
+    # محاسبه قدرت کل دفاع مدافع (بدون دیوار) برای آستانه 5%
+    total_defender_defense = defender_points_inf + defender_points_cav
     catapult_threshold_met = (
-        attacker_points_attack > 0
-        and catapult_attack_power / attacker_points_attack >= 0.05
+        total_defender_defense > 0
+        and attacker_points_attack / total_defender_defense >= 0.05
     )
     if victory == "attacker" and catapult_units_sent > 0 and catapult_threshold_met:
         target_building_name = movement.catapult_target_building
@@ -595,7 +607,14 @@ def _resolve_attack_or_raid(movement):
                 building_type__name__in=_CATAPULT_EXCLUDED_BUILDING_NAMES
             ).first()
 
-        if catapult_building is None:
+            # اگر ساختمان هدف مشخص بود ولی پیدا نشد، گزارش "Building not found"
+            if catapult_building is None:
+                catapult_damage_msg = (
+                    f"\nمنجنیق‌ها نتوانستند ساختمان «{target_building_name}» را پیدا کنند؛ "
+                    f"هیچ آسیبی وارد نشد."
+                )
+        else:
+            # اگر RANDOM یا None باشد، ساختمان تصادفی انتخاب کن
             candidates = list(
                 VillageBuilding.objects.select_for_update().filter(village=target, level__gt=0)
                 .exclude(building_type__category__in=_CATAPULT_EXCLUDED_CATEGORIES)
@@ -606,7 +625,10 @@ def _resolve_attack_or_raid(movement):
 
         if catapult_building:
             old_level = catapult_building.level
-            catapult_building.level = calculate_catapult_damage(catapult_units_sent, catapult_building.level)
+            # استفاده از فرمول جدید بر اساس درصد تلفات مدافع
+            catapult_building.level = calculate_demolition_by_defender_casualties(
+                defender_loss_ratio * 100, catapult_building.level, is_ww=False
+            )
             catapult_building.is_upgrading = False
             catapult_building.save()
             catapult_damage_msg = (
@@ -615,15 +637,18 @@ def _resolve_attack_or_raid(movement):
             )
 
         # ------- آسیب واقعی به شگفتی جهان (اگر هدف صاحب شگفتی جهان باشد) -------
+        # طبق مشخصات §13: تخریب شگفتی جهان مقیاس سخت‌تری دارد
         if victory == "attacker" and (
             (ram_units_sent > 0) or (catapult_units_sent > 0 and catapult_threshold_met)
         ):
             from apps.world_wonder.models import WorldWonder
             ww_obj = WorldWonder.objects.select_for_update().filter(village=target).first()
             if ww_obj and ww_obj.level > 0:
-                siege_power = ram_units_sent + catapult_units_sent
                 old_ww_level = ww_obj.level
-                ww_obj.level = calculate_catapult_damage(siege_power, ww_obj.level)
+                # استفاده از فرمول جدید با مقیاس سخت‌تر برای شگفتی جهان
+                ww_obj.level = calculate_demolition_by_defender_casualties(
+                    defender_loss_ratio * 100, ww_obj.level, is_ww=True
+                )
                 ww_obj.save()
                 VillageBuilding.objects.filter(
                     village=target, building_type__name="شگفتی جهان"
@@ -762,6 +787,8 @@ def _resolve_attack_or_raid(movement):
         f"تلفات مهاجم: {combat_result['attacker_loss_percent']:.1f}%\n"
         f"تلفات مدافع: {combat_result['defender_loss_percent']:.1f}%"
     )
+    if troops_evasion_enabled:
+        log_msg += "\n⚠️ نیروهای مدافع از طریق قابلیت فرار نیروها (کلوپ طلایی) غیبت کردند."
     log_msg += wall_damage_msg
     log_msg += catapult_damage_msg
     if any(loot.values()):

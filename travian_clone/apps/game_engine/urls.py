@@ -2,15 +2,18 @@ from django.urls import path
 
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
-    InboxView, MessageReadView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
+    InboxView, MessageReadView, SentMessagesView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
     FoundVillageView, AbandonVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
     GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
     FarmVillagesListView,
     CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView,
     OasisReleaseView, VillagesOverviewView,
     ArtifactListView,
-    LatestDailyMedalsView, MyMedalsView, ToggleMedalVisibilityView, PlayerPublicMedalsView,  # ✅ جدید
-    HeroAuctionListView, HeroAuctionBidView, GoldBankDepositView, GoldBankWithdrawView, MyGoldBankDepositsView
+    LatestDailyMedalsView, MyMedalsView, ToggleMedalVisibilityView, PlayerPublicMedalsView,
+    HeroAuctionListView, HeroAuctionBidView, GoldBankDepositView, GoldBankWithdrawView, MyGoldBankDepositsView,
+    ResourceBonusView, BuyFullWarehouseView, BuyProtectionView, ExitProtectionView, InstantRallyPointView,
+    BuyGoldClubView, CropperSearchView, StandardNpcTradeView, GoldToSilverExchangeView, SupportMessageView,
+    InstantConstructionView, GoldTroopShopView,
 )
 
 urlpatterns = [
@@ -25,13 +28,15 @@ urlpatterns = [
     path('farm-villages/', FarmVillagesListView.as_view(), name='farm_villages'),
     path('found-village/', FoundVillageView.as_view(), name='found_village'),
     path('culture-points/', CulturePointsView.as_view(), name='culture_points'),  # ✅ جدید
-    path('npc-trade/', NpcTradeView.as_view(), name='npc_trade'),  # ✅ جدید
+    path('npc-trade/', NpcTradeView.as_view(), name='npc_trade'),
+    path('npc-trade/standard/', StandardNpcTradeView.as_view(), name='standard_npc_trade'),
     path('upgrade-building/', UpgradeBuildingView.as_view(), name='upgrade_building'),
     path('webhook/', PaymentWebhookView.as_view()),
     path('logs/', GameLogListView.as_view(), name='game_logs'),
     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
     path('marketplace/send/', MarketplaceView.as_view(), name='send_resources'),
     path('messages/', InboxView.as_view(), name='inbox'),
+    path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),
     path('messages/<int:pk>/read/', MessageReadView.as_view(), name='read_message'),
     path('embassy/', EmbassyView.as_view(), name='embassy'),
     path('server-status/', ServerStatusView.as_view(), name='server_status'),
@@ -53,4 +58,15 @@ urlpatterns = [
     path('gold-bank/deposit/', GoldBankDepositView.as_view(), name='gold_bank_deposit'),
     path('gold-bank/withdraw/', GoldBankWithdrawView.as_view(), name='gold_bank_withdraw'),
     path('gold-bank/mine/', MyGoldBankDepositsView.as_view(), name='gold_bank_mine'),
+    path('gold/resource-bonus/', ResourceBonusView.as_view(), name='resource_bonus'),
+    path('gold/buy-warehouse/', BuyFullWarehouseView.as_view(), name='buy_warehouse'),
+    path('gold/buy-protection/', BuyProtectionView.as_view(), name='buy_protection'),
+    path('gold/exit-protection/', ExitProtectionView.as_view(), name='exit_protection'),
+    path('gold/instant-rally-point/', InstantRallyPointView.as_view(), name='instant_rally_point'),
+    path('gold/buy-gold-club/', BuyGoldClubView.as_view(), name='buy_gold_club'),
+    path('gold/cropper-search/', CropperSearchView.as_view(), name='cropper_search'),
+    path('gold/exchange-silver/', GoldToSilverExchangeView.as_view(), name='exchange_silver'),
+    path('support/', SupportMessageView.as_view(), name='support_message'),
+    path('gold/instant-construction/', InstantConstructionView.as_view(), name='instant_construction'),
+    path('gold/troop-shop/', GoldTroopShopView.as_view(), name='gold_troop_shop'),
 ]

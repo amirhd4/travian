@@ -7,12 +7,14 @@ import { AlertModal } from '../components/Modal';
 
 const TABS = [
     { key: 'inbox', label: '📥 صندوق ورودی' },
+    { key: 'sent', label: '📤 پیام‌های ارسالی' },
     { key: 'compose', label: '✍️ نوشتن پیام' },
 ];
 
 export default function Messages() {
     const [activeTab, setActiveTab] = useState('inbox');
     const [messages, setMessages] = useState([]);
+    const [sentMessages, setSentMessages] = useState([]);
     const [loading, setLoading] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState(null);
 
@@ -33,8 +35,21 @@ export default function Messages() {
         }
     };
 
+    const fetchSentMessages = async () => {
+        setLoading(true);
+        try {
+            const response = await api.get('game/messages/sent/');
+            setSentMessages(response.data);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (activeTab === 'inbox') { fetchMessages(); setSelectedMessage(null); }
+        if (activeTab === 'sent') { fetchSentMessages(); setSelectedMessage(null); }
     }, [activeTab]);
 
     const handleSendMessage = async (e) => {
@@ -112,6 +127,44 @@ export default function Messages() {
                             </button>
                             <h3 className="text-xl font-bold text-ink-800 mb-2">{selectedMessage.subject}</h3>
                             <p className="text-sm text-ink-500 mb-6 border-b border-parchment-300 pb-2">فرستنده: {selectedMessage.sender_name}</p>
+                            <div className="whitespace-pre-wrap leading-relaxed text-ink-800">{selectedMessage.body}</div>
+                        </div>
+                    )}
+
+                    {activeTab === 'sent' && !selectedMessage && (
+                        loading ? <LoadingState label="در حال بارگذاری پیام‌های ارسالی..." /> :
+                        sentMessages.length === 0 ? <EmptyState icon="📤" title="هیچ پیام ارسالی‌ای ندارید." /> : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-right border-collapse">
+                                    <thead>
+                                        <tr className="bg-parchment-100 text-ink-700 text-sm">
+                                            <th className="p-3 rounded-r-lg">موضوع</th>
+                                            <th className="p-3">گیرنده</th>
+                                            <th className="p-3 text-left rounded-l-lg">تاریخ</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {sentMessages.map((msg) => (
+                                            <tr key={msg.id} onClick={() => setSelectedMessage(msg)}
+                                                className="cursor-pointer transition border-b border-parchment-200 hover:bg-parchment-50 text-ink-600">
+                                                <td className="p-3">{msg.subject}</td>
+                                                <td className="p-3 text-sm text-blue-700">{msg.receiver_name}</td>
+                                                <td className="p-3 text-xs text-left" dir="ltr">{new Date(msg.created_at).toLocaleString('fa-IR')}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )
+                    )}
+
+                    {activeTab === 'sent' && selectedMessage && (
+                        <div className="bg-parchment-100 rounded-xl border border-parchment-300 p-6">
+                            <button onClick={() => setSelectedMessage(null)} className="text-blue-600 hover:underline mb-4 text-sm font-bold">
+                                🔙 بازگشت به لیست
+                            </button>
+                            <h3 className="text-xl font-bold text-ink-800 mb-2">{selectedMessage.subject}</h3>
+                            <p className="text-sm text-ink-500 mb-6 border-b border-parchment-300 pb-2">گیرنده: {selectedMessage.receiver_name}</p>
                             <div className="whitespace-pre-wrap leading-relaxed text-ink-800">{selectedMessage.body}</div>
                         </div>
                     )}

@@ -43,6 +43,20 @@ class ServerSetting(models.Model):
         'Alliance', on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
     )
 
+    # عناوین پایان بازی
+    greatest_empire_player = models.ForeignKey(
+        'authentication.Player', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        verbose_name="بزرگترین امپراتوری (بیشترین جمعیت)"
+    )
+    top_attacker_player = models.ForeignKey(
+        'authentication.Player', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        verbose_name="برترین مهاجم"
+    )
+    top_defender_player = models.ForeignKey(
+        'authentication.Player', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        verbose_name="برترین مدافع"
+    )
+
     culture_point_speed = models.BigIntegerField(default=1)
 
 

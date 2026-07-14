@@ -25,9 +25,11 @@ class Player(AbstractUser):
     )
 
     gold_coins = models.PositiveIntegerField(default=0)
+    silver_coins = models.PositiveIntegerField(default=0)
     # has_ww_plan = models.BooleanField(default=False)
     has_plus = models.BooleanField(default=False)
     plus_expires_at = models.DateTimeField(blank=True, null=True)
+    has_gold_club = models.BooleanField(default=False)
     has_attacked = models.BooleanField(default=False)
     culture_points = models.FloatField(default=0)
 

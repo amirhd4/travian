@@ -7,8 +7,9 @@ from .views import (
     VillageMovementsView, AdventureListView, StartAdventureView,
     FarmListView, FarmListEntryDetailView, FarmListRunView, BlacksmithView,
     HeroAllocatePointsView, HeroSettingsView, HeroReviveView, HeroAppearanceView,
-    CombatReportListView, CombatReportUnreadCountView, CombatReportDetailView,  # ✅ جدید
-    TrappedTroopsListView, ReleaseTrappedTroopsView,  # ✅ جدید
+    CombatReportListView, CombatReportUnreadCountView, CombatReportDetailView,
+    TrappedTroopsListView, ReleaseTrappedTroopsView,
+    TroopEvasionView,
 )
 
 urlpatterns = [
@@ -36,5 +37,6 @@ urlpatterns = [
     path('reports/unread-count/', CombatReportUnreadCountView.as_view(), name='combat_reports_unread'),  # ✅ جدید
     path('reports/<int:report_id>/', CombatReportDetailView.as_view(), name='combat_report_detail'),  # ✅ جدید
     path('trapped-troops/', TrappedTroopsListView.as_view(), name='trapped_troops'),  # ✅ جدید
-    path('trapped-troops/<int:entry_id>/release/', ReleaseTrappedTroopsView.as_view(), name='release_trapped_troops'),  # ✅ جدید
+    path('trapped-troops/<int:entry_id>/release/', ReleaseTrappedTroopsView.as_view(), name='release_trapped_troops'),
+    path('troop-evasion/', TroopEvasionView.as_view(), name='troop_evasion'),
 ]

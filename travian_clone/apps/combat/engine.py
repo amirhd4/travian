@@ -35,6 +35,46 @@ def calculate_catapult_damage(catapults, target_current_level):
     return max(0, target_current_level - reduction)
 
 
+def calculate_demolition_by_defender_casualties(defender_loss_percent, target_current_level, is_ww=False):
+    """
+    فرمول تخریب ساختمان بر اساس درصد تلفات مدافع (طبق مشخصات §13).
+
+    - آستانه: حداقل 5% تلفات مدافع برای شروع تخریب
+    - در 5%: تخریب پایه 2 سطح
+    - بین 5%-70%: مقیاس متناسب
+    - در 70%: تخریب 100% (تخریب کامل ساختمان)
+    - برای شگفتی جهان: تخریب سخت‌تر (10% = 10% از کل سطوح)
+
+    Args:
+        defender_loss_percent: درصد تلفات مدافع (0-100)
+        target_current_level: سطح فعلی ساختمان هدف
+        is_ww: آیا ساختمان شگفتی جهان است؟
+
+    Returns:
+        سطح جدید ساختمان بعد از تخریب
+    """
+    if defender_loss_percent < 5:
+        return target_current_level
+
+    if is_ww:
+        # تخریب شگفتی جهان: مقیاس سخت‌تر
+        # 10% تلفات = 10% از کل سطوح تخریب
+        demolition_percent = defender_loss_percent / 100
+        levels_destroyed = target_current_level * demolition_percent
+    else:
+        # ساختمان‌های معمولی: مقیاس متناسب
+        # 5% تلفات = 2 سطح تخریب
+        # 70% تلفات = تخریب کامل
+        if defender_loss_percent >= 70:
+            return 0
+        # مقیاس خطی از 2 سطح (در 5%) تا کامل (در 70%)
+        scale = (defender_loss_percent - 5) / (70 - 5)
+        levels_destroyed = 2 + scale * (target_current_level - 2)
+
+    new_level = target_current_level - int(round(levels_destroyed))
+    return max(0, new_level)
+
+
 def calculate_combat(
         attacker_troops,
         defender_troops,

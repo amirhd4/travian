@@ -13,8 +13,10 @@ const LOG_STYLES = {
 };
 
 const TABS = [
-    { key: 'general', label: '📜 گزارشات عمومی' },
-    { key: 'combat', label: '⚔️ گزارشات جنگی' },
+    { key: 'all', label: 'همه' },
+    { key: 'trade', label: 'معاملات' },
+    { key: 'reinforcement', label: 'نیروی کمکی' },
+    { key: 'misc', label: 'متفرقه' },
 ];
 
 function CombatReportRow({ report, onOpen }) {
@@ -122,7 +124,7 @@ function CombatReportDetail({ report, onClose, onDelete }) {
 }
 
 export default function Reports() {
-    const [activeTab, setActiveTab] = useState('general');
+    const [activeTab, setActiveTab] = useState('all');
     const [logs, setLogs] = useState([]);
     const [combatReports, setCombatReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -174,6 +176,39 @@ export default function Reports() {
         setConfirmState({ message: 'این گزارش جنگی حذف شود؟', danger: true, onConfirm: () => doDeleteReport(id) });
     };
 
+    // فیلتر کردن گزارشات بر اساس تب فعال
+    const getFilteredLogs = () => {
+        switch (activeTab) {
+            case 'trade':
+                return logs.filter(log => log.log_type === 'TRADE');
+            case 'reinforcement':
+                return logs.filter(log => log.description.includes('پشتیبان') || log.description.includes('نیروهای پشتیبان'));
+            case 'misc':
+                return logs.filter(log => log.log_type === 'COMBAT' || log.log_type === 'BUILDING');
+            case 'all':
+            default:
+                return logs;
+        }
+    };
+
+    const getFilteredCombatReports = () => {
+        switch (activeTab) {
+            case 'trade':
+                return [];
+            case 'reinforcement':
+                return combatReports.filter(r => r.movement_type === 'REINFORCEMENT');
+            case 'misc':
+                return combatReports;
+            case 'all':
+            default:
+                return combatReports;
+        }
+    };
+
+    const filteredLogs = getFilteredLogs();
+    const filteredCombatReports = getFilteredCombatReports();
+    const hasAnyReports = filteredLogs.length > 0 || filteredCombatReports.length > 0;
+
     return (
         <PageShell maxWidth="max-w-3xl">
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="گزارشات" />
@@ -193,34 +228,32 @@ export default function Reports() {
                 <div className="panel-body">
                     {loading ? <LoadingState label="در حال بارگذاری اطلاعات..." /> : (
                         <>
-                            {activeTab === 'general' && (
-                                logs.length === 0 ? <EmptyState icon="📜" title="هیچ گزارشی برای نمایش وجود ندارد." /> : (
-                                    <div className="flex flex-col gap-3">
-                                        {logs.map((log) => {
-                                            const style = LOG_STYLES[log.log_type] || LOG_STYLES.SYSTEM;
-                                            return (
-                                                <div key={log.id} className={`flex items-start p-4 rounded-xl border-r-4 ${style.border} ${style.bg}`}>
-                                                    <span className="text-2xl ml-4">{style.icon}</span>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
-                                                            <span className="font-bold text-sm text-ink-700">{log.log_type_display}</span>
-                                                            <span className="text-xs text-ink-400 font-mono" dir="ltr">{new Date(log.created_at).toLocaleString('fa-IR')}</span>
-                                                        </div>
-                                                        <p className="text-ink-800 text-sm leading-relaxed whitespace-pre-wrap">{log.description}</p>
+                            {!hasAnyReports ? (
+                                <EmptyState icon="📜" title="هیچ گزارشی برای نمایش وجود ندارد." />
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    {/* نمایش گزارشات عمومی */}
+                                    {filteredLogs.map((log) => {
+                                        const style = LOG_STYLES[log.log_type] || LOG_STYLES.SYSTEM;
+                                        return (
+                                            <div key={log.id} className={`flex items-start p-4 rounded-xl border-r-4 ${style.border} ${style.bg}`}>
+                                                <span className="text-2xl ml-4">{style.icon}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
+                                                        <span className="font-bold text-sm text-ink-700">{log.log_type_display}</span>
+                                                        <span className="text-xs text-ink-400 font-mono" dir="ltr">{new Date(log.created_at).toLocaleString('fa-IR')}</span>
                                                     </div>
+                                                    <p className="text-ink-800 text-sm leading-relaxed whitespace-pre-wrap">{log.description}</p>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                )
-                            )}
+                                            </div>
+                                        );
+                                    })}
 
-                            {activeTab === 'combat' && (
-                                combatReports.length === 0 ? <EmptyState icon="⚔️" title="هیچ گزارش جنگی‌ای ندارید." /> : (
-                                    <div className="flex flex-col gap-2">
-                                        {combatReports.map((r) => <CombatReportRow key={r.id} report={r} onOpen={handleOpenReport} />)}
-                                    </div>
-                                )
+                                    {/* نمایش گزارشات جنگی */}
+                                    {filteredCombatReports.map((r) => (
+                                        <CombatReportRow key={r.id} report={r} onOpen={handleOpenReport} />
+                                    ))}
+                                </div>
                             )}
                         </>
                     )}

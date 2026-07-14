@@ -96,6 +96,15 @@ class VillageTroop(models.Model):
         return f"{self.village.name} - {self.troop_type.name}: {self.count}"
 
 
+class TroopEvasionSetting(models.Model):
+    """تنظیمات فرار نیروها برای هر دهکده - فقط برای اعضای کلوپ طلایی"""
+    village = models.OneToOneField(Village, on_delete=models.CASCADE, related_name='troop_evasion')
+    is_enabled = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.village.name} - Evasion: {'Enabled' if self.is_enabled else 'Disabled'}"
+
+
 class TroopMovement(models.Model):
     """تحرکات نظامی شامل مبدا، مقصد، نوع نیروها، زمان حرکت و زمان رسیدن"""
     MOVEMENT_TYPES = [

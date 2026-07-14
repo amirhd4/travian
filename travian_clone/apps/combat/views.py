@@ -10,6 +10,7 @@ import datetime
 from .models import (
     TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal,
     TrainingQueue, Adventure, FarmListEntry, TroopUpgrade, CombatReport, TrappedTroop,
+    TroopEvasionSetting,
 )
 from .movement_utils import dispatch_troop_movement
 from .tasks import resolve_hero_adventure
@@ -542,6 +543,10 @@ class FarmListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        # نیاز به کلوپ طلایی
+        if not request.user.has_gold_club:
+            return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
+
         entries = FarmListEntry.objects.filter(player=request.user).select_related('source_village', 'target_village')
         return Response([
             {
@@ -560,6 +565,10 @@ class FarmListView(APIView):
         ])
 
     def post(self, request):
+        # نیاز به کلوپ طلایی
+        if not request.user.has_gold_club:
+            return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
+
         source_id = request.data.get('source_village_id')
         target_id = request.data.get('target_village_id')
         troops_payload = request.data.get('troops_payload', {})
@@ -632,6 +641,52 @@ class FarmListRunView(APIView):
         return Response({
             "message": f"{dispatched_count} از {len(results)} ردیف با موفقیت اعزام شد.",
             "results": results,
+        })
+
+
+class TroopEvasionView(APIView):
+    """فعال/غیرفعال کردن فرار نیروها - فقط برای اعضای کلوپ طلایی."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        player = request.user
+
+        if not player.has_gold_club:
+            return Response({"error": "برای استفاده از این قابلیت به کلوپ طلایی نیاز دارید."}, status=403)
+
+        try:
+            village = Village.objects.get(id=village_id, player=player)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        evasion, _ = TroopEvasionSetting.objects.get_or_create(village=village)
+        return Response({
+            "village_id": village.id,
+            "is_evasion_enabled": evasion.is_enabled,
+        })
+
+    def post(self, request):
+        village_id = request.data.get('village_id')
+        is_enabled = request.data.get('is_enabled', True)
+        player = request.user
+
+        if not player.has_gold_club:
+            return Response({"error": "برای استفاده از این قابلیت به کلوپ طلایی نیاز دارید."}, status=403)
+
+        try:
+            village = Village.objects.get(id=village_id, player=player)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        evasion, _ = TroopEvasionSetting.objects.get_or_create(village=village)
+        evasion.is_enabled = bool(is_enabled)
+        evasion.save()
+
+        status_text = "فعال" if evasion.is_enabled else "غیرفعال"
+        return Response({
+            "message": f"فرار نیروها {status_text} شد.",
+            "is_evasion_enabled": evasion.is_enabled,
         })
 
 
