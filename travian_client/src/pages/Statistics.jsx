@@ -3,20 +3,84 @@ import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
+import { AlertModal } from '../components/Modal';
 
 const TABS = [
     { key: 'general', label: '🏆 رتبه‌بندی بازیکنان' },
+    { key: 'attackers', label: '⚔️ مهاجم برتر (کلی)' },
+    { key: 'defenders', label: '🛡️ مدافع برتر (کلی)' },
+    { key: 'daily', label: '🎖️ مدال‌های روزانه' },
+    { key: 'mymedals', label: '🎗️ مدال‌های من' },
     { key: 'ww', label: '🏛️ مسابقه شگفتی جهان' },
     { key: 'farms', label: '🌾 دهکده‌های فارم' },
 ];
 
+const medalIcon = (rank) => (rank === 1 ? '🥇' : rank <= 3 ? '🥈' : '🥉');
+
+function RankTable({ rows, valueLabel }) {
+    if (rows.length === 0) return <EmptyState icon="📉" title="هنوز داده‌ای برای این رتبه‌بندی ثبت نشده است." />;
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full text-center border-collapse">
+                <thead>
+                    <tr className="bg-parchment-100 text-ink-700 text-sm">
+                        <th className="p-3 rounded-r-lg">رتبه</th>
+                        <th className="p-3">بازیکن</th>
+                        <th className="p-3">اتحاد</th>
+                        <th className="p-3 rounded-l-lg">{valueLabel}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((row) => (
+                        <tr key={row.rank} className={`transition hover:bg-parchment-50 ${row.rank <= 3 ? 'bg-gold-50/60' : ''}`}>
+                            <td className="p-3 font-bold text-ink-600 border-b border-parchment-200">
+                                {row.rank <= 3 ? medalIcon(row.rank) : row.rank}
+                            </td>
+                            <td className="p-3 font-semibold text-ink-800 border-b border-parchment-200">{row.player}</td>
+                            <td className="p-3 text-sm text-ink-500 border-b border-parchment-200">{row.alliance}</td>
+                            <td className="p-3 font-bold text-brand-700 border-b border-parchment-200">
+                                {row.points?.toLocaleString?.() ?? row.population?.toLocaleString?.()}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+function DailyMedalColumn({ title, icon, rows }) {
+    return (
+        <div className="bg-parchment-50 border border-parchment-300 rounded-xl p-4">
+            <p className="font-bold text-ink-800 mb-3 text-center">{icon} {title}</p>
+            {rows.length === 0 ? (
+                <p className="text-xs text-ink-400 text-center py-4">هنوز مدالی اهدا نشده.</p>
+            ) : (
+                <ul className="space-y-1.5">
+                    {rows.map((r) => (
+                        <li key={r.rank} className="flex items-center justify-between text-sm bg-white/70 rounded-lg px-3 py-1.5">
+                            <span>{medalIcon(r.rank)} رتبه {r.rank}</span>
+                            <span className="font-bold text-ink-800">{r.player}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 export default function Statistics() {
-    const [stats, setStats] = useState({ general_ranking: [], world_wonder: [] });
+    const [stats, setStats] = useState({ general_ranking: [], world_wonder: [], top_attackers: [], top_defenders: [] });
     const [farms, setFarms] = useState([]);
+    const [dailyMedals, setDailyMedals] = useState(null);
+    const [myMedals, setMyMedals] = useState([]);
     const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(true);
     const [farmsLoading, setFarmsLoading] = useState(true);
     const [farmsFetched, setFarmsFetched] = useState(false);
+    const [dailyFetched, setDailyFetched] = useState(false);
+    const [myMedalsFetched, setMyMedalsFetched] = useState(false);
+    const [alertMsg, setAlertMsg] = useState(null);
 
     useEffect(() => {
         const fetchLeaderboard = async () => {
@@ -49,8 +113,37 @@ export default function Statistics() {
         fetchFarms();
     }, [activeTab, farmsFetched]);
 
+    useEffect(() => {
+        if (activeTab !== 'daily' || dailyFetched) return;
+        api.get('game/medals/daily-latest/')
+            .then(({ data }) => setDailyMedals(data))
+            .catch(() => setDailyMedals({ day_number: null, attackers: [], defenders: [], population: [] }))
+            .finally(() => setDailyFetched(true));
+    }, [activeTab, dailyFetched]);
+
+    const fetchMyMedals = () => {
+        api.get('game/medals/mine/').then(({ data }) => setMyMedals(data)).catch(() => {});
+    };
+
+    useEffect(() => {
+        if (activeTab !== 'mymedals' || myMedalsFetched) return;
+        fetchMyMedals();
+        setMyMedalsFetched(true);
+    }, [activeTab, myMedalsFetched]);
+
+    const handleToggleMedal = async (medalId) => {
+        try {
+            await api.post('game/medals/toggle/', { medal_id: medalId });
+            fetchMyMedals();
+        } catch (error) {
+            setAlertMsg({ tone: 'error', text: 'خطا در تغییر وضعیت نمایش مدال' });
+        }
+    };
+
     return (
         <PageShell maxWidth="max-w-4xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="آمار" />
+
             <div className="panel overflow-hidden">
                 <div className="flex overflow-x-auto border-b border-parchment-300">
                     {TABS.map((tab) => (
@@ -67,29 +160,67 @@ export default function Statistics() {
                 <div className="panel-body">
                     {activeTab === 'general' && (
                         loading ? <LoadingState label="در حال پردازش اطلاعات سرور..." /> : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-center border-collapse">
-                                    <thead>
-                                        <tr className="bg-parchment-100 text-ink-700 text-sm">
-                                            <th className="p-3 rounded-r-lg">رتبه</th>
-                                            <th className="p-3">بازیکن</th>
-                                            <th className="p-3">اتحاد</th>
-                                            <th className="p-3 rounded-l-lg">جمعیت</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {stats.general_ranking.map((row, i) => (
-                                            <tr key={row.rank} className={`transition hover:bg-parchment-50 ${i < 3 ? 'bg-gold-50/60' : ''}`}>
-                                                <td className="p-3 font-bold text-ink-600 border-b border-parchment-200">
-                                                    {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : row.rank}
-                                                </td>
-                                                <td className="p-3 font-semibold text-ink-800 border-b border-parchment-200">{row.player}</td>
-                                                <td className="p-3 text-sm text-ink-500 border-b border-parchment-200">{row.alliance}</td>
-                                                <td className="p-3 font-bold text-brand-700 border-b border-parchment-200">{row.population}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <RankTable rows={stats.general_ranking} valueLabel="جمعیت" />
+                        )
+                    )}
+
+                    {activeTab === 'attackers' && (
+                        loading ? <LoadingState label="در حال پردازش اطلاعات سرور..." /> : (
+                            <>
+                                <p className="text-xs text-ink-500 text-center mb-4">
+                                    مجموع ارزش جمعیتی نیروهای حریف که این بازیکن در نقش مهاجم، در کل طول عمر سرور کشته است.
+                                </p>
+                                <RankTable rows={stats.top_attackers} valueLabel="امتیاز مهاجم" />
+                            </>
+                        )
+                    )}
+
+                    {activeTab === 'defenders' && (
+                        loading ? <LoadingState label="در حال پردازش اطلاعات سرور..." /> : (
+                            <>
+                                <p className="text-xs text-ink-500 text-center mb-4">
+                                    مجموع ارزش جمعیتی نیروهای مهاجمینی که این بازیکن در نقش مدافع، در کل طول عمر سرور کشته است.
+                                </p>
+                                <RankTable rows={stats.top_defenders} valueLabel="امتیاز مدافع" />
+                            </>
+                        )
+                    )}
+
+                    {activeTab === 'daily' && (
+                        !dailyFetched ? <LoadingState label="در حال بارگذاری مدال‌های روزانه..." /> :
+                        !dailyMedals?.day_number ? <EmptyState icon="🎖️" title="هنوز مدال روزانه‌ای محاسبه نشده است." /> : (
+                            <>
+                                <p className="text-center text-sm font-bold text-gold-700 mb-4">مدال‌های روز {dailyMedals.day_number} سرور</p>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <DailyMedalColumn title="مهاجم روز" icon="⚔️" rows={dailyMedals.attackers} />
+                                    <DailyMedalColumn title="مدافع روز" icon="🛡️" rows={dailyMedals.defenders} />
+                                    <DailyMedalColumn title="پیشرفت روز" icon="📈" rows={dailyMedals.population} />
+                                </div>
+                            </>
+                        )
+                    )}
+
+                    {activeTab === 'mymedals' && (
+                        !myMedalsFetched ? <LoadingState label="در حال بارگذاری مدال‌های شما..." /> :
+                        myMedals.length === 0 ? <EmptyState icon="🎗️" title="شما هنوز مدالی کسب نکرده‌اید." /> : (
+                            <div className="space-y-2">
+                                {myMedals.map((m) => (
+                                    <div key={m.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 rounded-xl p-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xl">{medalIcon(m.rank)}</span>
+                                            <div>
+                                                <p className="font-bold text-sm text-ink-800">{m.category_display}</p>
+                                                <p className="text-xs text-ink-500">روز {m.day_number} — رتبه {m.rank}</p>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleToggleMedal(m.id)}
+                                            className={`text-xs font-bold px-3 py-1.5 rounded-full ${m.is_visible ? 'bg-brand-100 text-brand-700' : 'bg-parchment-200 text-ink-500'}`}
+                                        >
+                                            {m.is_visible ? '👁️ نمایان در پروفایل' : '🙈 مخفی'}
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
                         )
                     )}

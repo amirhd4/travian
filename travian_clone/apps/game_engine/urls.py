@@ -9,6 +9,7 @@ from .views import (
     CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView,
     OasisReleaseView, VillagesOverviewView,
     ArtifactListView,
+    LatestDailyMedalsView, MyMedalsView, ToggleMedalVisibilityView, PlayerPublicMedalsView,  # ✅ جدید
     HeroAuctionListView, HeroAuctionBidView
 )
 
@@ -43,6 +44,10 @@ urlpatterns = [
     path('hero/auction/', HeroAuctionListView.as_view(), name='hero_auction_list'),
     path('hero/auction/bid/', HeroAuctionBidView.as_view(), name='hero_auction_bid'),
     path('oases/release/', OasisReleaseView.as_view(), name='oasis_release'),
-    path('oases/release/', OasisReleaseView.as_view(), name='oasis_release'),  # ✅ جدید (از پیام قبل)
-    path('artifacts/', ArtifactListView.as_view(), name='artifact_list'),      # ✅ جدید
+    path('artifacts/', ArtifactListView.as_view(), name='artifact_list'),
+    path('artifacts/', ArtifactListView.as_view(), name='artifact_list'),
+    path('medals/daily-latest/', LatestDailyMedalsView.as_view(), name='latest_daily_medals'),
+    path('medals/mine/', MyMedalsView.as_view(), name='my_medals'),
+    path('medals/toggle/', ToggleMedalVisibilityView.as_view(), name='toggle_medal'),
+    path('medals/player/<int:player_id>/', PlayerPublicMedalsView.as_view(), name='player_medals'),
 ]

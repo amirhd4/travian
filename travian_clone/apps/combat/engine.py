@@ -1,3 +1,21 @@
+TROOP_POPULATION_DIVISOR = 30  # ✅ جدید
+
+
+def troop_population_value(troop_type):
+    """
+    ارزش «جمعیتی» تقریبی هر واحد از این نوع نیرو - برای محاسبه‌ی امتیاز
+    مهاجم/مدافع در رتبه‌بندی‌ها و مدال‌ها. هرچه نیرو گران‌تر باشد (منابع
+    بیشتری خورده)، کشتنش یا از دست دادنش ارزش بیشتری دارد - دقیقا مثل
+    فرمول جمعیتِ ساختمان‌ها (calculate_building_population) اما با
+    مقیاس مخصوص نیرو.
+    """
+    total_cost = (
+        troop_type.wood_cost + troop_type.clay_cost +
+        troop_type.iron_cost + troop_type.crop_cost
+    )
+    return total_cost / TROOP_POPULATION_DIVISOR
+
+
 def calculate_catapult_damage(catapults, target_current_level):
     """
     فرمول کاهش سطح یک ساختمان (دیوار یا هر ساختمان دیگر) بر اساس تعداد

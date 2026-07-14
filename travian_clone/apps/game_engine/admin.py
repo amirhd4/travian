@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     ServerSetting, Village, BuildingType, VillageBuilding, GameLog,
-    QuestDefinition, PlayerQuestProgress, Artifact,  # ✅ Artifact
+    QuestDefinition, PlayerQuestProgress, Artifact,
+    PlayerCombatStats, DailyMedal,
 )
 
 admin.site.register(QuestDefinition)
@@ -47,3 +48,15 @@ class VillageAdmin(admin.ModelAdmin):
 admin.site.register(BuildingType)
 admin.site.register(VillageBuilding)
 admin.site.register(GameLog)
+
+
+@admin.register(PlayerCombatStats)
+class PlayerCombatStatsAdmin(admin.ModelAdmin):
+    list_display = ('player', 'attacker_kill_points', 'defender_kill_points')
+    search_fields = ('player__username',)
+
+
+@admin.register(DailyMedal)
+class DailyMedalAdmin(admin.ModelAdmin):
+    list_display = ('day_number', 'category', 'rank', 'player', 'is_visible')
+    list_filter = ('category', 'day_number', 'is_visible')

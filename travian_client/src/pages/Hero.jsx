@@ -17,10 +17,27 @@ const EQUIP_SLOTS = [
     { key: 'SHOES', label: 'کفش' },
     { key: 'HORSE', label: 'اسب' },
 ];
+
 const itemTypeIcon = (type) => ({
     HELMET: '⛑️', BODY: '🥋', SHIELD: '🛡️', LEFT_HAND: '⚔️',
     RIGHT_HAND: '🗡️', SHOES: '🥾', HORSE: '🐎',
 }[type] || '🎒');
+
+function itemBonusSummary(inv) {  // ✅ جدید
+    const parts = [];
+    if (inv.attack_bonus > 0) parts.push(`⚔️ حمله قهرمان +${inv.attack_bonus}`);
+    if (inv.defense_bonus > 0) parts.push(`🛡️ دفاع قهرمان +${inv.defense_bonus}`);
+    if (inv.speed_bonus > 0) parts.push(`⚡ سرعت +${inv.speed_bonus}`);
+    if (inv.experience_bonus_percent > 0) parts.push(`✨ تجربه +${inv.experience_bonus_percent}٪`);
+    if (inv.infantry_training_speed_percent > 0) parts.push(`🏃 سرعت آموزش پیاده +${inv.infantry_training_speed_percent}٪`);
+    if (inv.cavalry_training_speed_percent > 0) parts.push(`🐎 سرعت آموزش سوار +${inv.cavalry_training_speed_percent}٪`);
+    if (inv.infantry_attack_bonus_percent > 0) parts.push(`🗡️ حمله پیاده +${inv.infantry_attack_bonus_percent}٪`);
+    if (inv.infantry_defense_bonus_percent > 0) parts.push(`🛡️ دفاع پیاده +${inv.infantry_defense_bonus_percent}٪`);
+    if (inv.cavalry_attack_bonus_percent > 0) parts.push(`🗡️ حمله سوار +${inv.cavalry_attack_bonus_percent}٪`);
+    if (inv.cavalry_defense_bonus_percent > 0) parts.push(`🛡️ دفاع سوار +${inv.cavalry_defense_bonus_percent}٪`);
+    return parts;
+}
+
 const HAIR_COLORS = ['#3d2b1a', '#7a5230', '#c9a063', '#1a1a1a', '#a83232', '#e0e0e0'];
 const difficultyStyle = (d) => ({
     EASY: 'border-brand-300 bg-brand-50 text-brand-800',
@@ -406,15 +423,20 @@ export default function Hero() {
                         <div>
                             <p className="field-label mb-2">تجهیزات فعلی:</p>
                             <div className="grid grid-cols-4 gap-3 mb-6">
-                                {EQUIP_SLOTS.map((slot) => {
-                                    const equipped = hero.inventory.find((inv) => inv.item_type === slot.key && inv.is_equipped);
-                                    return (
-                                        <div key={slot.key} className={`equip-slot ${equipped ? 'filled' : ''}`} title={slot.label} onClick={() => equipped && handleEquip(equipped)}>
-                                            {equipped ? <span className="text-3xl">{itemTypeIcon(equipped.item_type)}</span> : <span className="text-[10px] text-ink-400 text-center px-1">{slot.label}</span>}
-                                        </div>
-                                    );
-                                })}
-                            </div>
+                            {EQUIP_SLOTS.map((slot) => {
+                                const equipped = hero.inventory.find((inv) => inv.item_type === slot.key && inv.is_equipped);
+                                return (
+                                    <div
+                                        key={slot.key}
+                                        className={`equip-slot ${equipped ? 'filled' : ''}`}
+                                        title={equipped ? `${equipped.name} — ${itemBonusSummary(equipped).join(' · ')}` : slot.label}  // ✅ جدید
+                                        onClick={() => equipped && handleEquip(equipped)}
+                                    >
+                                        {equipped ? <span className="text-3xl">{itemTypeIcon(equipped.item_type)}</span> : <span className="text-[10px] text-ink-400 text-center px-1">{slot.label}</span>}
+                                    </div>
+                                );
+                            })}
+                        </div>
                             <p className="field-label mb-2">کوله‌پشتی:</p>
                             {hero.inventory.filter((inv) => !inv.is_equipped).length === 0 ? (
                                 <EmptyState icon="🎒" title="آیتم درون کوله‌پشتی نیست." />
@@ -422,16 +444,15 @@ export default function Hero() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     {hero.inventory.filter((inv) => !inv.is_equipped).map((inv) => (
                                         <div key={inv.id} className="flex items-center justify-between border border-parchment-300 p-3 rounded-xl bg-parchment-50">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xl">{itemTypeIcon(inv.item_type)}</span>
-                                                <div>
-                                                    <p className="font-bold text-sm text-ink-800">{inv.name}</p>
-                                                    <p className="text-xs text-ink-500">
-                                                        {inv.attack_bonus > 0 && `⚔️ +${inv.attack_bonus} `}
-                                                        {inv.defense_bonus > 0 && `🛡️ +${inv.defense_bonus} `}
-                                                        {inv.speed_bonus > 0 && `⚡ +${inv.speed_bonus}`}
-                                                    </p>
+                                            <div key={inv.id} className="flex items-center justify-between border border-parchment-300 p-3 rounded-xl bg-parchment-50">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xl">{itemTypeIcon(inv.item_type)}</span>
+                                                    <div>
+                                                        <p className="font-bold text-sm text-ink-800">{inv.name}</p>
+                                                        <p className="text-xs text-ink-500">{itemBonusSummary(inv).join(' · ')}</p>  {/* ✅ به‌روزشده */}
+                                                    </div>
                                                 </div>
+                                                <button onClick={() => handleEquip(inv)} disabled={busy === inv.id} className="btn-gold text-xs">پوشیدن</button>
                                             </div>
                                             <button onClick={() => handleEquip(inv)} disabled={busy === inv.id} className="btn-gold text-xs">پوشیدن</button>
                                         </div>

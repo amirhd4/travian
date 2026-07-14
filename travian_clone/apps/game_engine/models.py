@@ -347,3 +347,53 @@ class Artifact(models.Model):
 
     def __str__(self):
         return f"{self.name} ({'فعال' if self.is_activated else 'در انتظار فعال‌سازی'})"
+
+
+class PlayerCombatStats(models.Model):
+    """
+    امتیاز تجمعی «مهاجم کلی» و «مدافع کلی» هر بازیکن در طول عمر سرور.
+    - attacker_kill_points: ارزش جمعیتیِ نیروهای حریفی که این بازیکن در
+      نقش مهاجم کشته است.
+    - defender_kill_points: ارزش جمعیتیِ نیروهای حریفی که این بازیکن در
+      نقش مدافع کشته است (یعنی تلفات مهاجمین به این بازیکن).
+    این مقادیر در لحظه‌ی نتیجه‌گیری هر نبرد به‌روزرسانی می‌شوند
+    (apps.combat.tasks._resolve_attack_or_raid).
+    """
+    player = models.OneToOneField('authentication.Player', on_delete=models.CASCADE, related_name='combat_stats')
+    attacker_kill_points = models.FloatField(default=0)
+    defender_kill_points = models.FloatField(default=0)
+
+    def __str__(self):
+        return f"{self.player.username}: مهاجم={self.attacker_kill_points:.0f} مدافع={self.defender_kill_points:.0f}"
+
+
+class PlayerDailySnapshot(models.Model):
+    """آخرین مقادیر ثبت‌شده‌ی هر بازیکن در پایان محاسبه‌ی مدال‌های روز قبل -
+    برای محاسبه‌ی «میزان افزایش امروز» (delta) نسبت به مقدار تجمعی."""
+    player = models.OneToOneField('authentication.Player', on_delete=models.CASCADE, related_name='daily_snapshot')
+    last_attacker_points = models.FloatField(default=0)
+    last_defender_points = models.FloatField(default=0)
+    last_population = models.IntegerField(default=0)
+    last_day_number = models.PositiveIntegerField(default=0)
+
+
+class DailyMedal(models.Model):
+    """مدال روزانه‌ای که به ۱۰ نفر برتر هر دسته در هر روز از سرور اهدا می‌شود."""
+    CATEGORY_CHOICES = [
+        ('ATTACKER', 'مهاجم روز'),
+        ('DEFENDER', 'مدافع روز'),
+        ('POPULATION', 'پیشرفت روز (جمعیت)'),
+    ]
+    player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='daily_medals')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    day_number = models.PositiveIntegerField()
+    rank = models.PositiveIntegerField()
+    awarded_at = models.DateTimeField(auto_now_add=True)
+    is_visible = models.BooleanField(default=True)  # بازیکن می‌تواند در پروفایل خودش مخفی/آشکار کند
+
+    class Meta:
+        unique_together = ('category', 'day_number', 'rank')
+        ordering = ['-day_number', 'category', 'rank']
+
+    def __str__(self):
+        return f"روز {self.day_number} - {self.get_category_display()} - رتبه {self.rank} - {self.player.username}"

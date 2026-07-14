@@ -221,3 +221,65 @@ def activate_ready_artifacts():
                     "payload": {"message": f"🏺 کتیبه‌ی «{artifact.name}» اکنون فعال شد."},
                 }
             )
+
+
+@app.task
+def compute_daily_medals():
+    """
+    یک بار در روز اجرا می‌شود: برای هر بازیکن، «افزایش» امتیاز مهاجم/مدافع/
+    جمعیت را نسبت به آخرین اسنپ‌شات محاسبه می‌کند و به ۱۰ نفر برتر هر دسته
+    مدال (با رتبه) اهدا می‌کند.
+    """
+    from apps.authentication.models import Player
+    from apps.game_engine.models import ServerSetting, PlayerCombatStats, PlayerDailySnapshot, DailyMedal
+    from apps.game_engine.utils import calculate_player_total_population
+
+    active_server = ServerSetting.objects.filter(is_active=True).first()
+    if not active_server or active_server.is_finished:
+        return "سرور فعالی برای محاسبه مدال وجود ندارد."
+
+    age_days = (timezone.now() - active_server.start_date).days
+    day_number = age_days + 1
+
+    if DailyMedal.objects.filter(day_number=day_number).exists():
+        return f"مدال‌های روز {day_number} قبلا محاسبه شده‌اند."
+
+    players = Player.objects.filter(is_active=True).exclude(username__in=["Natars", "Farms"])
+
+    rows = []
+    for player in players:
+        stats, _ = PlayerCombatStats.objects.get_or_create(player=player)
+        snapshot, _ = PlayerDailySnapshot.objects.get_or_create(player=player)
+
+        current_population = calculate_player_total_population(player)
+
+        attacker_delta = max(0, stats.attacker_kill_points - snapshot.last_attacker_points)
+        defender_delta = max(0, stats.defender_kill_points - snapshot.last_defender_points)
+        population_delta = max(0, current_population - snapshot.last_population)
+
+        rows.append({
+            "player": player,
+            "attacker_delta": attacker_delta,
+            "defender_delta": defender_delta,
+            "population_delta": population_delta,
+        })
+
+        snapshot.last_attacker_points = stats.attacker_kill_points
+        snapshot.last_defender_points = stats.defender_kill_points
+        snapshot.last_population = current_population
+        snapshot.last_day_number = day_number
+        snapshot.save()
+
+    _award_daily_top_10(rows, 'attacker_delta', 'ATTACKER', day_number)
+    _award_daily_top_10(rows, 'defender_delta', 'DEFENDER', day_number)
+    _award_daily_top_10(rows, 'population_delta', 'POPULATION', day_number)
+
+    return f"مدال‌های روز {day_number} با موفقیت اهدا شد."
+
+
+def _award_daily_top_10(rows, delta_key, category, day_number):
+    from apps.game_engine.models import DailyMedal
+    ranked = sorted(rows, key=lambda r: r[delta_key], reverse=True)
+    ranked = [r for r in ranked if r[delta_key] > 0][:10]
+    for rank, row in enumerate(ranked, start=1):
+        DailyMedal.objects.create(player=row["player"], category=category, day_number=day_number, rank=rank)

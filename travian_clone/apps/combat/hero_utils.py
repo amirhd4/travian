@@ -3,7 +3,8 @@ import math
 import datetime
 from django.utils import timezone
 
-from .models import Adventure, PlayerHeroItem, HeroItem
+from .models import Adventure, PlayerHeroItem, HeroItem, Hero
+
 
 # ضرایب سختی هر ماجراجویی: قدرت هیولا، پاداش تجربه، شانس یافتن آیتم، حداقل سطح لازم
 DIFFICULTY_SETTINGS = {
@@ -70,6 +71,36 @@ def calculate_travel_seconds_to_point(home_village, x, y):
     return max(30, hours * 3600)
 
 
+def _get_equipped_item_bonus_sum(hero, field_name):  # ✅ جدید
+    return sum(
+        getattr(inv.item, field_name, 0) or 0
+        for inv in PlayerHeroItem.objects.filter(hero=hero, is_equipped=True).select_related('item')
+    )
+
+
+def get_hero_training_speed_bonus_percent(player, troop_type):  # ✅ جدید
+    """
+    بونوس درصدی کاهش زمان آموزش از آیتم‌های تخصصی قهرمان، بر اساس اینکه نیروی
+    موردنظر پیاده‌نظام است یا سوارنظام. سلاح‌های محاصره‌ای/مهاجر/جاسوس/رئیس
+    مشمول این بونوس نمی‌شوند.
+    """
+    hero = Hero.objects.filter(player=player, is_alive=True).first()
+    if not hero:
+        return 0
+
+    is_true_infantry = not (troop_type.is_cavalry or troop_type.is_siege_weapon or
+                             troop_type.is_settler or troop_type.is_scout or troop_type.is_chief)
+
+    if troop_type.is_cavalry:
+        field_name = 'cavalry_training_speed_percent'
+    elif is_true_infantry:
+        field_name = 'infantry_training_speed_percent'
+    else:
+        return 0
+
+    return _get_equipped_item_bonus_sum(hero, field_name)
+
+
 def resolve_adventure(hero, adventure):
     """نبرد قهرمان با هیولای ماجراجویی؛ نتیجه بر اساس نسبت قدرت با کمی شانس تصادفی."""
     settings_ = DIFFICULTY_SETTINGS[adventure.difficulty]
@@ -81,8 +112,10 @@ def resolve_adventure(hero, adventure):
 
     if success:
         damage_taken = random.randint(5, 20)
-        hero.experience += settings_["xp_reward"]
-        result["xp_gained"] = settings_["xp_reward"]
+        xp_bonus_percent = _get_equipped_item_bonus_sum(hero, 'experience_bonus_percent')
+        xp_gained = int(round(settings_["xp_reward"] * (1 + xp_bonus_percent / 100)))
+        hero.experience += xp_gained
+        result["xp_gained"] = xp_gained
 
         if random.random() < settings_["item_chance"]:
             candidate_items = list(HeroItem.objects.all())

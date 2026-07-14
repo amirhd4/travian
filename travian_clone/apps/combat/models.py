@@ -165,12 +165,20 @@ class HeroItem(models.Model):
         ('SHOES', 'کفش'), ('HORSE', 'اسب'),
     ])
     attack_bonus = models.IntegerField(default=0)
-    defense_bonus = models.IntegerField(default=0)   # ✅ جدید
+    defense_bonus = models.IntegerField(default=0)
     speed_bonus = models.IntegerField(default=0)
+
+    # ✅ جدید: بونوس‌های درصدی تخصصی
+    experience_bonus_percent = models.FloatField(default=0)          # تجربه‌ی بیشتر برای قهرمان
+    infantry_training_speed_percent = models.FloatField(default=0)   # کاهش زمان آموزش پیاده‌نظام
+    cavalry_training_speed_percent = models.FloatField(default=0)    # کاهش زمان آموزش سوارنظام
+    infantry_attack_bonus_percent = models.FloatField(default=0)     # حمله‌ی پیاده‌نظامِ همراه قهرمان
+    infantry_defense_bonus_percent = models.FloatField(default=0)    # دفاع پیاده‌نظامِ دهکده‌ی خانگی قهرمان
+    cavalry_attack_bonus_percent = models.FloatField(default=0)      # حمله‌ی سوارنظامِ همراه قهرمان
+    cavalry_defense_bonus_percent = models.FloatField(default=0)     # دفاع سوارنظامِ دهکده‌ی خانگی قهرمان
 
     def __str__(self):
         return self.name
-
 
 class Animal(models.Model):
     """کاتالوگ حیواناتی که بازیکن می‌تواند با سکه طلا برای دفاع از دهکده بخرد."""

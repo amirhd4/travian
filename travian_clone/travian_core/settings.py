@@ -234,9 +234,13 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.combat.tasks.generate_hero_auctions",
         "schedule": crontab(minute=0, hour="*/6"),
     },
-    "activate-ready-artifacts": {  # ✅ جدید
+    "activate-ready-artifacts": {
         "task": "apps.game_engine.tasks.game_tasks.activate_ready_artifacts",
         "schedule": crontab(minute="*/15"),
+    },
+    "compute-daily-medals": {
+        "task": "apps.game_engine.tasks.game_tasks.compute_daily_medals",
+        "schedule": crontab(minute=5, hour=0),
     },
 }
 

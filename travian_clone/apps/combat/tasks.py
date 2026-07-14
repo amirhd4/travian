@@ -13,7 +13,7 @@ from .models import (
     TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, VillageAnimal,
     Adventure, TroopUpgrade, CombatReport, TrappedTroop, HeroItem, HeroAuction
 )
-from .engine import calculate_combat, calculate_catapult_damage
+from .engine import calculate_combat, calculate_catapult_damage, troop_population_value
 from .hero_utils import resolve_adventure, generate_adventures_for_player
 from apps.game_engine.utils import calculate_player_total_population, calculate_morale_multiplier
 
@@ -37,6 +37,45 @@ def _notify_player(player_id, update_type, payload):
             "payload": payload,
         }
     )
+
+
+def _get_equipped_item_bonus_sum(hero, field_name):  # ✅ جدید
+    if not hero:
+        return 0.0
+    return sum(
+        getattr(inv.item, field_name, 0) or 0
+        for inv in PlayerHeroItem.objects.filter(hero=hero, is_equipped=True).select_related('item')
+    )
+
+
+def _hero_infantry_attack_percent(player, participating):  # ✅ جدید
+    if not participating:
+        return 0
+    hero = Hero.objects.filter(player=player, is_alive=True).first()
+    return _get_equipped_item_bonus_sum(hero, 'infantry_attack_bonus_percent')
+
+
+def _hero_cavalry_attack_percent(player, participating):  # ✅ جدید
+    if not participating:
+        return 0
+    hero = Hero.objects.filter(player=player, is_alive=True).first()
+    return _get_equipped_item_bonus_sum(hero, 'cavalry_attack_bonus_percent')
+
+
+def _hero_infantry_defense_percent(player, village):  # ✅ جدید
+    hero = Hero.objects.filter(
+        player=player, is_alive=True, home_village=village,
+        is_away=False, is_on_adventure=False, participates_in_defense=True,
+    ).first()
+    return _get_equipped_item_bonus_sum(hero, 'infantry_defense_bonus_percent')
+
+
+def _hero_cavalry_defense_percent(player, village):  # ✅ جدید
+    hero = Hero.objects.filter(
+        player=player, is_alive=True, home_village=village,
+        is_away=False, is_on_adventure=False, participates_in_defense=True,
+    ).first()
+    return _get_equipped_item_bonus_sum(hero, 'cavalry_defense_bonus_percent')
 
 
 def _hero_attack_bonus(player):
@@ -103,9 +142,23 @@ def _grant_hero_experience(player, amount):
     hero, _ = Hero.objects.get_or_create(player=player)
     if not hero.is_alive:
         return
-    hero.experience += amount
+    bonus_percent = _get_equipped_item_bonus_sum(hero, 'experience_bonus_percent')  # ✅ جدید
+    hero.experience += int(round(amount * (1 + bonus_percent / 100)))  # ✅ به‌روزشده
     hero.level = 1 + hero.experience // 100
     hero.save()
+
+
+def _increment_combat_stats(player_id, attacker_points=0.0, defender_points=0.0):
+    """ثبت امتیاز تجمعی مهاجم/مدافع کلی برای رتبه‌بندی و مدال‌ها."""
+    if attacker_points <= 0 and defender_points <= 0:
+        return
+    from apps.game_engine.models import PlayerCombatStats
+    stats, _ = PlayerCombatStats.objects.select_for_update().get_or_create(player_id=player_id)
+    if attacker_points > 0:
+        stats.attacker_kill_points += attacker_points
+    if defender_points > 0:
+        stats.defender_kill_points += defender_points
+    stats.save()
 
 
 def _is_still_protected(target_village):
@@ -364,9 +417,14 @@ def _resolve_attack_or_raid(movement):
 
     attacker_points_attack = 0
     attacker_survivors = {}
+    attacker_sent_counts = {}
 
     ram_units_sent = 0
     catapult_units_sent = 0
+
+    # ✅ جدید: بونوس تخصصی آیتم‌های قهرمان (فقط وقتی قهرمان همراه این حمله باشد)
+    infantry_attack_percent = _hero_infantry_attack_percent(source.player, movement.hero_participating)
+    cavalry_attack_percent = _hero_cavalry_attack_percent(source.player, movement.hero_participating)
 
     for troop_id_str, qty in movement.troops_payload.items():
         qty = int(qty)
@@ -377,8 +435,18 @@ def _resolve_attack_or_raid(movement):
             continue
 
         upgrade_multiplier = 1 + (attacker_upgrade_levels.get(troop_type.id, 0) * TroopUpgrade.BONUS_PER_LEVEL)
+
+        # ✅ جدید: اعمال بونوس تخصصی پیاده‌نظام/سوارنظام روی همین نیرو
+        is_true_infantry = not (troop_type.is_cavalry or troop_type.is_siege_weapon or
+                                troop_type.is_settler or troop_type.is_scout or troop_type.is_chief)
+        if troop_type.is_cavalry:
+            upgrade_multiplier *= (1 + cavalry_attack_percent / 100)
+        elif is_true_infantry:
+            upgrade_multiplier *= (1 + infantry_attack_percent / 100)
+
         attacker_points_attack += qty * troop_type.attack_power * upgrade_multiplier
         attacker_survivors[troop_type.id] = qty
+        attacker_sent_counts[troop_type.id] = qty
 
         if getattr(troop_type, 'is_ram', False):
             ram_units_sent += qty
@@ -387,7 +455,7 @@ def _resolve_attack_or_raid(movement):
         elif troop_type.is_siege_weapon and not getattr(troop_type, 'is_ram', False):
             catapult_units_sent += qty
 
-    attacking_hero = None  # ✅ جدید: مقداردهی اولیه صریح
+    attacking_hero = None
     if movement.hero_participating:
         attacker_points_attack += _hero_attack_bonus(source.player)
         attacking_hero = Hero.objects.filter(player=source.player).first()
@@ -407,28 +475,35 @@ def _resolve_attack_or_raid(movement):
     # ✅ جدید: عکس فوری نیروهای مدافع قبل از اعمال تلفات
     defender_troops_before_named = {vt.troop_type.name: vt.count for vt in defender_village_troops if vt.count > 0}
 
+    defender_village_troops = list(
+        VillageTroop.objects.select_for_update().filter(village=target).select_related('troop_type')
+    )
+    defender_original_counts = {vt.troop_type_id: vt.count for vt in defender_village_troops}  # ✅ جدید
+
     defender_upgrade_levels = {
         u.troop_type_id: u.level for u in TroopUpgrade.objects.filter(village=target)
     }
 
     defender_points_inf = 0.0
     defender_points_cav = 0.0
+
+    # ✅ جدید: بونوس تخصصی آیتم‌های قهرمانِ مدافع (اگر در این دهکده و در حال دفاع باشد)
+    infantry_defense_percent = _hero_infantry_defense_percent(target.player, target)
+    cavalry_defense_percent = _hero_cavalry_defense_percent(target.player, target)
+
     for vt in defender_village_troops:
         multiplier = 1 + (defender_upgrade_levels.get(vt.troop_type_id, 0) * TroopUpgrade.BONUS_PER_LEVEL)
+
+        # ✅ جدید: اعمال بونوس تخصصی روی دفاع خودیِ همین نیرو
+        is_true_infantry = not (vt.troop_type.is_cavalry or vt.troop_type.is_siege_weapon or
+                                vt.troop_type.is_settler or vt.troop_type.is_scout or vt.troop_type.is_chief)
+        if vt.troop_type.is_cavalry:
+            multiplier *= (1 + cavalry_defense_percent / 100)
+        elif is_true_infantry:
+            multiplier *= (1 + infantry_defense_percent / 100)
+
         defender_points_inf += vt.count * vt.troop_type.defense_infantry * multiplier
         defender_points_cav += vt.count * vt.troop_type.defense_cavalry * multiplier
-
-    animal_inf, animal_cav = _animal_defense_points(target)
-    defender_points_inf += animal_inf
-    defender_points_cav += animal_cav
-
-    hero_defense_flat = _hero_defense_bonus(target.player, target)
-    defender_points_inf += hero_defense_flat
-    defender_points_cav += hero_defense_flat
-
-    def_bonus_percent = _hero_def_bonus_percent(target.player, target)
-    defender_points_inf *= (1 + def_bonus_percent / 100)
-    defender_points_cav *= (1 + def_bonus_percent / 100)
 
     # ✅ جدید: بونوس روحیه بر اساس اختلاف جمعیت
     attacker_population = calculate_player_total_population(source.player)
@@ -465,6 +540,26 @@ def _resolve_attack_or_raid(movement):
 
     # ✅ جدید: عکس فوری نیروهای مدافع بعد از اعمال تلفات
     defender_troops_after_named = {vt.troop_type.name: vt.count for vt in defender_village_troops if vt.count > 0}
+
+    # ✅ جدید: عکس فوری نیروهای مدافع بعد از اعمال تلفات
+    defender_troops_after_named = {vt.troop_type.name: vt.count for vt in defender_village_troops if vt.count > 0}
+
+    # ✅ جدید: ارزش جمعیتیِ نیروهای مدافع که توسط مهاجم کشته شدند (امتیاز مهاجم)
+    defender_troops_killed_value = 0.0
+    for vt in defender_village_troops:
+        original_qty = defender_original_counts.get(vt.troop_type_id, 0)
+        killed_qty = original_qty - vt.count
+        if killed_qty > 0:
+            defender_troops_killed_value += killed_qty * troop_population_value(vt.troop_type)
+
+    # ✅ جدید: ارزش جمعیتیِ نیروهای مهاجم که توسط مدافع کشته شدند (امتیاز مدافع)
+    attacker_troops_killed_value = 0.0
+    for troop_id, sent_qty in attacker_sent_counts.items():
+        survived_qty = attacker_survivors.get(troop_id, 0)
+        killed_qty = sent_qty - survived_qty
+        troop_type = troop_type_cache.get(troop_id)
+        if troop_type and killed_qty > 0:
+            attacker_troops_killed_value += killed_qty * troop_population_value(troop_type)
 
     # ------- آسیب قوچ به دیوار -------
     wall_damage_msg = ""
@@ -674,6 +769,10 @@ def _resolve_attack_or_raid(movement):
         conquered=conquered,
         trapped_summary=trapped_summary,
     )
+
+    # ✅ جدید: به‌روزرسانی امتیاز مهاجم/مدافع کلی برای رتبه‌بندی و مدال‌ها
+    _increment_combat_stats(source.player_id, attacker_points=defender_troops_killed_value)
+    _increment_combat_stats(original_defender_player_id, defender_points=attacker_troops_killed_value)
 
     movement.is_completed = True
     movement.save()

@@ -471,9 +471,35 @@ class LeaderboardView(APIView):
                 "natar_attacks": "⚔️ در راه است" if pending_attack else "بدون حمله",
             })
 
+        from .models import PlayerCombatStats  # ✅ جدید
+
+        combat_stats_qs = PlayerCombatStats.objects.select_related('player').exclude(
+            player__username__in=["Natars", "Farms"]
+        )
+
+        def _serialize_stats(qs, field_name):
+            ordered = sorted(qs, key=lambda s: getattr(s, field_name), reverse=True)
+            data = []
+            for rank, stat in enumerate(ordered, start=1):
+                if getattr(stat, field_name) <= 0:
+                    break
+                player_name = stat.player.email.split('@')[0] if stat.player.email else stat.player.username
+                data.append({
+                    "rank": rank,
+                    "player": player_name,
+                    "alliance": alliance_by_player.get(stat.player_id, "بدون اتحاد"),
+                    "points": round(getattr(stat, field_name), 1),
+                })
+            return data[:20]
+
+        top_attackers = _serialize_stats(combat_stats_qs, 'attacker_kill_points')
+        top_defenders = _serialize_stats(combat_stats_qs, 'defender_kill_points')
+
         return Response({
             "general_ranking": ranking_data[:100],
-            "world_wonder": ww_data
+            "world_wonder": ww_data,
+            "top_attackers": top_attackers,
+            "top_defenders": top_defenders,
         })
 
 
@@ -1280,3 +1306,82 @@ class ArtifactListView(APIView):
                 "is_mine": bool(is_claimed and holder_village.player_id == request.user.id),
             })
         return Response(data)
+
+
+class LatestDailyMedalsView(APIView):
+    """۱۰ نفر برتر آخرین روزی که مدال‌ها محاسبه شده‌اند (رتبه‌بندی روزانه عمومی)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import DailyMedal
+        latest_day = DailyMedal.objects.order_by('-day_number').values_list('day_number', flat=True).first()
+        if latest_day is None:
+            return Response({"day_number": None, "attackers": [], "defenders": [], "population": []})
+
+        def serialize(category):
+            medals = DailyMedal.objects.filter(
+                day_number=latest_day, category=category
+            ).select_related('player').order_by('rank')
+            return [{"rank": m.rank, "player": m.player.username} for m in medals]
+
+        return Response({
+            "day_number": latest_day,
+            "attackers": serialize('ATTACKER'),
+            "defenders": serialize('DEFENDER'),
+            "population": serialize('POPULATION'),
+        })
+
+
+class MyMedalsView(APIView):
+    """مدال‌های خود بازیکن + امکان مخفی/آشکارسازی هرکدام در پروفایل."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import DailyMedal
+        medals = DailyMedal.objects.filter(player=request.user).order_by('-day_number', 'category', 'rank')
+        return Response([
+            {
+                "id": m.id,
+                "category": m.category,
+                "category_display": m.get_category_display(),
+                "day_number": m.day_number,
+                "rank": m.rank,
+                "is_visible": m.is_visible,
+            }
+            for m in medals
+        ])
+
+
+class ToggleMedalVisibilityView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from .models import DailyMedal
+        medal_id = request.data.get('medal_id')
+        try:
+            medal = DailyMedal.objects.get(id=medal_id, player=request.user)
+        except (DailyMedal.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "مدال یافت نشد."}, status=404)
+        medal.is_visible = not medal.is_visible
+        medal.save(update_fields=['is_visible'])
+        return Response({"message": "وضعیت نمایش مدال به‌روزرسانی شد.", "is_visible": medal.is_visible})
+
+
+class PlayerPublicMedalsView(APIView):
+    """مدال‌های قابل‌نمایش یک بازیکن دیگر (برای نمایش در پروفایل عمومی)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, player_id):
+        from .models import DailyMedal
+        medals = DailyMedal.objects.filter(
+            player_id=player_id, is_visible=True
+        ).select_related('player').order_by('-day_number', 'category', 'rank')
+        return Response([
+            {
+                "category": m.category,
+                "category_display": m.get_category_display(),
+                "day_number": m.day_number,
+                "rank": m.rank,
+            }
+            for m in medals
+        ])

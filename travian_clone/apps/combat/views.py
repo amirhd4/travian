@@ -103,11 +103,16 @@ class BarracksTrainView(APIView):
                 village.crop -= total_cost['crop']
                 village.save()
 
-                from apps.game_engine.artifacts import get_training_speed_multiplier  # ✅ جدید
+                from apps.game_engine.artifacts import get_training_speed_multiplier
+                from .hero_utils import get_hero_training_speed_bonus_percent  # ✅ جدید
 
                 raw_duration = troop_info.base_train_time * quantity
-                artifact_multiplier = get_training_speed_multiplier(request.user)  # ✅ اثر «جنگ‌آموز»
-                duration_after_artifact = raw_duration / artifact_multiplier
+                artifact_multiplier = get_training_speed_multiplier(request.user)
+
+                hero_training_bonus_percent = get_hero_training_speed_bonus_percent(request.user, troop_info)  # ✅ جدید
+                hero_training_multiplier = 1 + (hero_training_bonus_percent / 100)
+
+                duration_after_artifact = raw_duration / artifact_multiplier / hero_training_multiplier  # ✅ به‌روزشده
 
                 # ✅ FIX همزمان: قبلا finishes_at (شمارش معکوس UI) اصلا سرعت
                 # آموزش سرور (troop_training_speed) را لحاظ نمی‌کرد؛ فقط زمان
@@ -283,8 +288,16 @@ class HeroView(APIView):
                     "id": inv.id, "item_id": inv.item.id, "name": inv.item.name,
                     "item_type": inv.item.item_type,
                     "attack_bonus": inv.item.attack_bonus,
-                    "defense_bonus": inv.item.defense_bonus,   # ✅ جدید
+                    "defense_bonus": inv.item.defense_bonus,
                     "speed_bonus": inv.item.speed_bonus,
+                    # ✅ جدید
+                    "experience_bonus_percent": inv.item.experience_bonus_percent,
+                    "infantry_training_speed_percent": inv.item.infantry_training_speed_percent,
+                    "cavalry_training_speed_percent": inv.item.cavalry_training_speed_percent,
+                    "infantry_attack_bonus_percent": inv.item.infantry_attack_bonus_percent,
+                    "infantry_defense_bonus_percent": inv.item.infantry_defense_bonus_percent,
+                    "cavalry_attack_bonus_percent": inv.item.cavalry_attack_bonus_percent,
+                    "cavalry_defense_bonus_percent": inv.item.cavalry_defense_bonus_percent,
                     "is_equipped": inv.is_equipped,
                 }
                 for inv in inventory

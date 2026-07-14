@@ -309,6 +309,15 @@ class Command(BaseCommand):
             {"name": "تبر جنگی", "item_type": "RIGHT_HAND", "attack_bonus": 40, "defense_bonus": 10, "speed_bonus": 0},
             {"name": "چکمه‌ی سبک", "item_type": "SHOES", "attack_bonus": 0, "defense_bonus": 5, "speed_bonus": 1},
             {"name": "اسب تندرو", "item_type": "HORSE", "attack_bonus": 0, "defense_bonus": 0, "speed_bonus": 2},
+
+            # ✅ جدید: آیتم‌های تخصصی
+            {"name": "کلاه‌خود تجربه", "item_type": "HELMET", "experience_bonus_percent": 25},
+            {"name": "کلاه‌خود جنگ‌آموز پیاده", "item_type": "HELMET", "infantry_training_speed_percent": 20},
+            {"name": "کلاه‌خود جنگ‌آموز سوار", "item_type": "HELMET", "cavalry_training_speed_percent": 15},
+            {"name": "شمشیر تهاجم پیاده", "item_type": "RIGHT_HAND", "infantry_attack_bonus_percent": 10},
+            {"name": "شمشیر دفاع پیاده", "item_type": "LEFT_HAND", "infantry_defense_bonus_percent": 10},
+            {"name": "نیزه تهاجم سوار", "item_type": "RIGHT_HAND", "cavalry_attack_bonus_percent": 10},
+            {"name": "نیزه دفاع سوار", "item_type": "LEFT_HAND", "cavalry_defense_bonus_percent": 10},
         ]
         for data in hero_item_defaults_list:
             name = data.pop("name")
