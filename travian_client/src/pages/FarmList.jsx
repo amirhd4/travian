@@ -6,7 +6,11 @@ import EmptyState from '../components/EmptyState';
 import { AlertModal, ConfirmModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 
-const statusIcon = (status) => ({ SUCCESS: '✅', FAILED: '❌', NEVER: '⏳' }[status] || '⏳');
+const statusIcon = (status) => ({
+    SUCCESS: { emoji: '✅', image: '/assets/ui/tick.png' },
+    FAILED: { emoji: '❌', image: '/assets/ui/cancel.gif' },
+    NEVER: { emoji: '⏳', image: '/assets/ui/clock.gif' },
+}[status] || { emoji: '⏳', image: '/assets/ui/clock.gif' });
 
 export default function FarmList() {
     const villages = useGameStore((state) => state.villages);
@@ -222,8 +226,10 @@ export default function FarmList() {
                             {entries.map((entry) => (
                                 <div key={entry.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 p-3 rounded-xl">
                                     <div>
-                                        <p className="font-bold text-sm text-ink-800">
-                                            {statusIcon(entry.last_run_status)} {entry.source_name} ➡ {entry.target_name} ({entry.target_coords})
+                                        <p className="font-bold text-sm text-ink-800 flex items-center gap-1.5">
+                                            <img src={statusIcon(entry.last_run_status).image} alt="" className="w-4 h-4" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                            <span className="hidden">{statusIcon(entry.last_run_status).emoji}</span>
+                                            {entry.source_name} ➡ {entry.target_name} ({entry.target_coords})
                                         </p>
                                         <p className="text-xs text-ink-500 mt-1">
                                             {Object.entries(entry.troops_payload).map(([tid, qty]) => `#${tid}×${qty}`).join(' | ')}

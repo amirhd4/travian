@@ -190,7 +190,7 @@ export default function PlusAccount() {
         <PageShell maxWidth="max-w-lg">
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="اکانت پلاس" />
 
-            <WoodSign title="اکانت پلاس" icon="👑">
+            <WoodSign title="اکانت پلاس" iconElement={<img src="/assets/ui/plus-icon.gif" alt="" className="w-5 h-5" onError={(e) => { e.target.style.display='none'; }} />}>
                 {status.has_plus ? (
                     <p className="text-center text-sm font-bold text-brand-700 bg-brand-50 border border-brand-300 rounded-xl p-3 mb-4">
                         ✅ اکانت پلاس شما فعال است تا {new Date(status.expires_at).toLocaleString('fa-IR')}

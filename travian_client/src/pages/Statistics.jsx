@@ -6,14 +6,14 @@ import EmptyState from '../components/EmptyState';
 import { AlertModal } from '../components/Modal';
 
 const TABS = [
-    { key: 'general', label: '🏆 رتبه‌بندی بازیکنان' },
-    { key: 'attackers', label: '⚔️ مهاجم برتر (کلی)' },
-    { key: 'defenders', label: '🛡️ مدافع برتر (کلی)' },
-    { key: 'daily', label: '🎖️ مدال‌های روزانه' },
-    { key: 'mymedals', label: '🎗️ مدال‌های من' },
-    { key: 'ww', label: '🏛️ مسابقه شگفتی جهان' },
-    { key: 'alliances', label: '🤝 اتحادها' },
-    { key: 'farms', label: '🌾 دهکده‌های فارم' },
+    { key: 'general', label: '🏆 رتبه‌بندی بازیکنان', image: '/assets/ui/top10.png' },
+    { key: 'attackers', label: '⚔️ مهاجم برتر (کلی)', image: '/assets/ui/status-off.gif' },
+    { key: 'defenders', label: '🛡️ مدافع برتر (کلی)', image: '/assets/ui/status-def.gif' },
+    { key: 'daily', label: '🎖️ مدال‌های روزانه', image: '/assets/ui/artefacts.gif' },
+    { key: 'mymedals', label: '🎗️ مدال‌های من', image: '/assets/ui/artefacts.gif' },
+    { key: 'ww', label: '🏛️ مسابقه شگفتی جهان', image: '/assets/ui/buildings-icon.gif' },
+    { key: 'alliances', label: '🤝 اتحادها', image: '/assets/ui/friends-icon.gif' },
+    { key: 'farms', label: '🌾 دهکده‌های فارم', image: '/assets/ui/buildings-icon.gif' },
 ];
 
 const medalIcon = (rank) => (rank === 1 ? '🥇' : rank <= 3 ? '🥈' : '🥉');
@@ -171,8 +171,9 @@ export default function Statistics() {
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
-                            className={`flex-1 min-w-[150px] py-3 text-sm font-bold transition whitespace-nowrap ${activeTab === tab.key ? 'bg-gold-500 text-ink-900' : 'bg-parchment-100 text-ink-600 hover:bg-parchment-200'}`}
+                            className={`flex-1 min-w-[150px] py-3 text-sm font-bold transition whitespace-nowrap flex items-center justify-center gap-1.5 ${activeTab === tab.key ? 'bg-gold-500 text-ink-900' : 'bg-parchment-100 text-ink-600 hover:bg-parchment-200'}`}
                         >
+                            <img src={tab.image} alt="" className="w-4 h-4" onError={(e) => { e.target.style.display='none'; }} />
                             {tab.label}
                         </button>
                     ))}

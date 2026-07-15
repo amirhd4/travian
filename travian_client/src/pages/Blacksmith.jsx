@@ -95,11 +95,10 @@ export default function Blacksmith() {
 
                                 return (
                                     <div key={t.troop_type_id} className="flex items-center gap-4 bg-white/80 border border-parchment-300 rounded-xl p-3">
-                                        {/* پیشنهاد عکس: /assets/troops/unit_{troop_type_id}.png */}
                                         <img
-                                            src={`/assets/troops/unit_${t.troop_type_id}.png`} alt={t.name}
+                                            src={`/assets/troops/unit-${t.troop_type_id}.gif`} alt={t.name}
                                             className="w-14 h-14 object-contain bg-parchment-100 rounded-lg border border-parchment-300 flex-shrink-0"
-                                            onError={(e) => { e.target.style.visibility = 'hidden'; }}
+                                            onError={(e) => { e.target.style.display='none'; }}
                                         />
                                         <div className="flex-1 min-w-0">
                                             <p className="font-bold text-ink-800">{t.name}</p>

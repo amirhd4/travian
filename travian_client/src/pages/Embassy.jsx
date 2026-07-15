@@ -77,7 +77,12 @@ export default function Embassy() {
             <ConfirmModal open={!!confirmState} message={confirmState?.message} danger={confirmState?.danger} onConfirm={confirmState?.onConfirm} onCancel={() => setConfirmState(null)} />
 
             <div className="panel">
-                <div className="panel-header"><span className="panel-title">🏛️ سفارتخانه</span></div>
+                <div className="panel-header">
+                    <span className="panel-title flex items-center gap-2">
+                        <img src="/assets/ui/friends-icon.gif" alt="" className="w-5 h-5" onError={(e) => { e.target.style.display='none'; }} />
+                        سفارتخانه
+                    </span>
+                </div>
                 <div className="panel-body">
                     {loading ? (
                         <LoadingState label="در حال ارتباط با دیپلمات‌ها..." />

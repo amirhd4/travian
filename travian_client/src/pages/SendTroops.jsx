@@ -6,10 +6,10 @@ import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 
 const MOVEMENT_OPTIONS = [
-    { value: 'ATTACK', label: '🪓 حمله کامل', hint: 'تسخیر / نقشه ساخت' },
-    { value: 'RAID', label: '💰 غارت منابع', hint: 'برداشت سریع منابع' },
-    { value: 'REINFORCEMENT', label: '🛡️ پشتیبانی نظامی', hint: 'تقویت دفاع متحد' },
-    { value: 'SCOUT', label: '🔍 شناسایی', hint: 'گزارش از دهکده هدف' },
+    { value: 'ATTACK', label: '🪓 حمله کامل', hint: 'تسخیر / نقشه ساخت', image: '/assets/ui/attack-symbol.gif' },
+    { value: 'RAID', label: '💰 غارت منابع', hint: 'برداشت سریع منابع', image: '/assets/ui/gold-icon.gif' },
+    { value: 'REINFORCEMENT', label: '🛡️ پشتیبانی نظامی', hint: 'تقویت دفاع متحد', image: '/assets/ui/status-def.gif' },
+    { value: 'SCOUT', label: '🔍 شناسایی', hint: 'گزارش از دهکده هدف', image: '/assets/ui/cropfinder.gif' },
 ];
 
 const CATAPULT_TARGETS = [
@@ -128,7 +128,10 @@ export default function SendTroops() {
                                         onClick={() => setMovementType(opt.value)}
                                         className={`text-right p-3 rounded-xl border-2 transition ${movementType === opt.value ? 'border-gold-500 bg-gold-50' : 'border-parchment-300 bg-white hover:border-parchment-400'}`}
                                     >
-                                        <span className="block font-bold text-sm text-ink-800">{opt.label}</span>
+                                        <div className="flex items-center gap-2">
+                                            <img src={opt.image} alt="" className="w-5 h-5" onError={(e) => { e.target.style.display='none'; }} />
+                                            <span className="block font-bold text-sm text-ink-800">{opt.label}</span>
+                                        </div>
                                         <span className="block text-[11px] text-ink-500">{opt.hint}</span>
                                     </button>
                                 ))}

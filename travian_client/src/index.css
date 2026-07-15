@@ -34,8 +34,8 @@ html, body {
   .game-bg {
     @apply w-full h-full;
     background:
-      radial-gradient(1200px 600px at 50% -10%, rgba(255,255,255,0.35), transparent 60%),
-      linear-gradient(180deg, #bfe0c9 0%, #dcecc4 35%, #cfe0a8 65%, #a9c97f 100%);
+      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
+    background-size: auto;
   }
 
   /* ===== کارت اصلی محتوا ===== */
@@ -96,6 +96,38 @@ html, body {
   .badge-green { @apply badge bg-brand-100 text-brand-700; }
   .badge-gold  { @apply badge bg-gold-100 text-gold-700 bg-opacity-60; }
   .badge-red   { @apply badge bg-rose-100 text-rose-700; }
+
+  /* ===== پس‌زمینه‌ی اختصاصی صفحات ===== */
+  .bg-login {
+    background:
+      url('/assets/bgs/login-rtl.jpg') center/cover no-repeat,
+      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
+  }
+  .bg-messages {
+    background:
+      url('/assets/bgs/bg-messages.png') center/cover no-repeat,
+      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
+  }
+  .bg-reports {
+    background:
+      url('/assets/bgs/bg-reports.png') center/cover no-repeat,
+      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
+  }
+  .bg-statistics {
+    background:
+      url('/assets/bgs/bg-statistics.png') center/cover no-repeat,
+      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
+  }
+  .bg-map {
+    background:
+      url('/assets/bgs/bg-map.png') center/cover no-repeat,
+      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
+  }
+  .bg-plus {
+    background:
+      url('/assets/bgs/bg-plus.png') center/cover no-repeat,
+      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
+  }
 
   /* ===== نوار پیشرفت منابع ===== */
   .progress-track { @apply w-full h-2 rounded-full bg-ink-900/10 overflow-hidden; }

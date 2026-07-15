@@ -1,12 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as PIXI from 'pixi.js';
-import Navbar from '../components/Navbar';
-import ResourceBar from '../components/ResourceBar';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
-import Footer from "../components/Footer.jsx";
 
 const DORF1_SLOTS = {
     1: { x: 150, y: 100 }, 2: { x: 250, y: 70 }, 3: { x: 370, y: 70 }, 4: { x: 470, y: 100 },
@@ -27,20 +24,17 @@ const RESOURCE_ICONS = {
     'چوب‌بری': '🪵', 'گودال خاک رس': '🧱', 'معدن آهن': '⚒️', 'مزرعه گندم': '🌾',
 };
 
-// مسیر پیشنهادی عکس هر مزرعه: /assets/buildings/{name}.png (اگر نبود، دایره‌ی رنگی جایگزین می‌شود)
+// مسیر پیشنهادی عکس هر مزرعه: /assets/fields/{name}.jpg (اگر نبود، دایره‌ی رنگی جایگزین می‌شود)
 const getAssetPath = (building) => {
     if (building.level === 0 && !building.is_upgrading) return null;
     const nameMap = {
-        'چوب‌بری': 'woodcutter', 'گودال خاک رس': 'claypit',
-        'معدن آهن': 'ironmine', 'مزرعه گندم': 'cropland',
+        'چوب‌بری': '/assets/fields/f1.jpg',
+        'گودال خاک رس': '/assets/fields/f2.jpg',
+        'معدن آهن': '/assets/fields/f3.jpg',
+        'مزرعه گندم': '/assets/fields/f4.jpg',
     };
-    return `/assets/buildings/${nameMap[building.name] || 'default_building'}.png`;
+    return nameMap[building.name] || null;
 };
-
-function remainingSeconds(endTimeIso) {
-    if (!endTimeIso) return 0;
-    return Math.max(0, Math.round((new Date(endTimeIso).getTime() - Date.now()) / 1000));
-}
 
 export default function ResourceFields() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
@@ -56,7 +50,7 @@ export default function ResourceFields() {
     const pixiAppRef = useRef(null);
 
     const fetchBuildings = useCallback(async () => {
-        if (!activeVillageId) return;
+        if (!activeVillageId) { setLoading(false); return; }
         try {
             const { data } = await api.get(`game/villages/${activeVillageId}/buildings/`);
             setVillageInfo(data.village);
@@ -116,37 +110,39 @@ export default function ResourceFields() {
 
             const activeBuildings = buildings.filter(b => DORF1_SLOTS[b.position]);
 
-            activeBuildings.forEach((b) => {
+            for (const b of activeBuildings) {
                 const coords = DORF1_SLOTS[b.position];
                 const container = new PIXI.Container();
                 container.x = coords.x;
                 container.y = coords.y;
 
                 const assetPath = getAssetPath(b);
-                let hasImage = false;
+
+                // Load and display the actual field image
                 if (assetPath) {
-                    const sprite = PIXI.Sprite.from(assetPath);
-                    sprite.anchor.set(0.5);
-                    sprite.width = 64; sprite.height = 64;
-                    sprite.on?.('error', () => { hasImage = false; });
-                    container.addChild(sprite);
-                    hasImage = true;
+                    try {
+                        const texture = await PIXI.Assets.load(assetPath);
+                        const sprite = new PIXI.Sprite(texture);
+                        sprite.anchor.set(0.5);
+                        sprite.width = 64; sprite.height = 64;
+                        container.addChild(sprite);
+                    } catch(e) {
+                        // If image fails, show icon
+                        const icon = new PIXI.Text({ text: RESOURCE_ICONS[b.name] || '❔', style: { fontSize: 26 } });
+                        icon.anchor.set(0.5);
+                        container.addChild(icon);
+                    }
+                } else {
+                    // Level 0 - show a subtle placeholder
+                    const placeholder = new PIXI.Graphics();
+                    placeholder.circle(0, 0, 28)
+                        .fill({ color: RESOURCE_COLORS[b.name] || 0x999999, alpha: 0.2 })
+                        .stroke({ width: 2, color: 0xffffff, alpha: 0.4 });
+                    container.addChild(placeholder);
+                    const icon = new PIXI.Text({ text: RESOURCE_ICONS[b.name] || '❔', style: { fontSize: 22 } });
+                    icon.anchor.set(0.5);
+                    container.addChild(icon);
                 }
-
-                // دایره‌ی رنگی پایه (همیشه رسم می‌شود، زیر عکس - اگر عکس نبود این دیده می‌شود)
-                const baseColor = RESOURCE_COLORS[b.name] || 0x999999;
-                const circle = new PIXI.Graphics();
-                circle.circle(0, 0, 30)
-                    .fill({ color: baseColor, alpha: b.level > 0 ? 0.9 : 0.35 })
-                    .stroke({ width: 3, color: 0xffffff, alpha: 0.9 });
-                container.addChildAt(circle, 0);
-
-                const icon = new PIXI.Text({
-                    text: RESOURCE_ICONS[b.name] || '❔',
-                    style: { fontSize: 26 },
-                });
-                icon.anchor.set(0.5);
-                container.addChild(icon);
 
                 // بج سطح - بزرگ‌تر و خواناتر از قبل
                 if (b.level > 0 || b.is_upgrading) {
@@ -180,7 +176,7 @@ export default function ResourceFields() {
                 container.on('pointerdown', () => setSelectedSlot(b));
 
                 app.stage.addChild(container);
-            });
+            }
         }
 
         initPixi();
@@ -210,9 +206,6 @@ export default function ResourceFields() {
         return r.wood >= c.wood && r.clay >= c.clay && r.iron >= c.iron && r.crop >= c.crop;
     };
 
-    const upgradingBuildings = buildings.filter(b => b.is_upgrading)
-        .sort((a, b) => new Date(a.upgrade_end_time) - new Date(b.upgrade_end_time));
-
     return (
         <div className="game-bg flex flex-col items-center">
             {loading ? (
@@ -232,24 +225,6 @@ export default function ResourceFields() {
 
                     <div className="rounded-2xl overflow-hidden shadow-card border-4 border-ink-800 bg-ink-900"
                          ref={pixiContainerRef} style={{ width: '660px', height: '500px', maxWidth: '100%' }} />
-
-                    {upgradingBuildings.length > 0 && (
-                        <div className="panel w-full max-w-[660px]">
-                            <div className="panel-header !py-2.5">
-                                <span className="panel-title text-sm">🔨 صف ساخت‌وساز</span>
-                            </div>
-                            <div className="panel-body !py-2 space-y-1">
-                                {upgradingBuildings.map((b) => (
-                                    <div key={b.id} className="flex justify-between items-center py-1.5 border-b border-parchment-200 last:border-0 text-sm">
-                                        <span className="font-bold text-ink-700">{b.name} (سطح {b.level + 1})</span>
-                                        <span className="font-mono font-bold text-rose-600" dir="ltr">
-                                            {formatDuration(remainingSeconds(b.upgrade_end_time))}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 

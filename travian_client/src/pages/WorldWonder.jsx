@@ -1,7 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import ResourceBar from '../components/ResourceBar';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import LoadingState from '../components/LoadingState';
 import { ConfirmModal, AlertModal } from '../components/Modal';
 import api from '../api/axiosConfig';
@@ -54,15 +51,13 @@ export default function WorldWonder() {
     };
 
     const bgStyle = {
-        // پیشنهاد عکس: /assets/maps/ww-bg.jpg (شب پرستاره + معبد باستانی نورانی، تم حماسی)
-        backgroundImage: "linear-gradient(180deg, rgba(10,10,25,.7), rgba(10,10,25,.85)), url('/assets/maps/ww-bg.jpg')",
+        backgroundImage: "linear-gradient(180deg, rgba(10,10,25,.7), rgba(10,10,25,.85)), url('/assets/bgs/bg-warsim.png')",
         backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#0f172a',
     };
 
     if (loading) {
         return (
-            <div className="w-full min-h-screen pt-24 flex flex-col items-center" style={bgStyle}>
-                <ResourceBar /><Navbar />
+            <div className="w-full flex flex-col items-center" style={bgStyle}>
                 <LoadingState label="در حال بارگذاری..." />
             </div>
         );
@@ -70,22 +65,19 @@ export default function WorldWonder() {
 
     if (!wwVillageId) {
         return (
-            <div className="w-full min-h-screen pt-24 flex flex-col items-center" style={bgStyle}>
-                <ResourceBar /><Navbar />
+            <div className="w-full flex flex-col items-center" style={bgStyle}>
                 <div className="panel !bg-ink-900/90 !border-gold-700/40 text-parchment-100 p-8 mt-10 max-w-lg text-center mx-4">
                     <h1 className="text-2xl font-extrabold text-gold-400 mb-4">🏛️ شگفتی جهان</h1>
                     <p className="text-parchment-300 text-sm leading-relaxed">
                         شما هنوز دهکده‌ای ندارید که شگفتی جهان در آن ساخته شده باشد. باید ابتدا یکی از دوازده «دهکده‌ی ویرانه»‌ی ناتار روی نقشه جهان را با نیروی سناتور تسخیر کنید.
                     </p>
                 </div>
-                <Footer />
             </div>
         );
     }
 
     return (
-        <div className="w-full min-h-screen pt-24 flex flex-col items-center" style={bgStyle}>
-            <ResourceBar /><Navbar />
+        <div className="w-full flex flex-col items-center" style={bgStyle}>
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="شگفتی جهان" />
             <ConfirmModal
                 open={confirmOpen} onCancel={() => setConfirmOpen(false)} onConfirm={doUpgrade}
@@ -123,7 +115,6 @@ export default function WorldWonder() {
                     {upgrading ? "در حال ساخت سازه..." : "ارتقا به سطح بعدی 🔨"}
                 </button>
             </div>
-            <Footer />
         </div>
     );
 }

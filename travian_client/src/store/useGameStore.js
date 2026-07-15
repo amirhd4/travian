@@ -5,7 +5,7 @@ const useGameStore = create((set) => ({
     accessToken: null, // فقط در حافظه (RAM) نگه‌داری می‌شه، هرگز در localStorage ذخیره نمی‌شه
     village: null,
     resources: { wood: 0, clay: 0, iron: 0, crop: 0 },
-    production: { wood: 300, clay: 300, iron: 300, crop: 150 },
+    production: { wood: 0, clay: 0, iron: 0, crop: 0 },
     hydrated: false,
     maxStorage: 800,
     maxGranary: 800,

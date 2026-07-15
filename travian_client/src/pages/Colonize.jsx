@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
-import ResourceBar from '../components/ResourceBar';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 
@@ -119,15 +116,12 @@ export default function Colonize() {
 
     return (
         <div
-            className="w-full min-h-screen pt-24 pb-16 flex flex-col items-center"
+            className="w-full flex flex-col items-center"
             style={{
-                // پیشنهاد عکس: همون world-map-bg.jpg برای هماهنگی با WorldMap
-                backgroundImage: "linear-gradient(180deg, rgba(15,35,20,.55), rgba(15,35,20,.75)), url('/assets/maps/world-map-bg.jpg')",
+                backgroundImage: "linear-gradient(180deg, rgba(15,35,20,.55), rgba(15,35,20,.75)), url('/assets/bgs/bg-map.png')",
                 backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#12321c',
             }}
         >
-            <ResourceBar />
-            <Navbar />
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="تاسیس دهکده" />
 
             <div className="panel !bg-parchment-50/95 backdrop-blur max-w-2xl w-full mx-4 mt-2 p-6">
@@ -213,7 +207,6 @@ export default function Colonize() {
                     </button>
                 </form>
             </div>
-            <Footer />
         </div>
     );
 }

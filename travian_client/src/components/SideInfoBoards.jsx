@@ -1,63 +1,11 @@
-import { useState, useEffect } from 'react';
 import useGameStore from '../store/useGameStore';
 import WoodSign from './WoodSign';
-import api from '../api/axiosConfig';
-import { formatDuration } from '../utils/formatter';
 
 export default function SideInfoBoards() {
     const user = useGameStore((state) => state.user);
     const villages = useGameStore((state) => state.villages);
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const activeVillage = villages.find((v) => v.id === activeVillageId);
-
-    const [serverStatus, setServerStatus] = useState(null);
-
-    useEffect(() => {
-        api.get('game/server-status/')
-            .then(({ data }) => setServerStatus(data))
-            .catch(() => {});
-        const interval = setInterval(() => {
-            api.get('game/server-status/')
-                .then(({ data }) => setServerStatus(data))
-                .catch(() => {});
-        }, 60000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const [remaining, setRemaining] = useState(null);
-    useEffect(() => {
-        if (!serverStatus?.artifacts_release_at || serverStatus.artifacts_unlocked) {
-            setRemaining(null);
-            return;
-        }
-        const tick = () => {
-            const diff = Math.max(0,
-                Math.floor((new Date(serverStatus.artifacts_release_at).getTime() - Date.now()) / 1000)
-            );
-            setRemaining(diff);
-        };
-        tick();
-        const interval = setInterval(tick, 1000);
-        return () => clearInterval(interval);
-    }, [serverStatus]);
-
-    // ✅ جدید: تایمر آزادسازی نقشه‌ی ساخت شگفتی جهان
-    const [wwRemaining, setWwRemaining] = useState(null);
-    useEffect(() => {
-        if (!serverStatus?.ww_plans_release_at || serverStatus.ww_unlocked) {
-            setWwRemaining(null);
-            return;
-        }
-        const tick = () => {
-            const diff = Math.max(0,
-                Math.floor((new Date(serverStatus.ww_plans_release_at).getTime() - Date.now()) / 1000)
-            );
-            setWwRemaining(diff);
-        };
-        tick();
-        const interval = setInterval(tick, 1000);
-        return () => clearInterval(interval);
-    }, [serverStatus]);
 
     if (!user) return null;
 
@@ -84,31 +32,6 @@ export default function SideInfoBoards() {
                         </p>
                         <p className="text-[11px] text-center text-wood-dark mt-1" dir="ltr">
                             ({activeVillage.x_coord}|{activeVillage.y_coord})
-                        </p>
-                    </WoodSign>
-                </div>
-            )}
-
-            {remaining !== null && remaining > 0 && (
-                <div className="hidden xl:block fixed top-32 right-3 w-48 z-[100]" style={{ top: '16rem' }}>
-                    <WoodSign title="🏺 کتیبه‌ها">
-                        <p className="text-[11px] text-center font-bold text-orange-700">آزادسازی در:</p>
-                        <p className="text-sm text-center font-mono text-wood-dark font-bold" dir="ltr">
-                            {formatDuration(remaining)}
-                        </p>
-                    </WoodSign>
-                </div>
-            )}
-
-            {wwRemaining !== null && wwRemaining > 0 && (
-                <div
-                    className="hidden xl:block fixed top-32 right-3 w-48 z-[100]"
-                    style={{ top: remaining !== null && remaining > 0 ? '22rem' : '16rem' }}
-                >
-                    <WoodSign title="🏛️ نقشه ساخت شگفتی جهان">
-                        <p className="text-[11px] text-center font-bold text-purple-700">آزادسازی در:</p>
-                        <p className="text-sm text-center font-mono text-wood-dark font-bold" dir="ltr">
-                            {formatDuration(wwRemaining)}
                         </p>
                     </WoodSign>
                 </div>

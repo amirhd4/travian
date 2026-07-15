@@ -60,14 +60,11 @@ export default function Login() {
     };
 
     return (
-        <div className="min-h-screen game-bg flex items-center justify-center p-4">
+        <div className="min-h-screen bg-login flex items-center justify-center p-4">
             {/* دکوری پس‌زمینه - جای عکس تپه/درخت رو اینجا میتونی بذاری */}
             <div className="w-full max-w-md">
                 <div className="panel overflow-hidden">
-                    <div className="bg-gradient-to-b from-ink-800 to-ink-900 px-8 py-7 text-center">
-                        <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gold-500/15 border border-gold-500/40 flex items-center justify-center text-3xl">
-                            🏰
-                        </div>
+                    <div className="bg-gradient-to-b from-ink-800/90 to-ink-900/95 px-8 py-7 text-center">
                         <h1 className="text-2xl font-extrabold text-parchment-50">ورود به بازی</h1>
                         <p className="text-sm text-parchment-200 mt-1">
                             دنیای تراوین منتظر شماست

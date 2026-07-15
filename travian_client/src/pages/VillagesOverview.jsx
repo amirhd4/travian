@@ -64,10 +64,12 @@ export default function VillagesOverview() {
                             <tr className="bg-parchment-100 text-ink-700 text-sm">
                                 <th className="p-3 rounded-r-lg">دهکده</th>
                                 <th className="p-3">جمعیت</th>
-                                <th className="p-3">🪵</th><th className="p-3">🧱</th>
-                                <th className="p-3">⚒️</th><th className="p-3">🌾</th>
-                                <th className="p-3">🔨 صف ساخت</th>
-                                <th className="p-3">⚔️ حمله در راه</th>
+                                <th className="p-3"><img src="/assets/ui/res-1.gif" alt="چوب" className="w-4 h-4 mx-auto" /></th>
+                                <th className="p-3"><img src="/assets/ui/res-2.gif" alt="خشت" className="w-4 h-4 mx-auto" /></th>
+                                <th className="p-3"><img src="/assets/ui/res-3.gif" alt="آهن" className="w-4 h-4 mx-auto" /></th>
+                                <th className="p-3"><img src="/assets/ui/res-4.gif" alt="گندم" className="w-4 h-4 mx-auto" /></th>
+                                <th className="p-3"><img src="/assets/ui/troops-icon.gif" alt="صف ساخت" className="w-4 h-4 mx-auto" /></th>
+                                <th className="p-3"><img src="/assets/ui/attack-symbol.gif" alt="حمله" className="w-4 h-4 mx-auto" /></th>
                                 <th className="p-3 rounded-l-lg">عملیات</th>
                             </tr>
                         </thead>

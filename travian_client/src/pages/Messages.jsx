@@ -6,9 +6,9 @@ import EmptyState from '../components/EmptyState';
 import { AlertModal } from '../components/Modal';
 
 const TABS = [
-    { key: 'inbox', label: '📥 صندوق ورودی' },
-    { key: 'sent', label: '📤 پیام‌های ارسالی' },
-    { key: 'compose', label: '✍️ نوشتن پیام' },
+    { key: 'inbox', label: '📥 صندوق ورودی', image: '/assets/ui/friends-icon.gif' },
+    { key: 'sent', label: '📤 پیام‌های ارسالی', image: '/assets/ui/car-icon.gif' },
+    { key: 'compose', label: '✍️ نوشتن پیام', image: '/assets/ui/bb-buttons.png' },
 ];
 
 export default function Messages() {
@@ -84,7 +84,8 @@ export default function Messages() {
                 <div className="flex border-b border-parchment-300">
                     {TABS.map((tab) => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                            className={`flex-1 py-3 text-sm font-bold transition ${activeTab === tab.key ? 'bg-gold-500 text-ink-900' : 'bg-parchment-100 text-ink-600 hover:bg-parchment-200'}`}>
+                            className={`flex-1 py-3 text-sm font-bold transition flex items-center justify-center gap-1.5 ${activeTab === tab.key ? 'bg-gold-500 text-ink-900' : 'bg-parchment-100 text-ink-600 hover:bg-parchment-200'}`}>
+                            <img src={tab.image} alt="" className="w-4 h-4" onError={(e) => { e.target.style.display='none'; }} />
                             {tab.label}
                         </button>
                     ))}

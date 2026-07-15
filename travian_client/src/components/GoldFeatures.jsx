@@ -5,11 +5,11 @@ import { AlertModal } from './Modal';
 import useGameStore from '../store/useGameStore';
 
 const RESOURCE_BONUS_TYPES = [
-    { value: 'all', label: 'همه منابع' },
-    { value: 'wood', label: '🪵 چوب' },
-    { value: 'clay', label: '🧱 خشت' },
-    { value: 'iron', label: '⚒️ آهن' },
-    { value: 'crop', label: '🌾 گندم' },
+    { value: 'all', label: 'همه منابع', image: '/assets/ui/res-5.gif' },
+    { value: 'wood', label: '🪵 چوب', image: '/assets/ui/res-1.gif' },
+    { value: 'clay', label: '🧱 خشت', image: '/assets/ui/res-2.gif' },
+    { value: 'iron', label: '⚒️ آهن', image: '/assets/ui/res-3.gif' },
+    { value: 'crop', label: '🌾 گندم', image: '/assets/ui/res-4.gif' },
 ];
 
 export default function GoldFeatures() {

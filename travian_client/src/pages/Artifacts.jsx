@@ -5,9 +5,9 @@ import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 
 const EFFECT_ICONS = {
-    SCOUT_POWER: '🦅',
-    TRAINING_SPEED: '⚔️',
-    MOVEMENT_SPEED: '👢',
+    SCOUT_POWER: { emoji: '🦅', image: '/assets/ui/artifact-type1.gif' },
+    TRAINING_SPEED: { emoji: '⚔️', image: '/assets/ui/artifact-type2.gif' },
+    MOVEMENT_SPEED: { emoji: '👢', image: '/assets/ui/artifact-type3.gif' },
 };
 
 export default function Artifacts() {
@@ -56,7 +56,10 @@ export default function Artifacts() {
                             {artifacts.map((a) => (
                                 <div key={a.id} className={`rounded-xl border-2 p-4 ${a.is_mine ? 'border-gold-500 bg-gold-50' : 'border-parchment-300 bg-parchment-50'}`}>
                                     <div className="flex items-center gap-2 mb-2">
-                                        <span className="text-2xl">{EFFECT_ICONS[a.effect_type] || '🏺'}</span>
+                                        {EFFECT_ICONS[a.effect_type]?.image ? (
+                                            <img src={EFFECT_ICONS[a.effect_type].image} alt="" className="w-8 h-8" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                        ) : null}
+                                        <span className="text-2xl hidden">{EFFECT_ICONS[a.effect_type]?.emoji || '🏺'}</span>
                                         <div>
                                             <p className="font-bold text-ink-800">{a.name}</p>
                                             <p className="text-xs text-ink-500">{a.effect_type_display} — ضریب ×{a.multiplier}</p>

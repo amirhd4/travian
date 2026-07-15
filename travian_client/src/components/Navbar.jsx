@@ -5,25 +5,25 @@ import api from "../api/axiosConfig.js";
 import SideInfoBoards from "./SideInfoBoards.jsx";
 
 const NAV_ITEMS = [
-    { path: '/village', icon: '🌾', label: 'منابع' },
-    { path: '/dorf2', icon: '🏛️', label: 'مرکز دهکده' },
-    { path: '/world-map', icon: '🗺️', label: 'نقشه' },
-    { path: '/colonize', icon: '🏕️', label: 'تاسیس' },
-    { path: '/movements', icon: '📡', label: 'گردهمایی' },
-    { path: '/farm-list', icon: '🌾', label: 'مزرعه' },
-    { path: '/reports', icon: '📜', label: 'گزارشات' },
-    { path: '/statistics', icon: '📊', label: 'آمار' },
-    { path: '/marketplace', icon: '⚖️', label: 'بازارچه' },
-    { path: '/world-wonder', icon: '🏆', label: 'شگفتی جهان' },
-    { path: '/messages', icon: '✉️', label: 'پیام‌ها' },
-    { path: '/barracks', icon: '⚔️', label: 'پادگان' },
-    { path: '/embassy', icon: '🏰', label: 'سفارتخانه' },
-    { path: '/hero', icon: '🦸', label: 'قهرمان' },
-    { path: '/gold-shop', icon: '💰', label: 'فروشگاه طلا' },
-    { path: '/plus', icon: '👑', label: 'پلاس' },
-    { path: '/blacksmith', icon: '🔨', label: 'آهنگری' },
-    { path: '/villages', icon: '🏘️', label: 'همه دهکده‌ها' },
-    { path: '/artifacts', icon: '🏺', label: 'کتیبه‌ها' },
+    { path: '/village', icon: '🌾', image: '/assets/ui/buildings-icon.gif', label: 'منابع' },
+    { path: '/dorf2', icon: '🏛️', image: '/assets/ui/buildings-icon.gif', label: 'مرکز دهکده' },
+    { path: '/world-map', icon: '🗺️', image: '/assets/ui/car-icon.gif', label: 'نقشه' },
+    { path: '/colonize', icon: '🏕️', image: '/assets/ui/car-icon.gif', label: 'تاسیس' },
+    { path: '/movements', icon: '📡', image: '/assets/ui/car-icon.gif', label: 'گردهمایی' },
+    { path: '/farm-list', icon: '🌾', image: '/assets/ui/buildings-icon.gif', label: 'مزرعه' },
+    { path: '/reports', icon: '📜', image: '/assets/ui/report-icons.gif', label: 'گزارشات' },
+    { path: '/statistics', icon: '📊', image: '/assets/ui/top10.png', label: 'آمار' },
+    { path: '/marketplace', icon: '⚖️', image: '/assets/ui/car-icon.gif', label: 'بازارچه' },
+    { path: '/world-wonder', icon: '🏆', image: '/assets/ui/buildings-icon.gif', label: 'شگفتی جهان' },
+    { path: '/messages', icon: '✉️', image: '/assets/ui/friends-icon.gif', label: 'پیام‌ها' },
+    { path: '/barracks', icon: '⚔️', image: '/assets/ui/troops-icon.gif', label: 'پادگان' },
+    { path: '/embassy', icon: '🏰', image: '/assets/ui/friends-icon.gif', label: 'سفارتخانه' },
+    { path: '/hero', icon: '🦸', image: '/assets/ui/help-icon.gif', label: 'قهرمان' },
+    { path: '/gold-shop', icon: '💰', image: '/assets/ui/gold-icon.gif', label: 'فروشگاه طلا' },
+    { path: '/plus', icon: '👑', image: '/assets/ui/plus-icon.gif', label: 'پلاس' },
+    { path: '/blacksmith', icon: '🔨', image: '/assets/ui/troops-icon.gif', label: 'آهنگری' },
+    { path: '/villages', icon: '🏘️', image: '/assets/ui/buildings-icon.gif', label: 'همه دهکده‌ها' },
+    { path: '/artifacts', icon: '🏺', image: '/assets/ui/artefacts.gif', label: 'کتیبه‌ها' },
 ];
 
 export default function Navbar() {
@@ -130,7 +130,8 @@ export default function Navbar() {
                                 title={item.label}
                                 className={`btn-icon flex-shrink-0 relative ${location.pathname === item.path ? 'active' : '!bg-ink-800/60 !border-ink-700 text-parchment-100'}`}
                             >
-                                <span className="text-base">{item.icon}</span>
+                                <img src={item.image} alt={item.label} className="w-5 h-5" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                <span className="text-base hidden">{item.icon}</span>
                                 {item.path === '/reports' && unreadReports > 0 && (
                                     <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                                         {unreadReports}

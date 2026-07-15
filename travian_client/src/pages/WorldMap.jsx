@@ -1,8 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ResourceBar from '../components/ResourceBar';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import LoadingState from '../components/LoadingState';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
@@ -13,10 +10,10 @@ const CELL_STYLES = {
     mine:      'bg-gradient-to-b from-blue-200 to-blue-300 border-blue-500 text-blue-900 font-bold',
     ww:        'bg-gradient-to-b from-purple-300 to-purple-400 border-purple-600 text-purple-900 font-bold cursor-pointer animate-pulse',
     planGuard: 'bg-gradient-to-b from-orange-300 to-orange-400 border-orange-600 text-orange-900 font-bold cursor-pointer',
-    artifactSite: 'bg-gradient-to-b from-cyan-300 to-cyan-400 border-cyan-600 text-cyan-900 font-bold cursor-pointer animate-pulse',  // ✅ جدید
+    artifactSite: 'bg-gradient-to-b from-cyan-300 to-cyan-400 border-cyan-600 text-cyan-900 font-bold cursor-pointer animate-pulse',
     natar:     'bg-gradient-to-b from-rose-300 to-rose-400 border-rose-600 text-rose-900 font-bold cursor-pointer',
     village:   'bg-gradient-to-b from-brand-200 to-brand-300 border-brand-500 text-brand-900 hover:brightness-105 cursor-pointer',
-    empty:     'bg-parchment-100 border-parchment-300 text-ink-400',
+    empty:     'bg-gradient-to-b from-parchment-50 to-parchment-100 border-parchment-300 text-ink-400',
 };
 
 export default function WorldMap() {
@@ -71,7 +68,7 @@ export default function WorldMap() {
             const oasis = oases.find((o) => o.x_coord === x && o.y_coord === y);
             grid.push({
                 x, y, hasVillage: !!found,
-                name: found ? found.name : "بیابان",
+                name: found ? found.name : null,
                 owner: found ? found.owner : null,
                 isNatar: found ? found.is_natar : false,
                 isMine: found ? found.id === activeVillageId : false,
@@ -123,18 +120,14 @@ export default function WorldMap() {
 
     return (
         <div
-            className="w-full min-h-screen pt-24 pb-16 flex flex-col items-center"
+            className="w-full flex flex-col items-center"
             style={{
-                // پیشنهاد عکس: /assets/maps/world-map-bg.jpg (بافت زمین/جنگل از بالا، سبک نقاشی فانتزی)
-                backgroundImage: "linear-gradient(180deg, rgba(15,35,20,.55), rgba(15,35,20,.75)), url('/assets/maps/world-map-bg.jpg')",
+                backgroundImage: "linear-gradient(180deg, rgba(15,35,20,.55), rgba(15,35,20,.75)), url('/assets/bgs/bg-map.png')",
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 backgroundColor: '#12321c',
             }}
         >
-            <ResourceBar />
-            <Navbar />
-
             <div className="panel !bg-parchment-50/95 backdrop-blur p-6 max-w-2xl w-full mx-4 mt-2">
                 <h2 className="text-lg font-extrabold text-ink-800 mb-4 text-center">
                     🗺️ نقشه منطقه‌ای سرور <span className="text-ink-400 font-normal text-sm">(اطراف {center.x}|{center.y})</span>
@@ -143,19 +136,38 @@ export default function WorldMap() {
                 {loading ? (
                     <LoadingState label="در حال بارگذاری نقشه..." />
                 ) : (
-                    <div className="grid grid-cols-5 gap-2 bg-ink-900/5 p-3 rounded-xl border border-parchment-300">
+                    <div className="grid grid-cols-5 gap-1.5 bg-ink-900/5 p-3 rounded-xl border border-parchment-300">
                         {grid.map((cell, index) => (
                             <div
                                 key={index}
                                 onClick={() => handleCellClick(cell)}
-                                className={`h-24 flex flex-col items-center justify-center border-2 rounded-lg text-xs p-1 transition select-none ${cellStyleFor(cell)}`}
+                                className={`h-20 flex flex-col items-center justify-center border-2 rounded-lg text-xs p-1 transition select-none ${cellStyleFor(cell)}`}
                             >
-                                <span className="font-bold opacity-70 text-[10px]">[{cell.x}, {cell.y}]</span>
-                                <span className="text-center mt-1 font-semibold truncate w-full">
-                                    {cell.isMine ? '👑 ' : ''}{cell.name}
-                                </span>
-                                {cell.owner && !cell.isNatar && !cell.isMine && (
-                                    <span className="text-[10px] opacity-70 truncate w-full">{cell.owner}</span>
+                                {cell.oasis ? (
+                                    <>
+                                        <img src="/assets/map/oasis-1.gif" alt="oasis" className="w-6 h-6 mb-0.5" />
+                                        <span className="text-[9px] font-bold opacity-70">[{cell.x}|{cell.y}]</span>
+                                    </>
+                                ) : cell.hasVillage ? (
+                                    <>
+                                        <span className="text-lg">{cell.isMine ? '👑' : cell.isNatar ? '🏛️' : '🏘️'}</span>
+                                        <span className="text-[10px] font-bold truncate w-full text-center">{cell.name}</span>
+                                        {cell.owner && !cell.isNatar && !cell.isMine && (
+                                            <span className="text-[9px] opacity-70 truncate w-full text-center">{cell.owner}</span>
+                                        )}
+                                    </>
+                                ) : cell.isWwSite ? (
+                                    <>
+                                        <span className="text-lg">🏛️</span>
+                                        <span className="text-[9px] font-bold opacity-70">[{cell.x}|{cell.y}]</span>
+                                    </>
+                                ) : cell.isArtifactSite ? (
+                                    <>
+                                        <span className="text-lg">🏺</span>
+                                        <span className="text-[9px] font-bold opacity-70">[{cell.x}|{cell.y}]</span>
+                                    </>
+                                ) : (
+                                    <span className="text-[10px] opacity-50 font-mono">[{cell.x}|{cell.y}]</span>
                                 )}
                             </div>
                         ))}
@@ -163,12 +175,13 @@ export default function WorldMap() {
                 )}
 
                 <div className="flex flex-wrap gap-3 justify-center mt-4 text-[10px] font-bold text-ink-600">
-                    <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-blue-300 inline-block" />دهکده من</span>
-                    <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-brand-300 inline-block" />بازیکن دیگر</span>
-                    <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-rose-300 inline-block" />ناتار</span>
-                    <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-purple-300 inline-block" />محل شگفتی جهان</span>
-                    <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-orange-300 inline-block" />نگهبان نقشه</span>
-                    <span className="flex items-center gap-1"><i className="w-3 h-3 rounded-full bg-cyan-300 inline-block" />محل کتیبه</span>
+                    <span className="flex items-center gap-1"><span className="text-blue-600">👑</span> دهکده من</span>
+                    <span className="flex items-center gap-1"><span className="text-green-600">🏘️</span> بازیکن دیگر</span>
+                    <span className="flex items-center gap-1"><span className="text-rose-600">🏛️</span> ناتار</span>
+                    <span className="flex items-center gap-1"><span className="text-purple-600">🏛️</span> محل شگفتی جهان</span>
+                    <span className="flex items-center gap-1"><span className="text-orange-600">🏕️</span> نگهبان نقشه</span>
+                    <span className="flex items-center gap-1"><span className="text-cyan-600">🏺</span> محل کتیبه</span>
+                    <span className="flex items-center gap-1"><span className="text-emerald-600">🌿</span> اوسیس</span>
                 </div>
                 <p className="text-xs text-ink-500 mt-3 text-center">برای اعزام نیرو به هر دهکده، روی آن کلیک کنید.</p>
             </div>
@@ -198,7 +211,6 @@ export default function WorldMap() {
                     </div>
                 </div>
             )}
-            <Footer />
         </div>
     );
 }

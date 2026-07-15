@@ -316,10 +316,9 @@ export default function Hero() {
             <div className="rounded-2xl overflow-hidden shadow-card border border-ink-700">
                 <div className="bg-gradient-to-b from-ink-800 to-ink-900 p-6 text-parchment-100">
                     <div className="flex items-center gap-4 mb-4">
-                        {/* عکس پیشنهادی: /assets/hero/hero_portrait.png */}
-                        <img src="/assets/hero/hero_portrait.png" alt="قهرمان"
+                        <img src="/assets/hero/hero-portrait.png" alt="قهرمان"
                             className="w-20 h-20 rounded-full border-4 border-gold-500 object-cover bg-ink-700 flex-shrink-0"
-                            onError={(e) => { e.target.style.visibility = 'hidden'; }} />
+                            onError={(e) => { e.target.style.display='none'; }} />
                         <div>
                             <h1 className="text-2xl font-extrabold text-gold-400">🦸 قهرمان شما</h1>
                             <p className="text-xs text-parchment-400 mt-1">سطح {hero.level}</p>

@@ -57,8 +57,6 @@ _CITY_BUILDING_DEFS = (
     ("آبشخور اسب", 0, 'MILITARY'),
     ("اداره تجارت", 0, 'INFRASTRUCTURE'),
     ("پادگان بزرگ", 0, 'MILITARY'),
-    ("آسیاب", 0, 'INFRASTRUCTURE'),
-    ("قصر", 0, 'INFRASTRUCTURE'),
 )
 
 _RALLY_POINT_DEF = ("محل گردهمایی", 1, 'INFRASTRUCTURE')
@@ -130,6 +128,8 @@ def _pick_field_distribution():
 
 
 def _create_default_buildings(village, distribution_key='NORMAL'):
+    if VillageBuilding.objects.filter(village=village).exists():
+        return
     position = 1
     field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
     for type_name, count in field_defs.items():
@@ -292,6 +292,8 @@ def abandon_village(player, village):
 
 
 def _create_resource_fields_only(village, distribution_key='NORMAL'):
+    if VillageBuilding.objects.filter(village=village).exists():
+        return
     position = 1
     field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
     for type_name, count in field_defs.items():

@@ -58,27 +58,27 @@ export default function ServerStatusBanner() {
     // نمایش شمارش معکوس آزادسازی کتیبه‌ها و نقشه ساخت
     const banners = [];
 
-    if (!status.artifacts_unlocked && status.artifacts_release_at) {
-        const remaining = formatCountdown(status.artifacts_release_at);
-        if (remaining) {
-            banners.push(
-                <div key="artifacts" className="bg-gradient-to-l from-purple-700 to-purple-900 text-purple-100 text-center py-1.5 text-xs font-bold">
-                    🏺 کتیبه‌ها {remaining} دیگر آزاد می‌شوند
-                </div>
-            );
-        }
-    }
+    // if (!status.artifacts_unlocked && status.artifacts_release_at) {
+    //     const remaining = formatCountdown(status.artifacts_release_at);
+    //     if (remaining) {
+    //         banners.push(
+    //             // <div key="artifacts" className="bg-gradient-to-l from-purple-700 to-purple-900 text-purple-100 text-center py-1.5 text-xs font-bold">
+    //             //     🏺 کتیبه‌ها {remaining} دیگر آزاد می‌شوند
+    //             // </div>
+    //         );
+    //     }
+    // }
 
-    if (!status.ww_unlocked && status.ww_plans_release_at) {
-        const remaining = formatCountdown(status.ww_plans_release_at);
-        if (remaining) {
-            banners.push(
-                <div key="ww" className="bg-gradient-to-l from-amber-700 to-amber-900 text-amber-100 text-center py-1.5 text-xs font-bold">
-                    🗺️ نقشه ساخت شگفتی جهان {remaining} دیگر آزاد می‌شود
-                </div>
-            );
-        }
-    }
+    // if (!status.ww_unlocked && status.ww_plans_release_at) {
+    //     const remaining = formatCountdown(status.ww_plans_release_at);
+    //     if (remaining) {
+    //         banners.push(
+    //             <div key="ww" className="bg-gradient-to-l from-amber-700 to-amber-900 text-amber-100 text-center py-1.5 text-xs font-bold">
+    //                 🗺️ نقشه ساخت شگفتی جهان {remaining} دیگر آزاد می‌شود
+    //             </div>
+    //         );
+    //     }
+    // }
 
     if (banners.length === 0) return null;
 

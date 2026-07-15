@@ -5,7 +5,7 @@ import Footer from "../components/Footer";
 
 export default function GameLayout() {
     return (
-        <div className="h-screen flex flex-col bg-[#cfe0a8]">
+        <div className="h-screen flex flex-col game-bg">
 
             <ResourceBar />
 

@@ -1,8 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as PIXI from 'pixi.js';
-import ResourceBar from '../components/ResourceBar';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import { Modal } from '../components/Modal';
 import { AlertModal } from '../components/Modal';
 import api from '../api/axiosConfig';
@@ -22,32 +19,40 @@ const DORF2_SLOTS = {
     41: { x: 150, y: 400 },
 };
 
+// Travian building IDs: g1=main, g2=woodcutter, g3=clay, g4=iron, g5=cropland,
+// g6=mill, g7=smithy, g8=bakery, g9=warehouse, g10=granary, g11=rallypoint,
+// g12=statue, g13=barracks, g14=stable, g15=workshop, g16=academy,
+// g17=cranny, g18=townhall, g19=residence, g20=chancery, g21=blacksmith,
+// g22=market, g23=timbercamp, g24=claypit, g25=ironmine, g26=farm,
+// g27=granary2, g28=smithy2, g29=tournamentsquare, g30=main2,
+// g34=trapper, g35=heromansion, g36=merchants, g37=stonemason,
+// g38=horsedrinking, g39=wall, g40=worldwonder
 const BUILDING_META = {
-    'ساختمان اصلی': { asset: 'main_building', color: 0xb5652f, icon: '🏛️' },
-    'انبار': { asset: 'warehouse', color: 0x8a6b4a, icon: '📦' },
-    'سیلوی غله': { asset: 'granary', color: 0xd9a62e, icon: '🌾' },
-    'پادگان': { asset: 'barracks', color: 0x8b3a3a, icon: '⚔️' },
-    'اصطبل': { asset: 'stable', color: 0x6b4a2f, icon: '🐎' },
-    'کارگاه': { asset: 'workshop', color: 0x555555, icon: '🎯' },
-    'بازارچه': { asset: 'marketplace', color: 0xd9942a, icon: '⚖️' },
-    'سفارتخانه': { asset: 'embassy', color: 0x2f6b8a, icon: '🏰' },
-    'خزانه‌داری': { asset: 'treasury', color: 0xb5972f, icon: '💰' },
-    'آکادمی': { asset: 'academy', color: 0x4a6b8a, icon: '🎓' },
-    'عمارت اقامتی': { asset: 'residence', color: 0x8a4a6b, icon: '🏯' },
-    'تالار شهر': { asset: 'town_hall', color: 0x6b6b4a, icon: '🏢' },
-    'مخفیگاه': { asset: 'hideout', color: 0x3a3a3a, icon: '🕳️' },
-    'آهنگری': { asset: 'blacksmith', color: 0x4a3a2f, icon: '🔨' },
-    'کارگاه سنگ‌تراشی': { asset: 'stonemason', color: 0x7a7a7a, icon: '⛏️' },
-    'عمارت قهرمان': { asset: 'hero_mansion', color: 0x8a2f6b, icon: '🦸' },
-    'آبشخور اسب': { asset: 'horse_trough', color: 0x4a8a6b, icon: '💧' },
-    'اداره تجارت': { asset: 'trade_office', color: 0xd9942a, icon: '🐪' },
-    'پادگان بزرگ': { asset: 'great_barracks', color: 0x8b3a3a, icon: '⚔️' },
-    'آسیاب': { asset: 'mill', color: 0xc4a265, icon: '⚙️' },
-    'قصر': { asset: 'palace', color: 0xb5972f, icon: '👑' },
-    'محل گردهمایی': { asset: 'rally_point', color: 0x2f8a4a, icon: '🚩' },
-    'دیوار (Wall)': { asset: 'wall', color: 0x6b6b6b, icon: '🧱' },
-    'شگفتی جهان': { asset: 'world_wonder', color: 0xd9b52f, icon: '🏛️' },
-    'تله': { asset: 'trapper', color: 0x4a2f4a, icon: '🪤' },
+    'ساختمان اصلی': { asset: '/assets/buildings/g1.gif', color: 0xb5652f, icon: '🏛️' },
+    'انبار': { asset: '/assets/buildings/g9.gif', color: 0x8a6b4a, icon: '📦' },
+    'سیلوی غله': { asset: '/assets/buildings/g10.gif', color: 0xd9a62e, icon: '🌾' },
+    'پادگان': { asset: '/assets/buildings/g13.gif', color: 0x8b3a3a, icon: '⚔️' },
+    'اصطبل': { asset: '/assets/buildings/g14.gif', color: 0x6b4a2f, icon: '🐎' },
+    'کارگاه': { asset: '/assets/buildings/g15.gif', color: 0x555555, icon: '🎯' },
+    'بازارچه': { asset: '/assets/buildings/g22.gif', color: 0xd9942a, icon: '⚖️' },
+    'سفارتخانه': { asset: '/assets/buildings/g18.gif', color: 0x2f6b8a, icon: '🏰' },
+    'خزانه‌داری': { asset: '/assets/buildings/g17.gif', color: 0xb5972f, icon: '💰' },
+    'آکادمی': { asset: '/assets/buildings/g16.gif', color: 0x4a6b8a, icon: '🎓' },
+    'عمارت اقامتی': { asset: '/assets/buildings/g19.gif', color: 0x8a4a6b, icon: '🏯' },
+    'تالار شهر': { asset: '/assets/buildings/g18.gif', color: 0x6b6b4a, icon: '🏢' },
+    'مخفیگاه': { asset: '/assets/buildings/g17.gif', color: 0x3a3a3a, icon: '🕳️' },
+    'آهنگری': { asset: '/assets/buildings/g21.gif', color: 0x4a3a2f, icon: '🔨' },
+    'کارگاه سنگ‌تراشی': { asset: '/assets/buildings/g37.gif', color: 0x7a7a7a, icon: '⛏️' },
+    'عمارت قهرمان': { asset: '/assets/buildings/g35.gif', color: 0x8a2f6b, icon: '🦸' },
+    'آبشخور اسب': { asset: '/assets/buildings/g38.gif', color: 0x4a8a6b, icon: '💧' },
+    'اداره تجارت': { asset: '/assets/buildings/g36.gif', color: 0xd9942a, icon: '🐪' },
+    'پادگان بزرگ': { asset: '/assets/buildings/g29.gif', color: 0x8b3a3a, icon: '⚔️' },
+    'آسیاب': { asset: '/assets/buildings/g8.gif', color: 0xc4a265, icon: '⚙️' },
+    'قصر': { asset: '/assets/buildings/g19.gif', color: 0xb5972f, icon: '👑' },
+    'محل گردهمایی': { asset: '/assets/buildings/g11.gif', color: 0x2f8a4a, icon: '🚩' },
+    'دیوار (Wall)': { asset: '/assets/buildings/g39.gif', color: 0x6b6b6b, icon: '🧱' },
+    'شگفتی جهان': { asset: '/assets/buildings/g40.gif', color: 0xd9b52f, icon: '🏛️' },
+    'تله': { asset: '/assets/buildings/g34.gif', color: 0x4a2f4a, icon: '🪤' },
 };
 
 function remainingSeconds(endTimeIso) {
@@ -70,7 +75,7 @@ export default function VillageCenter() {
     const pixiAppRef = useRef(null);
 
     const fetchBuildings = useCallback(async () => {
-        if (!activeVillageId) return;
+        if (!activeVillageId) { setLoading(false); return; }
         try {
             const { data } = await api.get(`game/villages/${activeVillageId}/buildings/`);
             setVillageInfo(data.village);
@@ -109,8 +114,7 @@ export default function VillageCenter() {
         async function renderScene(app) {
             app.stage.removeChildren();
             try {
-                // پیشنهاد عکس: /assets/maps/dorf2_bg.png (نمای بالای شهرک با جاده‌های خاکی)
-                const bgTexture = await PIXI.Assets.load('/assets/maps/dorf2_bg.png');
+                const bgTexture = await PIXI.Assets.load('/assets/bgs/bgVillage-rtl.jpg');
                 const bgSprite = new PIXI.Sprite(bgTexture);
                 bgSprite.width = app.screen.width;
                 bgSprite.height = app.screen.height;
@@ -123,7 +127,7 @@ export default function VillageCenter() {
 
             const activeBuildings = buildings.filter(b => DORF2_SLOTS[b.position]);
 
-            activeBuildings.forEach((b) => {
+            for (const b of activeBuildings) {
                 const coords = DORF2_SLOTS[b.position];
                 const container = new PIXI.Container();
                 container.x = coords.x; container.y = coords.y;
@@ -131,24 +135,21 @@ export default function VillageCenter() {
                 const meta = BUILDING_META[b.name] || { color: 0x999999, icon: '❔' };
                 const hasLevel = b.level > 0 || b.is_upgrading;
 
-                const sprite = PIXI.Sprite.from(`/assets/buildings/${meta.asset || 'default_building'}.png`);
-                sprite.anchor.set(0.5);
-                sprite.width = 68; sprite.height = 68;
-                container.addChild(sprite);
-
-                // شکل پایه‌ی رنگی زیر عکس - اگر عکس نبود همچنان قابل تشخیص باشد
-                const baseShape = new PIXI.Graphics();
-                baseShape.roundRect(-32, -32, 64, 64, 10)
-                    .fill({ color: meta.color, alpha: hasLevel ? 0.85 : 0.3 })
-                    .stroke({ width: 2.5, color: 0xffffff, alpha: 0.8 });
-                container.addChildAt(baseShape, 0);
-
-                if (!hasLevel) {
-                    const icon = new PIXI.Text({ text: meta.icon, style: { fontSize: 24 } });
+                // Load and display the actual building GIF image
+                try {
+                    const texture = await PIXI.Assets.load(meta.asset);
+                    const sprite = new PIXI.Sprite(texture);
+                    sprite.anchor.set(0.5);
+                    sprite.width = 68; sprite.height = 68;
+                    container.addChild(sprite);
+                } catch(e) {
+                    // If image fails, show icon text as last resort
+                    const icon = new PIXI.Text({ text: meta.icon, style: { fontSize: 28 } });
                     icon.anchor.set(0.5);
                     container.addChild(icon);
                 }
 
+                // Level badge
                 if (hasLevel) {
                     const badge = new PIXI.Graphics();
                     badge.circle(0, 0, 15).fill({ color: 0xf5b638 }).stroke({ width: 2.5, color: 0x1c1710 });
@@ -158,6 +159,7 @@ export default function VillageCenter() {
                     container.addChild(badge, lvlText);
                 }
 
+                // Upgrading indicator
                 if (b.is_upgrading) {
                     const ring = new PIXI.Graphics();
                     ring.roundRect(-36, -36, 72, 72, 12).stroke({ width: 3, color: 0xf5b638, alpha: 0.9 });
@@ -174,7 +176,7 @@ export default function VillageCenter() {
                 container.on('pointerdown', () => setSelectedSlot(b));
 
                 app.stage.addChild(container);
-            });
+            }
         }
 
         initPixi();
@@ -204,13 +206,10 @@ export default function VillageCenter() {
         return r.wood >= c.wood && r.clay >= c.clay && r.iron >= c.iron && r.crop >= c.crop;
     };
 
-    const upgradingBuildings = buildings.filter(b => b.is_upgrading).sort((a, b) => new Date(a.upgrade_end_time) - new Date(b.upgrade_end_time));
-
     return (
         <div
             className="w-full h-full flex flex-col items-center"
             style={{
-                // پیشنهاد عکس: /assets/bgs/bgVillage-rtl.jpg (آسمان+کوه، هماهنگ با bgResources)
                 backgroundImage: "url('/assets/bgs/bgVillage-rtl.jpg')",
                 backgroundSize: "cover", backgroundPosition: "center", backgroundColor: '#cfe0a8',
             }}
@@ -228,20 +227,6 @@ export default function VillageCenter() {
                     )}
 
                     <div className="rounded-2xl overflow-hidden shadow-card border-4 border-ink-800 bg-ink-900" ref={pixiContainerRef} style={{ width: '660px', height: '500px', maxWidth: '100%' }} />
-
-                    {upgradingBuildings.length > 0 && (
-                        <div className="panel mt-6 w-full max-w-[660px]">
-                            <div className="panel-header !py-2.5"><span className="panel-title text-sm">🔨 صف ساخت‌وساز</span></div>
-                            <div className="panel-body !py-2">
-                                {upgradingBuildings.map((b) => (
-                                    <div key={b.id} className="flex justify-between items-center py-1.5 border-b border-parchment-200 last:border-0 text-sm">
-                                        <span className="font-bold text-ink-700">{b.name} (سطح {b.level + 1})</span>
-                                        <span className="font-mono font-bold text-rose-600" dir="ltr">{formatDuration(remainingSeconds(b.upgrade_end_time))}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
                 </div>
             )}
 

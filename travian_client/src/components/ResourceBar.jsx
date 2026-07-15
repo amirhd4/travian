@@ -4,10 +4,10 @@ import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 
 const RESOURCE_CONFIG = [
-    { key: 'wood', icon: '🪵', label: 'چوب', maxKey: 'maxStorage' },
-    { key: 'clay', icon: '🧱', label: 'خشت', maxKey: 'maxStorage' },
-    { key: 'iron', icon: '⚒️', label: 'آهن', maxKey: 'maxStorage' },
-    { key: 'crop', icon: '🌾', label: 'گندم', maxKey: 'maxGranary' },
+    { key: 'wood', icon: '🪵', image: '/assets/ui/res-1.gif', label: 'چوب', maxKey: 'maxStorage' },
+    { key: 'clay', icon: '🧱', image: '/assets/ui/res-2.gif', label: 'خشت', maxKey: 'maxStorage' },
+    { key: 'iron', icon: '⚒️', image: '/assets/ui/res-3.gif', label: 'آهن', maxKey: 'maxStorage' },
+    { key: 'crop', icon: '🌾', image: '/assets/ui/res-4.gif', label: 'گندم', maxKey: 'maxGranary' },
 ];
 
 function useLiveClock() {
@@ -77,7 +77,7 @@ export default function ResourceBar() {
             </div>
 
             <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-3 sm:gap-6 px-3 pb-2">
-                {RESOURCE_CONFIG.map(({ key, icon, label, maxKey }) => {
+                {RESOURCE_CONFIG.map(({ key, icon, image, label, maxKey }) => {
                     const value = Math.floor(resources[key]);
                     const prod = Math.round(production[key]);
                     const max = maxKey === 'maxGranary' ? maxGranary : maxStorage;
@@ -86,7 +86,8 @@ export default function ResourceBar() {
                     return (
                         <div key={key} className="flex flex-col items-center min-w-[80px]">
                             <div className="flex items-center gap-1 mb-0.5">
-                                <span className="text-sm">{isCrop && isStarving ? '⚠️' : icon}</span>
+                                <img src={image} alt={label} className="w-4 h-4" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                <span className="text-sm hidden">{isCrop && isStarving ? '⚠️' : icon}</span>
                                 <span className="text-[10px] text-parchment-400">{label}</span>
                             </div>
                             <span className="text-sm font-bold text-parchment-50">{value.toLocaleString()}</span>
@@ -97,7 +98,7 @@ export default function ResourceBar() {
                                 />
                             </div>
                             <span className={`text-[10px] font-bold ${prod < 0 ? 'text-rose-400' : 'text-brand-300'}`}>
-                                {prod >= 0 ? '+' : ''}{prod}/س
+                                {prod >= 0 ? '+' : ''}{prod}/ساعت
                             </span>
                         </div>
                     );

@@ -8,8 +8,12 @@ import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from '../utils/formatter.js';
 
 const typeIcon = (type) => ({
-    ATTACK: '🪓', RAID: '💰', REINFORCEMENT: '🛡️', SCOUT: '🔍', RETURN: '↩️',
-}[type] || '➡️');
+    ATTACK: { emoji: '🪓', image: '/assets/ui/attack-symbol.gif' },
+    RAID: { emoji: '💰', image: '/assets/ui/gold-icon.gif' },
+    REINFORCEMENT: { emoji: '🛡️', image: '/assets/ui/status-def.gif' },
+    SCOUT: { emoji: '🔍', image: '/assets/ui/cropfinder.gif' },
+    RETURN: { emoji: '↩️', image: '/assets/ui/car-icon.gif' },
+}[type] || { emoji: '➡️', image: '/assets/ui/car-icon.gif' });
 
 export default function Movements() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
@@ -66,7 +70,8 @@ export default function Movements() {
                             {data.outgoing.map((m) => (
                                 <div key={m.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 rounded-xl p-3">
                                     <div className="flex items-center gap-3">
-                                        <span className="text-xl">{typeIcon(m.movement_type)}</span>
+                                        <img src={typeIcon(m.movement_type).image} alt="" className="w-6 h-6" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                        <span className="text-xl hidden">{typeIcon(m.movement_type).emoji}</span>
                                         <div>
                                             <p className="font-bold text-sm text-ink-800">{m.movement_type_display}</p>
                                             <p className="text-xs text-ink-500">مقصد: {m.target_name} ({m.target_coords})</p>
@@ -90,7 +95,17 @@ export default function Movements() {
                             {data.incoming.map((m) => (
                                 <div key={m.id} className={`flex items-center justify-between border rounded-xl p-3 ${m.is_hostile ? 'bg-rose-50 border-rose-300 animate-pulse' : 'bg-brand-50 border-brand-300'}`}>
                                     <div className="flex items-center gap-3">
-                                        <span className="text-xl">{m.is_hostile ? '⚔️' : typeIcon(m.movement_type)}</span>
+                                        {m.is_hostile ? (
+                                            <>
+                                                <img src="/assets/ui/attack-symbol.gif" alt="" className="w-6 h-6" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                                <span className="text-xl hidden">⚔️</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <img src={typeIcon(m.movement_type).image} alt="" className="w-6 h-6" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                                <span className="text-xl hidden">{typeIcon(m.movement_type).emoji}</span>
+                                            </>
+                                        )}
                                         <div>
                                             <p className={`font-bold text-sm ${m.is_hostile ? 'text-rose-700' : 'text-brand-800'}`}>{m.movement_type_display}</p>
                                             <p className="text-xs text-ink-500">

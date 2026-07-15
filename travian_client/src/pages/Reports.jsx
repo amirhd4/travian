@@ -6,10 +6,10 @@ import EmptyState from '../components/EmptyState';
 import { AlertModal, ConfirmModal } from '../components/Modal';
 
 const LOG_STYLES = {
-    COMBAT:   { icon: '⚔️', border: 'border-rose-400', bg: 'bg-rose-50' },
-    BUILDING: { icon: '🏗️', border: 'border-blue-400', bg: 'bg-blue-50' },
-    TRADE:    { icon: '🤝', border: 'border-gold-400', bg: 'bg-gold-50' },
-    SYSTEM:   { icon: 'ℹ️', border: 'border-parchment-400', bg: 'bg-parchment-100' },
+    COMBAT:   { icon: '⚔️', image: '/assets/reports/attack.jpg', border: 'border-rose-400', bg: 'bg-rose-50' },
+    BUILDING: { icon: '🏗️', image: '/assets/ui/buildings-icon.gif', border: 'border-blue-400', bg: 'bg-blue-50' },
+    TRADE:    { icon: '🤝', image: '/assets/reports/trade.jpg', border: 'border-gold-400', bg: 'bg-gold-50' },
+    SYSTEM:   { icon: 'ℹ️', image: null, border: 'border-parchment-400', bg: 'bg-parchment-100' },
 };
 
 const TABS = [
@@ -237,7 +237,10 @@ export default function Reports() {
                                         const style = LOG_STYLES[log.log_type] || LOG_STYLES.SYSTEM;
                                         return (
                                             <div key={log.id} className={`flex items-start p-4 rounded-xl border-r-4 ${style.border} ${style.bg}`}>
-                                                <span className="text-2xl ml-4">{style.icon}</span>
+                                                {style.image ? (
+                                                    <img src={style.image} alt="" className="w-10 h-10 ml-4 flex-shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                                ) : null}
+                                                <span className="text-2xl ml-4 hidden">{style.icon}</span>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
                                                         <span className="font-bold text-sm text-ink-700">{log.log_type_display}</span>

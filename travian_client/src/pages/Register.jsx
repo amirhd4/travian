@@ -4,9 +4,9 @@ import api from "../api/axiosConfig.js";
 import { AlertModal } from "../components/Modal";
 
 const TRIBES = [
-    { value: "GAUL", label: "گل‌ها", image: "/assets/tribes/gaul.png" },
-    { value: "TEUTON", label: "توتون‌ها", image: "/assets/tribes/teuton.png" },
-    { value: "ROMAN", label: "رومی‌ها", image: "/assets/tribes/roman.png" },
+    { value: "GAUL", label: "گل‌ها", image: "/assets/tribes/gaul-splash.gif", fallback: "/assets/tribes/gaul.png" },
+    { value: "TEUTON", label: "توتون‌ها", image: "/assets/tribes/teuton-splash.gif", fallback: "/assets/tribes/teuton.png" },
+    { value: "ROMAN", label: "رومی‌ها", image: "/assets/tribes/roman-splash.gif", fallback: "/assets/tribes/roman.png" },
 ];
 
 const STARTING_LOCATIONS = [
@@ -82,14 +82,14 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen game-bg flex items-center justify-center p-4">
+        <div className="min-h-screen bg-login flex items-center justify-center p-4">
             <AlertModal
                 open={!!successMsg} tone="success" title="ثبت‌نام موفق" message={successMsg}
                 onClose={() => navigate("/login")}
             />
 
             <div className="w-full max-w-xl panel overflow-hidden">
-                <div className="bg-gradient-to-b from-ink-800 to-ink-900 px-8 py-6 text-center">
+                <div className="bg-gradient-to-b from-ink-800/90 to-ink-900/95 px-8 py-6 text-center">
                     <h1 className="text-2xl font-extrabold text-parchment-50">ثبت‌نام در بازی</h1>
                     <p className="text-xs text-parchment-200 mt-1">دنیای خودت رو بساز</p>
                 </div>
@@ -132,8 +132,7 @@ export default function Register() {
                                     <label key={t.value} className="text-center cursor-pointer">
                                         <input type="radio" name="tribe" value={t.value} checked={formData.tribe === t.value} onChange={handleChange} className="hidden" />
                                         <div className={`p-2 border-2 rounded-xl transition ${formData.tribe === t.value ? "border-gold-500 bg-gold-50" : "border-parchment-300 bg-white"}`}>
-                                            {/* پیشنهاد عکس: /assets/tribes/{gaul,teuton,roman}.png — نماد سپر/پرچم هر تمدن */}
-                                            <img src={t.image} alt={t.label} className="w-full h-20 object-contain mx-auto mb-1" onError={(e) => { e.target.style.display = 'none'; }} />
+                                            <img src={t.image} alt={t.label} className="w-full h-20 object-contain mx-auto mb-1" onError={(e) => { e.target.src = t.fallback; }} />
                                             <span className="text-xs font-bold text-ink-700">{t.label}</span>
                                         </div>
                                     </label>

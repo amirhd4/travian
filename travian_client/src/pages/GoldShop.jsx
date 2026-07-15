@@ -53,7 +53,8 @@ export default function GoldShop() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
                     {data.packages.map((pkg) => (
                         <div key={pkg.id} className="bg-white border-2 border-parchment-300 rounded-xl p-4 text-center shadow-soft hover:border-gold-400 transition">
-                            <p className="text-3xl mb-1">💰</p>
+                            <img src="/assets/ui/gold.gif" alt="طلا" className="w-12 h-12 mx-auto mb-1" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }} />
+                            <p className="text-3xl mb-1 hidden">💰</p>
                             <p className="font-bold text-ink-800 text-sm">{pkg.name}</p>
                             <p className="text-gold-600 font-extrabold text-xl mt-1">{pkg.gold_amount}</p>
                             {data.active_discount_percent > 0 && (

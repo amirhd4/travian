@@ -131,9 +131,9 @@ export default function Barracks() {
 
                             return (
                                 <div key={unit.id} className="rounded-xl border border-parchment-300 bg-parchment-50 p-4 flex flex-col md:flex-row gap-4 items-center">
-                                    <div className="w-16 h-16 rounded-xl bg-white border border-parchment-300 flex items-center justify-center text-3xl flex-shrink-0">
-                                        {/* پیشنهاد عکس: /assets/troops/unit_{id}.png */}
-                                        {unitIcon(unit)}
+                                    <div className="w-16 h-16 rounded-xl bg-white border border-parchment-300 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                        <img src={`/assets/troops/unit-${unit.id}.gif`} alt={unit.name} className="w-full h-full object-contain" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                                        <div className="w-full h-full items-center justify-center text-3xl hidden">{unitIcon(unit)}</div>
                                     </div>
 
                                     <div className="flex-1 min-w-0">

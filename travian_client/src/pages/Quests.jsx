@@ -67,17 +67,35 @@ export default function Quests() {
                 <div className="panel-body space-y-3">
                     {quests.map((q) => {
                         const progressPercent = Math.min(100, (q.current_value / q.condition_target) * 100);
+                        const questImages = {
+                            1: '/assets/quests/intro.jpg',
+                            2: '/assets/quests/wood.jpg',
+                            3: '/assets/quests/main.jpg',
+                            4: '/assets/quests/farm.jpg',
+                            5: '/assets/quests/barracks.jpg',
+                            6: '/assets/quests/units.jpg',
+                            7: '/assets/quests/report.jpg',
+                            8: '/assets/quests/neighbour.jpg',
+                            9: '/assets/quests/rank.jpg',
+                            10: '/assets/quests/new_village.jpg',
+                        };
+                        const questImage = questImages[q.order];
                         return (
                             <div key={q.id} className={`rounded-xl p-4 border-2 transition ${
                                 q.is_reward_claimed ? 'bg-parchment-100 border-parchment-300 opacity-60' :
                                 q.is_completed ? 'bg-brand-50 border-brand-400' : 'bg-parchment-50 border-parchment-300'
                             }`}>
                                 <div className="flex justify-between items-start mb-1 gap-2">
-                                    <div>
-                                        <p className="font-bold text-sm text-ink-800">
-                                            {q.is_reward_claimed ? '✅' : q.is_completed ? '🎁' : '📋'} {q.order}. {q.title}
-                                        </p>
-                                        <p className="text-xs text-ink-500 mt-1">{q.description}</p>
+                                    <div className="flex items-start gap-3">
+                                        {questImage && (
+                                            <img src={questImage} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" onError={(e) => { e.target.style.display='none'; }} />
+                                        )}
+                                        <div>
+                                            <p className="font-bold text-sm text-ink-800">
+                                                {q.is_reward_claimed ? '✅' : q.is_completed ? '🎁' : '📋'} {q.order}. {q.title}
+                                            </p>
+                                            <p className="text-xs text-ink-500 mt-1">{q.description}</p>
+                                        </div>
                                     </div>
                                     <span className="text-xs font-bold text-gold-700 whitespace-nowrap">{rewardText(q.reward)}</span>
                                 </div>
