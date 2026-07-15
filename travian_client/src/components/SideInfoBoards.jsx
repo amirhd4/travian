@@ -41,6 +41,24 @@ export default function SideInfoBoards() {
         return () => clearInterval(interval);
     }, [serverStatus]);
 
+    // ✅ جدید: تایمر آزادسازی نقشه‌ی ساخت شگفتی جهان
+    const [wwRemaining, setWwRemaining] = useState(null);
+    useEffect(() => {
+        if (!serverStatus?.ww_plans_release_at || serverStatus.ww_unlocked) {
+            setWwRemaining(null);
+            return;
+        }
+        const tick = () => {
+            const diff = Math.max(0,
+                Math.floor((new Date(serverStatus.ww_plans_release_at).getTime() - Date.now()) / 1000)
+            );
+            setWwRemaining(diff);
+        };
+        tick();
+        const interval = setInterval(tick, 1000);
+        return () => clearInterval(interval);
+    }, [serverStatus]);
+
     if (!user) return null;
 
     return (
@@ -74,11 +92,23 @@ export default function SideInfoBoards() {
             {remaining !== null && remaining > 0 && (
                 <div className="hidden xl:block fixed top-32 right-3 w-48 z-[100]" style={{ top: '16rem' }}>
                     <WoodSign title="🏺 کتیبه‌ها">
-                        <p className="text-[11px] text-center font-bold text-orange-700">
-                            آزادسازی در:
-                        </p>
+                        <p className="text-[11px] text-center font-bold text-orange-700">آزادسازی در:</p>
                         <p className="text-sm text-center font-mono text-wood-dark font-bold" dir="ltr">
                             {formatDuration(remaining)}
+                        </p>
+                    </WoodSign>
+                </div>
+            )}
+
+            {wwRemaining !== null && wwRemaining > 0 && (
+                <div
+                    className="hidden xl:block fixed top-32 right-3 w-48 z-[100]"
+                    style={{ top: remaining !== null && remaining > 0 ? '22rem' : '16rem' }}
+                >
+                    <WoodSign title="🏛️ نقشه ساخت شگفتی جهان">
+                        <p className="text-[11px] text-center font-bold text-purple-700">آزادسازی در:</p>
+                        <p className="text-sm text-center font-mono text-wood-dark font-bold" dir="ltr">
+                            {formatDuration(wwRemaining)}
                         </p>
                     </WoodSign>
                 </div>

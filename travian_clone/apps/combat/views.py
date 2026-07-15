@@ -3,13 +3,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count
 
 import datetime
 
 from .models import (
     TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal,
-    TrainingQueue, Adventure, FarmListEntry, TroopUpgrade, CombatReport, TrappedTroop,
+    TrainingQueue, Adventure, FarmListEntry, FarmList, TroopUpgrade, CombatReport, TrappedTroop,
     TroopEvasionSetting,
 )
 from .movement_utils import dispatch_troop_movement
@@ -539,18 +539,22 @@ class VillageMovementsView(APIView):
 
 
 class FarmListView(APIView):
-    """فهرست کامل و ایجاد ردیف جدید در لیست مزرعه."""
+    """فهرست کامل و ایجاد ردیف جدید در یک فارم‌لیست مشخص."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # نیاز به کلوپ طلایی
         if not request.user.has_gold_club:
             return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
 
+        farm_list_id = request.query_params.get('farm_list_id')
         entries = FarmListEntry.objects.filter(player=request.user).select_related('source_village', 'target_village')
+        if farm_list_id:
+            entries = entries.filter(farm_list_id=farm_list_id)
+
         return Response([
             {
                 "id": e.id,
+                "farm_list_id": e.farm_list_id,
                 "source_village_id": e.source_village_id,
                 "source_name": e.source_village.name,
                 "target_village_id": e.target_village_id,
@@ -565,16 +569,28 @@ class FarmListView(APIView):
         ])
 
     def post(self, request):
-        # نیاز به کلوپ طلایی
         if not request.user.has_gold_club:
             return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
 
+        farm_list_id = request.data.get('farm_list_id')
         source_id = request.data.get('source_village_id')
         target_id = request.data.get('target_village_id')
         troops_payload = request.data.get('troops_payload', {})
 
         if not troops_payload or not any(int(v or 0) > 0 for v in troops_payload.values()):
             return Response({"error": "حداقل یک نوع نیرو برای این ردیف مشخص کنید."}, status=400)
+
+        farm_list = None
+        if farm_list_id:
+            try:
+                farm_list = FarmList.objects.get(id=farm_list_id, player=request.user)
+            except FarmList.DoesNotExist:
+                return Response({"error": "فارم‌لیست انتخابی یافت نشد."}, status=404)
+        else:
+            # ✅ سازگاری: اگر فارم‌لیستی انتخاب نشده بود، یک لیست پیش‌فرض ساخته/استفاده می‌شود
+            farm_list, _ = FarmList.objects.get_or_create(
+                player=request.user, name='لیست مزرعه', defaults={}
+            )
 
         try:
             source_village = Village.objects.get(id=source_id, player=request.user)
@@ -591,6 +607,7 @@ class FarmListView(APIView):
 
         entry = FarmListEntry.objects.create(
             player=request.user,
+            farm_list=farm_list,
             source_village=source_village,
             target_village=target_village,
             troops_payload=troops_payload,
@@ -610,19 +627,22 @@ class FarmListEntryDetailView(APIView):
 
 
 class FarmListRunView(APIView):
-    """اجرای یک ردیف مشخص (entry_id) یا کل لیست مزرعه (run_all) با یک کلیک."""
+    """اجرای یک ردیف (entry_id)، یک لیست کامل (farm_list_id)، یا کل ردیف‌های بازیکن (run_all)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         entry_id = request.data.get('entry_id')
+        farm_list_id = request.data.get('farm_list_id')
         run_all = request.data.get('run_all', False)
 
-        if not entry_id and not run_all:
-            return Response({"error": "باید entry_id یا run_all مشخص شود."}, status=400)
+        if not entry_id and not farm_list_id and not run_all:
+            return Response({"error": "باید entry_id، farm_list_id یا run_all مشخص شود."}, status=400)
 
         entries_qs = FarmListEntry.objects.filter(player=request.user).select_related('source_village', 'target_village')
         if entry_id:
             entries_qs = entries_qs.filter(id=entry_id)
+        elif farm_list_id:
+            entries_qs = entries_qs.filter(farm_list_id=farm_list_id)
 
         results = []
         for entry in entries_qs:
@@ -630,6 +650,11 @@ class FarmListRunView(APIView):
                 request.user, entry.source_village, entry.target_village,
                 'RAID', entry.troops_payload, farm_list_entry=entry,
             )
+            entry.last_run_at = timezone.now()
+            entry.last_run_status = 'SUCCESS' if success else 'FAILED'
+            if not success:
+                entry.last_loot_summary = result
+            entry.save(update_fields=['last_run_at', 'last_run_status', 'last_loot_summary'])
             results.append({
                 "entry_id": entry.id,
                 "target_name": entry.target_village.name,
@@ -1159,3 +1184,48 @@ class HeroAuctionBidView(APIView):
             auction.save()
 
         return Response({"message": "پیشنهاد شما ثبت شد.", "current_bid": auction.current_bid})
+
+
+class FarmListManageView(APIView):
+    """مدیریت خودِ فارم‌لیست‌ها: ساخت، تغییر نام، حذف."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not request.user.has_gold_club:
+            return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
+
+        lists = FarmList.objects.filter(player=request.user).annotate(
+            entries_count=Count('entries')
+        )
+        return Response([
+            {"id": fl.id, "name": fl.name, "entries_count": fl.entries_count}
+            for fl in lists
+        ])
+
+    def post(self, request):
+        if not request.user.has_gold_club:
+            return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
+
+        name = (request.data.get('name') or '').strip() or 'لیست جدید'
+        farm_list = FarmList.objects.create(player=request.user, name=name)
+        return Response({"id": farm_list.id, "name": farm_list.name}, status=201)
+
+    def patch(self, request):
+        farm_list_id = request.data.get('farm_list_id')
+        new_name = (request.data.get('name') or '').strip()
+        if not new_name:
+            return Response({"error": "نام جدید نمی‌تواند خالی باشد."}, status=400)
+        try:
+            farm_list = FarmList.objects.get(id=farm_list_id, player=request.user)
+        except FarmList.DoesNotExist:
+            return Response({"error": "لیست یافت نشد."}, status=404)
+        farm_list.name = new_name
+        farm_list.save(update_fields=['name'])
+        return Response({"message": "نام لیست تغییر کرد.", "name": farm_list.name})
+
+    def delete(self, request):
+        farm_list_id = request.query_params.get('farm_list_id')
+        deleted, _ = FarmList.objects.filter(id=farm_list_id, player=request.user).delete()
+        if not deleted:
+            return Response({"error": "لیست یافت نشد."}, status=404)
+        return Response({"message": "لیست حذف شد."})

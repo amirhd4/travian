@@ -4,7 +4,7 @@ import WoodSign from './WoodSign';
 import { AlertModal } from './Modal';
 import useGameStore from '../store/useGameStore';
 
-const RESOURCE_TYPES = [
+const RESOURCE_BONUS_TYPES = [
     { value: 'all', label: 'همه منابع' },
     { value: 'wood', label: '🪵 چوب' },
     { value: 'clay', label: '🧱 خشت' },
@@ -32,6 +32,16 @@ export default function GoldFeatures() {
 
     const [troopShop, setTroopShop] = useState({ troops: [], animals: [] });
     const [troopShopQty, setTroopShopQty] = useState({});
+
+    const [resourceBonusType, setResourceBonusType] = useState('all');
+
+    const handleResourceBonus = () => {
+        if (!activeVillageId) return;
+        runAction('resource_bonus', () => api.post('game/gold/resource-bonus/', {
+            village_id: activeVillageId, resource_type: resourceBonusType,
+        }));
+    };
+
 
     const refreshGoldCoins = async () => {
         const { data } = await api.get('auth/me/');
@@ -142,9 +152,14 @@ export default function GoldFeatures() {
                     این گزینه‌ها روی دهکده‌ی فعال شما ({activeVillage?.name || '—'}) اعمال می‌شوند.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
-                    <button onClick={handleResourceBonus} disabled={busy === 'resource_bonus' || !activeVillageId} className="btn-gold text-xs">
-                        {busy === 'resource_bonus' ? '...' : '🚀 بونوس ۲۵٪ تولید (۲۴ ساعت)'}
-                    </button>
+                    <div className="flex items-center gap-2 md:col-span-2">
+                        <select value={resourceBonusType} onChange={(e) => setResourceBonusType(e.target.value)} className="field text-xs">
+                            {RESOURCE_BONUS_TYPES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        </select>
+                        <button onClick={handleResourceBonus} disabled={busy === 'resource_bonus' || !activeVillageId} className="btn-gold text-xs flex-1">
+                            {busy === 'resource_bonus' ? '...' : '🚀 بونوس ۲۵٪ تولید (۲۴ ساعت)'}
+                        </button>
+                    </div>
                     <button onClick={handleInstantRallyPoint} disabled={busy === 'rally_point' || !activeVillageId} className="btn-gold text-xs">
                         {busy === 'rally_point' ? '...' : '🚩 ساخت فوری محل گردهمایی'}
                     </button>

@@ -1185,12 +1185,18 @@ RESOURCE_BONUS_PERCENT = 25
 
 
 class ResourceBonusView(APIView):
-    """خرید بونوس 25% تولید منابع با طلا به مدت 24 ساعت."""
+    """خرید بونوس ۲۵٪ تولید منابع با طلا به مدت ۲۴ ساعت — به تفکیک نوع منبع."""
     permission_classes = [IsAuthenticated]
+
+    VALID_RESOURCE_TYPES = ('wood', 'clay', 'iron', 'crop', 'all')
 
     def post(self, request):
         village_id = request.data.get('village_id')
+        resource_type = request.data.get('resource_type', 'all')
         player = request.user
+
+        if resource_type not in self.VALID_RESOURCE_TYPES:
+            return Response({"error": "نوع منبع نامعتبر است."}, status=400)
 
         if player.gold_coins < RESOURCE_BONUS_GOLD_COST:
             return Response({"error": f"طلای کافی ندارید. هزینه: {RESOURCE_BONUS_GOLD_COST} سکه."}, status=400)
@@ -1200,25 +1206,25 @@ class ResourceBonusView(APIView):
         except Village.DoesNotExist:
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
-        # بررسی آیا بونوس فعال است
-        bonus_key = f"resource_bonus_{village.id}"
         from django.core.cache import cache
+        # ✅ جدید: کلید کش به تفکیک نوع منبع، تا بشه جدا جدا برای چوب/خشت-آهن/گندم خرید
+        bonus_key = f"resource_bonus_{village.id}_{resource_type}"
         if cache.get(bonus_key):
-            return Response({"error": "بونوس منابع برای این دهکده هم اکنون فعال است."}, status=400)
+            return Response({"error": "این بونوس هم‌اکنون برای این نوع منبع فعال است."}, status=400)
 
         player.gold_coins -= RESOURCE_BONUS_GOLD_COST
         player.save(update_fields=['gold_coins'])
 
-        # ذخیره بونوس در کش
         cache.set(bonus_key, True, timeout=RESOURCE_BONUS_DURATION_HOURS * 3600)
 
+        resource_label = {"wood": "چوب", "clay": "خشت/آهن", "iron": "خشت/آهن", "crop": "گندم", "all": "همه منابع"}[resource_type]
         GameLog.objects.create(
             village=village, log_type='SYSTEM',
-            description=f"بونوس {RESOURCE_BONUS_PERCENT}% تولید منابع به مدت {RESOURCE_BONUS_DURATION_HOURS} ساعت فعال شد."
+            description=f"بونوس {RESOURCE_BONUS_PERCENT}% تولید {resource_label} به مدت {RESOURCE_BONUS_DURATION_HOURS} ساعت فعال شد."
         )
 
         return Response({
-            "message": f"بونوس {RESOURCE_BONUS_PERCENT}% تولید منابع برای {RESOURCE_BONUS_DURATION_HOURS} ساعت فعال شد!",
+            "message": f"بونوس {RESOURCE_BONUS_PERCENT}% تولید {resource_label} برای {RESOURCE_BONUS_DURATION_HOURS} ساعت فعال شد!",
             "gold_coins": player.gold_coins,
         })
 
@@ -1428,7 +1434,7 @@ class InstantConstructionView(APIView):
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
         # ساختمان‌های در حال ارتقا (به جز قصر و اقامتگاه)
-        EXCLUDED_BUILDINGS = ("قصر", "اقامتگاه")
+        EXCLUDED_BUILDINGS = ("عمارت اقامتی", "تالار شهر", "شگفتی جهان")
         upgrading_buildings = VillageBuilding.objects.filter(
             village=village, is_upgrading=True
         ).exclude(
@@ -1751,10 +1757,16 @@ class SupportMessageView(APIView):
         if not body.strip():
             return Response({"error": "متن پیام نمی‌تواند خالی باشد."}, status=400)
 
-        try:
-            admin_player = Player.objects.get(username=ADMIN_USERNAME)
-        except Player.DoesNotExist:
-            return Response({"error": "حساب پشتیبانی یافت نشد."}, status=404)
+        # ✅ FIX: قبلا فقط دنبال username="admin" می‌گشت و اگر seed نشده بود همیشه 404 می‌داد.
+        admin_player = (
+            Player.objects.filter(username=ADMIN_USERNAME).first()
+            or Player.objects.filter(is_superuser=True).exclude(id=request.user.id).order_by('id').first()
+        )
+        if not admin_player:
+            return Response(
+                {"error": "حساب پشتیبانی هنوز روی این سرور تنظیم نشده است. لطفا دستور seed_admin_account را اجرا کنید."},
+                status=503,
+            )
 
         Message.objects.create(
             sender=request.user,
@@ -1764,7 +1776,6 @@ class SupportMessageView(APIView):
         )
 
         return Response({"message": "پیام شما با موفقیت به تیم پشتیبانی ارسال شد."}, status=201)
-
 
 class OasisMapView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1910,10 +1921,12 @@ class VillagesOverviewView(APIView):
                 village=village, is_upgrading=True
             ).order_by('upgrade_end_time').first()
 
-            from apps.combat.models import TroopMovement
-            incoming_attacks = TroopMovement.objects.filter(
-                target_village=village, movement_type__in=['ATTACK', 'RAID'], is_completed=False
-            ).count()
+            incoming_attacks = 0
+            if request.user.has_plus_active():
+                from apps.combat.models import TroopMovement
+                incoming_attacks = TroopMovement.objects.filter(
+                    target_village=village, movement_type__in=['ATTACK', 'RAID'], is_completed=False
+                ).count()
 
             data.append({
                 "id": village.id,

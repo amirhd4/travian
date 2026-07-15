@@ -62,9 +62,9 @@ def dispatch_troop_movement(
 
     hero_participating = False
     if send_hero:
-        # ✅ FIX: قهرمان فقط همراه حمله/غارت اعزام می‌شود (توضیح کامل در پیام قبل)
-        if movement_type not in ('ATTACK', 'RAID'):
-            return False, "قهرمان فقط می‌تواند همراه حمله یا غارت اعزام شود."
+        # ✅ طبق طراحی بازی: قهرمان می‌تواند همراه حمله، غارت یا پشتیبانی برود؛ فقط همراه شناسایی نمی‌رود.
+        if movement_type not in ('ATTACK', 'RAID', 'REINFORCEMENT'):
+            return False, "قهرمان فقط می‌تواند همراه حمله، غارت یا پشتیبانی اعزام شود."
         hero = Hero.objects.filter(player=player).first()
         if not hero or not hero.is_alive:
             return False, "قهرمان شما در دسترس نیست (از پای درآمده یا وجود ندارد)."

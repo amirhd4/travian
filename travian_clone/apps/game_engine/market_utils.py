@@ -15,7 +15,11 @@ def get_marketplace_level(village):
 
 
 def get_total_merchants(village):
-    return MERCHANT_BASE_COUNT + get_marketplace_level(village) * MERCHANT_PER_LEVEL
+    total = MERCHANT_BASE_COUNT + get_marketplace_level(village) * MERCHANT_PER_LEVEL
+    # ✅ جدید: اکانت پلاس ۳ تاجر اضافه برای ارسال هم‌زمان بیشتر می‌دهد
+    if village.player.has_plus_active():
+        total += 3
+    return total
 
 
 def get_busy_merchants(village):

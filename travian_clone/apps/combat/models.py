@@ -141,9 +141,23 @@ class TroopMovement(models.Model):
         return f"{self.movement_type} from {self.source_village.name} to {self.target_village.name}"
 
 
+class FarmList(models.Model):
+    """یک فارم‌لیستِ نام‌دار متعلق به یک بازیکن (بازیکن می‌تواند چند لیست بسازد)."""
+    player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='farm_lists')
+    name = models.CharField(max_length=50, default='لیست مزرعه')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.player.username} - {self.name}"
+
+
 class FarmListEntry(models.Model):
     """یک ردیف ثابت در «لیست مزرعه»"""
     player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='farm_list_entries')
+    farm_list = models.ForeignKey(FarmList, on_delete=models.CASCADE, related_name='entries', null=True, blank=True)
     source_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='farm_list_entries')
     target_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='+')
 
@@ -164,7 +178,6 @@ class FarmListEntry(models.Model):
 
     def __str__(self):
         return f"FarmList: {self.source_village.name} -> {self.target_village.name}"
-
 
 class HeroItem(models.Model):
     name = models.CharField(max_length=50)

@@ -167,7 +167,7 @@ export default function SendTroops() {
                             </div>
                         )}
 
-                        {(movementType === 'ATTACK' || movementType === 'RAID') && (
+                        {(movementType === 'ATTACK' || movementType === 'RAID' || movementType === 'REINFORCEMENT') && (
                             heroStatus && !heroStatus.is_alive ? (
                                 <p className="text-xs text-rose-700 font-bold bg-rose-50 border border-rose-300 rounded-xl p-3">
                                     ⚰️ قهرمان شما از پای درآمده و قادر به اعزام نیست.

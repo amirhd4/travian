@@ -214,12 +214,21 @@ def _resolve_reinforcement(movement):
         village_troop.count += qty
         village_troop.save()
 
+    # ✅ جدید: اگر قهرمان همراه این پشتیبانی اعزام شده بود، با رسیدن نیرو آزاد می‌شود
+    hero_note = ""
+    if movement.hero_participating:
+        hero = Hero.objects.select_for_update().filter(player=movement.source_village.player).first()
+        if hero:
+            hero.is_away = False
+            hero.save(update_fields=['is_away'])
+            hero_note = " قهرمان همراه این نیروها به دهکده‌ی مقصد رسید و اکنون دوباره در دسترس است."
+
     movement.is_completed = True
     movement.save()
 
     description = (
         f"نیروهای پشتیبان از دهکده {movement.source_village.name} "
-        f"به دهکده {target.name} رسیدند."
+        f"به دهکده {target.name} رسیدند." + hero_note
     )
     GameLog.objects.create(village=target, log_type='COMBAT', description=description)
     _notify_player(target.player_id, "REINFORCEMENT_ARRIVED", {

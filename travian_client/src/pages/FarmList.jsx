@@ -27,16 +27,37 @@ export default function FarmList() {
     const [alertMsg, setAlertMsg] = useState(null);
     const [confirmState, setConfirmState] = useState(null); // { message, onConfirm, danger }
 
+    const [farmLists, setFarmLists] = useState([]);
+    const [activeFarmListId, setActiveFarmListId] = useState(null);
+    const [newListName, setNewListName] = useState('');
+
+    const fetchFarmLists = useCallback(async () => {
+        try {
+            const { data } = await api.get('combat/farm-list/manage/');
+            setFarmLists(data);
+            if (!activeFarmListId && data.length > 0) setActiveFarmListId(data[0].id);
+        } catch (error) { console.error(error); }
+    }, [activeFarmListId]);
+
+    useEffect(() => { fetchFarmLists(); }, [fetchFarmLists]);
+
     const fetchEntries = useCallback(async () => {
         try {
-            const { data } = await api.get('combat/farm-list/');
+            const { data } = await api.get('combat/farm-list/', { params: { farm_list_id: activeFarmListId } });
             setEntries(data);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+        } catch (error) { console.error(error); }
+        finally { setLoading(false); }
+    }, [activeFarmListId]);
+
+    useEffect(() => { if (activeFarmListId) fetchEntries(); }, [activeFarmListId, fetchEntries]);
+
+    const handleCreateList = async () => {
+        if (!newListName.trim()) return;
+        const { data } = await api.post('combat/farm-list/manage/', { name: newListName.trim() });
+        setNewListName('');
+        await fetchFarmLists();
+        setActiveFarmListId(data.id);
+    };
 
     const fetchCatalog = useCallback(async () => {
         try {
@@ -61,6 +82,7 @@ export default function FarmList() {
         try {
             await api.post('combat/farm-list/', {
                 source_village_id: formSourceId, target_village_id: formTargetId, troops_payload: troopsPayload,
+                farm_list_id: activeFarmListId
             });
             setFormTargetId(''); setFormTroops({}); setShowForm(false);
             fetchEntries();
@@ -102,7 +124,7 @@ export default function FarmList() {
         setConfirmState(null);
         setRunningAll(true);
         try {
-            const { data } = await api.post('combat/farm-list/run/', { run_all: true });
+            const { data } = await api.post('combat/farm-list/run/', { run_all: true, farm_list_id: activeFarmListId });
             setAlertMsg({ tone: 'success', text: data.message });
             fetchEntries();
         } catch (error) {
@@ -130,6 +152,17 @@ export default function FarmList() {
                 onCancel={() => setConfirmState(null)}
             />
 
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+                {farmLists.map((fl) => (
+                    <button key={fl.id} onClick={() => setActiveFarmListId(fl.id)}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-full border-2 ${activeFarmListId === fl.id ? 'border-gold-500 bg-gold-50' : 'border-parchment-300 bg-white'}`}>
+                        📋 {fl.name} ({fl.entries_count})
+                    </button>
+                ))}
+                <input value={newListName} onChange={(e) => setNewListName(e.target.value)}
+                    placeholder="نام لیست جدید" className="field text-xs w-32" />
+                <button onClick={handleCreateList} className="btn-primary text-xs !px-3 !py-1.5">➕ لیست جدید</button>
+            </div>
             <div className="panel">
                 <div className="panel-header">
                     <span className="panel-title">🌾 لیست مزرعه</span>

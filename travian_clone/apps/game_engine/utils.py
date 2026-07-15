@@ -141,7 +141,7 @@ def update_village_resources(village):
     settings = ServerSetting.objects.filter(is_active=True).first()
     speed = settings.server_speed if settings else 1
 
-    oasis_mult = _get_oasis_bonus_multipliers(village)  # ✅ جدید
+    oasis_mult = _get_oasis_bonus_multipliers(village)
 
     net_crop_rate = (village.prod_crop * oasis_mult['crop']) - calculate_crop_upkeep(village)
 
@@ -160,11 +160,13 @@ def update_village_resources(village):
             return hero_rate_per_hour * delta_seconds * speed / 3600
         return 0
 
-    village.wood = min(village.max_storage, village.wood + (village.prod_wood * oasis_mult['wood'] * delta_seconds * speed / 3600) + _hero_extra('wood'))
-    village.clay = min(village.max_storage, village.clay + (village.prod_clay * oasis_mult['clay'] * delta_seconds * speed / 3600) + _hero_extra('clay'))
-    village.iron = min(village.max_storage, village.iron + (village.prod_iron * oasis_mult['iron'] * delta_seconds * speed / 3600) + _hero_extra('iron'))
+    gold_mult = _get_gold_resource_bonus_multipliers(village)
 
-    raw_new_crop = village.crop + (net_crop_rate * delta_seconds * speed / 3600) + _hero_extra('crop')
+    village.wood = min(village.max_storage, village.wood + (village.prod_wood * oasis_mult['wood'] * gold_mult['wood'] * delta_seconds * speed / 3600) + _hero_extra('wood'))
+    village.clay = min(village.max_storage, village.clay + (village.prod_clay * oasis_mult['clay'] * gold_mult['clay'] * delta_seconds * speed / 3600) + _hero_extra('clay'))
+    village.iron = min(village.max_storage, village.iron + (village.prod_iron * oasis_mult['iron'] * gold_mult['iron'] * delta_seconds * speed / 3600) + _hero_extra('iron'))
+
+    raw_new_crop = village.crop + (net_crop_rate * gold_mult['crop'] * delta_seconds * speed / 3600) + _hero_extra('crop')
 
     if raw_new_crop < 0 and net_crop_rate < 0:
         elapsed_hours = (delta_seconds * speed) / 3600
@@ -258,21 +260,36 @@ def recalculate_village_capacities(village):
     village.save(update_fields=['max_storage', 'max_granary'])
 
 
+def _get_gold_resource_bonus_multipliers(village):
+    """✅ جدید: بونوس‌های طلایی فعال (به تفکیک منبع، یا حالت 'all') را می‌خواند."""
+    from django.core.cache import cache
+    multipliers = {'wood': 1.0, 'clay': 1.0, 'iron': 1.0, 'crop': 1.0}
+    if cache.get(f"resource_bonus_{village.id}_all"):
+        for key in multipliers:
+            multipliers[key] += 0.25
+        return multipliers
+    for key in ('wood', 'clay', 'iron', 'crop'):
+        if cache.get(f"resource_bonus_{village.id}_{key}"):
+            multipliers[key] += 0.25
+    return multipliers
+
+
 def get_effective_production_rates(village):
     settings = ServerSetting.objects.filter(is_active=True).first()
     speed = settings.server_speed if settings else 1
 
     oasis_mult = _get_oasis_bonus_multipliers(village)
+    gold_mult = _get_gold_resource_bonus_multipliers(village)
     hero_resource_type, hero_rate_per_hour = _get_hero_resource_bonus(village)
 
     def hero_bonus(key):
         return hero_rate_per_hour if hero_resource_type == key else 0
 
     return {
-        'wood': speed * (village.prod_wood * oasis_mult['wood'] + hero_bonus('wood')),
-        'clay': speed * (village.prod_clay * oasis_mult['clay'] + hero_bonus('clay')),
-        'iron': speed * (village.prod_iron * oasis_mult['iron'] + hero_bonus('iron')),
-        'crop': speed * (village.prod_crop * oasis_mult['crop'] - calculate_crop_upkeep(village) + hero_bonus('crop')),
+        'wood': speed * (village.prod_wood * oasis_mult['wood'] * gold_mult['wood'] + hero_bonus('wood')),
+        'clay': speed * (village.prod_clay * oasis_mult['clay'] * gold_mult['clay'] + hero_bonus('clay')),
+        'iron': speed * (village.prod_iron * oasis_mult['iron'] * gold_mult['iron'] + hero_bonus('iron')),
+        'crop': speed * (village.prod_crop * oasis_mult['crop'] * gold_mult['crop'] - calculate_crop_upkeep(village) + hero_bonus('crop')),
     }
 
 
