@@ -12,6 +12,7 @@ const TABS = [
     { key: 'daily', label: '🎖️ مدال‌های روزانه' },
     { key: 'mymedals', label: '🎗️ مدال‌های من' },
     { key: 'ww', label: '🏛️ مسابقه شگفتی جهان' },
+    { key: 'alliances', label: '🤝 اتحادها' },
     { key: 'farms', label: '🌾 دهکده‌های فارم' },
 ];
 
@@ -72,12 +73,15 @@ function DailyMedalColumn({ title, icon, rows }) {
 export default function Statistics() {
     const [stats, setStats] = useState({ general_ranking: [], world_wonder: [], top_attackers: [], top_defenders: [] });
     const [farms, setFarms] = useState([]);
+    const [alliances, setAlliances] = useState([]);
     const [dailyMedals, setDailyMedals] = useState(null);
     const [myMedals, setMyMedals] = useState([]);
     const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(true);
     const [farmsLoading, setFarmsLoading] = useState(true);
+    const [alliancesLoading, setAlliancesLoading] = useState(true);
     const [farmsFetched, setFarmsFetched] = useState(false);
+    const [alliancesFetched, setAlliancesFetched] = useState(false);
     const [dailyFetched, setDailyFetched] = useState(false);
     const [myMedalsFetched, setMyMedalsFetched] = useState(false);
     const [alertMsg, setAlertMsg] = useState(null);
@@ -112,6 +116,23 @@ export default function Statistics() {
         };
         fetchFarms();
     }, [activeTab, farmsFetched]);
+
+    useEffect(() => {
+        if (activeTab !== 'alliances' || alliancesFetched) return;
+        const fetchAlliances = async () => {
+            setAlliancesLoading(true);
+            try {
+                const response = await api.get('game/alliances/');
+                setAlliances(response.data);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setAlliancesLoading(false);
+                setAlliancesFetched(true);
+            }
+        };
+        fetchAlliances();
+    }, [activeTab, alliancesFetched]);
 
     useEffect(() => {
         if (activeTab !== 'daily' || dailyFetched) return;
@@ -244,6 +265,38 @@ export default function Statistics() {
                                                 <td className="p-3 font-semibold border-b border-parchment-200">{row.player}</td>
                                                 <td className="p-3 font-bold text-gold-700 text-lg border-b border-parchment-200">{row.ww_level}</td>
                                                 <td className="p-3 text-sm font-bold text-rose-600 border-b border-parchment-200">{row.natar_attacks}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )
+                    )}
+
+                    {activeTab === 'alliances' && (
+                        alliancesLoading ? <LoadingState label="در حال دریافت لیست اتحادها..." /> :
+                        alliances.length === 0 ? <EmptyState icon="🤝" title="هنوز هیچ اتحادی تشکیل نشده است." /> : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-center border-collapse">
+                                    <thead>
+                                        <tr className="bg-brand-100 text-brand-800 text-sm">
+                                            <th className="p-3 rounded-r-lg">رتبه</th>
+                                            <th className="p-3">نام اتحاد</th>
+                                            <th className="p-3">تگ</th>
+                                            <th className="p-3">موسس</th>
+                                            <th className="p-3 rounded-l-lg">تعداد اعضا</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {alliances.map((a) => (
+                                            <tr key={a.rank} className={`transition hover:bg-brand-50/50 ${a.rank <= 3 ? 'bg-gold-50/60' : ''}`}>
+                                                <td className="p-3 font-bold border-b border-parchment-200">
+                                                    {a.rank <= 3 ? medalIcon(a.rank) : a.rank}
+                                                </td>
+                                                <td className="p-3 font-semibold border-b border-parchment-200">{a.name}</td>
+                                                <td className="p-3 text-sm text-ink-500 border-b border-parchment-200">[{a.tag}]</td>
+                                                <td className="p-3 text-sm text-ink-600 border-b border-parchment-200">{a.founder}</td>
+                                                <td className="p-3 font-bold text-brand-700 border-b border-parchment-200">{a.member_count}</td>
                                             </tr>
                                         ))}
                                     </tbody>

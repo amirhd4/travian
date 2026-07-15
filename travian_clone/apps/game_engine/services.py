@@ -57,6 +57,8 @@ _CITY_BUILDING_DEFS = (
     ("آبشخور اسب", 0, 'MILITARY'),
     ("اداره تجارت", 0, 'INFRASTRUCTURE'),
     ("پادگان بزرگ", 0, 'MILITARY'),
+    ("آسیاب", 0, 'INFRASTRUCTURE'),
+    ("قصر", 0, 'INFRASTRUCTURE'),
 )
 
 _RALLY_POINT_DEF = ("محل گردهمایی", 1, 'INFRASTRUCTURE')

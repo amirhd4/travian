@@ -10,11 +10,12 @@ from .views import (
     OasisReleaseView, VillagesOverviewView,
     ArtifactListView,
     LatestDailyMedalsView, MyMedalsView, ToggleMedalVisibilityView, PlayerPublicMedalsView,
-    HeroAuctionListView, HeroAuctionBidView, GoldBankDepositView, GoldBankWithdrawView, MyGoldBankDepositsView,
+    GoldBankDepositView, GoldBankWithdrawView, MyGoldBankDepositsView,
     ResourceBonusView, BuyFullWarehouseView, BuyProtectionView, ExitProtectionView, InstantRallyPointView,
     BuyGoldClubView, CropperSearchView, StandardNpcTradeView, GoldToSilverExchangeView, SupportMessageView,
-    InstantConstructionView, GoldTroopShopView,
+    InstantConstructionView, GoldTroopShopView, AllianceListView,
 )
+from apps.combat.views import HeroAuctionListView, HeroAuctionBidView
 
 urlpatterns = [
     path('villages/', VillageListView.as_view(), name='village_list'),
@@ -34,6 +35,7 @@ urlpatterns = [
     path('webhook/', PaymentWebhookView.as_view()),
     path('logs/', GameLogListView.as_view(), name='game_logs'),
     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
+    path('alliances/', AllianceListView.as_view(), name='alliance_list'),
     path('marketplace/send/', MarketplaceView.as_view(), name='send_resources'),
     path('messages/', InboxView.as_view(), name='inbox'),
     path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),

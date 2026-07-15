@@ -18,7 +18,7 @@ from .utils import (
     update_village_resources, calculate_crop_upkeep, calculate_building_population,
     calculate_village_population, is_server_finished, get_effective_production_rates, get_effective_max_level,
 )
-from .services import found_new_village, abandon_village, MAX_VILLAGES
+from .services import found_new_village, abandon_village
 from .serializers import GameLogSerializer
 from .models import Message
 from .serializers import MessageSerializer
@@ -240,15 +240,6 @@ class FoundVillageView(APIView):
                 except Village.DoesNotExist:
                     return Response({"error": "دهکده مبدا یافت نشد یا متعلق به شما نیست."}, status=404)
 
-                current_count = Village.objects.filter(
-                    player=request.user, is_farm_village=False
-                ).count()
-                if current_count >= MAX_VILLAGES:
-                    return Response(
-                        {"error": f"شما به حداکثر {MAX_VILLAGES} دهکده رسیده‌اید."},
-                        status=400
-                    )
-
                 new_village = found_new_village(
                     request.user,
                     source_village,
@@ -329,12 +320,6 @@ class UpgradeBuildingView(APIView):
 
             if building.is_upgrading:
                 return Response({"error": "این ساختمان در حال حاضر در حال ارتقا است."}, status=400)
-
-            if building.level >= building.building_type.max_level:
-                return Response(
-                    {"error": f"این ساختمان به حداکثر سطح مجاز ({building.building_type.max_level}) رسیده است."},
-                    status=400
-                )
 
             if building.building_type.name == "شگفتی جهان":
                 return Response(
@@ -516,6 +501,30 @@ class LeaderboardView(APIView):
             "top_attackers": top_attackers,
             "top_defenders": top_defenders,
         })
+
+
+class AllianceListView(APIView):
+    """فهرست تمام اتحادهای سرور به همراه تعداد اعضا — برای نمایش در صفحه‌ی آمار."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Count
+
+        alliances = Alliance.objects.annotate(
+            member_count=Count('members')
+        ).order_by('-member_count')
+
+        data = []
+        for rank, alliance in enumerate(alliances, start=1):
+            data.append({
+                "rank": rank,
+                "name": alliance.name,
+                "tag": alliance.tag,
+                "member_count": alliance.member_count,
+                "founder": alliance.founder.username,
+            })
+
+        return Response(data)
 
 
 class MarketplaceView(APIView):
@@ -1818,9 +1827,10 @@ class OasisMapView(APIView):
 class OasisAttackView(APIView):
     """
     ⚠️ نسخه‌ی ساده‌شده: برخلاف حمله‌ی عادی، بدون زمان سفر و به‌صورت فوری نتیجه‌گیری می‌شود.
+    طبق راهنما: هر بازیکن حداکثر ۳ آبادی می‌تواند داشته باشد (نه هر دهکده).
     """
     permission_classes = [IsAuthenticated]
-    MAX_OASES_PER_VILLAGE = 3
+    MAX_OASES_PER_PLAYER = 3  # ✅ اصلاح شد: محدودیت بر اساس بازیکن، نه دهکده
 
     def post(self, request):
         from .models import Oasis
@@ -1861,9 +1871,15 @@ class OasisAttackView(APIView):
                 return Response({"error": "برای تصاحب اوسیس ابتدا باید عمارت اقامتی یا تالار شهر بسازید."}, status=400)
 
             if oasis.owner_village_id is None:
-                owned_count = Oasis.objects.filter(owner_village=village).count()
-                if owned_count >= self.MAX_OASES_PER_VILLAGE:
-                    return Response({"error": f"هر دهکده حداکثر {self.MAX_OASES_PER_VILLAGE} اوسیس می‌تواند داشته باشد."}, status=400)
+                # ✅ اصلاح شد: محدودیت ۳ آبادی بر اساس بازیکن (نه دهکده)
+                player_village_ids = Village.objects.filter(
+                    player=request.user
+                ).values_list('id', flat=True)
+                owned_count = Oasis.objects.filter(
+                    owner_village_id__in=player_village_ids
+                ).count()
+                if owned_count >= self.MAX_OASES_PER_PLAYER:
+                    return Response({"error": f"هر بازیکن حداکثر {self.MAX_OASES_PER_PLAYER} آبادی می‌تواند داشته باشد."}, status=400)
 
             troop_type_cache = {t.id: t for t in TroopType.objects.filter(id__in=[int(k) for k in troops_payload.keys()])}
             attack_power = 0

@@ -42,6 +42,8 @@ const BUILDING_META = {
     'آبشخور اسب': { asset: 'horse_trough', color: 0x4a8a6b, icon: '💧' },
     'اداره تجارت': { asset: 'trade_office', color: 0xd9942a, icon: '🐪' },
     'پادگان بزرگ': { asset: 'great_barracks', color: 0x8b3a3a, icon: '⚔️' },
+    'آسیاب': { asset: 'mill', color: 0xc4a265, icon: '⚙️' },
+    'قصر': { asset: 'palace', color: 0xb5972f, icon: '👑' },
     'محل گردهمایی': { asset: 'rally_point', color: 0x2f8a4a, icon: '🚩' },
     'دیوار (Wall)': { asset: 'wall', color: 0x6b6b6b, icon: '🧱' },
     'شگفتی جهان': { asset: 'world_wonder', color: 0xd9b52f, icon: '🏛️' },
