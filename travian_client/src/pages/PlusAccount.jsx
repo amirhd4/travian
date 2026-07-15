@@ -5,6 +5,7 @@ import WoodSign from '../components/WoodSign';
 import { AlertModal } from '../components/Modal';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
+import GoldFeatures from "../components/GoldFeatures.jsx";
 
 const OPTIONS = [
     { days: 1, label: '۱ روز' },
@@ -219,6 +220,7 @@ export default function PlusAccount() {
             </WoodSign>
 
             <GoldBankSection />
+            <GoldFeatures />
         </PageShell>
     );
 }

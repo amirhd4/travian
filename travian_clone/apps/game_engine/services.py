@@ -15,12 +15,23 @@ MAX_COORDINATE_ATTEMPTS = 500
 SETTLERS_REQUIRED = 3
 MAX_VILLAGES = 3
 
-_RESOURCE_FIELD_DEFS = (
-    ("چوب‌بری", 4),
-    ("گودال خاک رس", 4),
-    ("معدن آهن", 4),
-    ("مزرعه گندم", 6),
-)
+FIELD_DISTRIBUTIONS = {
+    'NORMAL': {
+        "چوب‌بری": 4, "گودال خاک رس": 4, "معدن آهن": 4, "مزرعه گندم": 6,
+    },
+    'CROPPER_9': {
+        "چوب‌بری": 3, "گودال خاک رس": 3, "معدن آهن": 3, "مزرعه گندم": 9,
+    },
+    'CROPPER_15': {
+        "چوب‌بری": 1, "گودال خاک رس": 1, "معدن آهن": 1, "مزرعه گندم": 15,
+    },
+}
+
+FIELD_DISTRIBUTION_WEIGHTS = {
+    'NORMAL': 85,
+    'CROPPER_9': 11,
+    'CROPPER_15': 4,
+}
 
 # ساختمان‌های داخل شهر (Dorf2) که در جایگاه‌های ۱۹ تا ۳۸ قرار می‌گیرند.
 # ✅ یکی از سه «مخفیگاه» تکراری با «آهنگری» (ارتقای نیرو تا لول ۲۰) جایگزین شد
@@ -109,9 +120,17 @@ def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20
     return building_type
 
 
-def _create_default_buildings(village):
+def _pick_field_distribution():
+    """یک نوع توزیع زمین (عادی/۹ گندمی/۱۵ گندمی) با احتمال وزن‌دار انتخاب می‌کند."""
+    keys = list(FIELD_DISTRIBUTION_WEIGHTS.keys())
+    weights = list(FIELD_DISTRIBUTION_WEIGHTS.values())
+    return random.choices(keys, weights=weights, k=1)[0]
+
+
+def _create_default_buildings(village, distribution_key='NORMAL'):
     position = 1
-    for type_name, count in _RESOURCE_FIELD_DEFS:
+    field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
+    for type_name, count in field_defs.items():
         building_type = _get_or_create_building_type(type_name, category='RESOURCE')
         for _ in range(count):
             VillageBuilding.objects.create(
@@ -134,7 +153,7 @@ def _create_default_buildings(village):
     wall_name, wall_level, wall_category = _WALL_DEF
     wall_type = _get_or_create_building_type(wall_name, provides_wall_defense=True, category=wall_category)
     VillageBuilding.objects.create(village=village, building_type=wall_type, position=40, level=wall_level)
-    # ✅ جدید: تله (Trapper) در جایگاه ۴۱ — فقط بازیکنان توتون تاکتیکی ازش استفاده می‌کنند
+
     trapper_type = _get_or_create_building_type("تله", category='MILITARY')
     VillageBuilding.objects.create(village=village, building_type=trapper_type, position=41, level=0)
 
@@ -232,6 +251,8 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
 
     max_storage, max_granary = _get_starting_capacities()
 
+    distribution_key = _pick_field_distribution()
+
     new_village = Village.objects.create(
         player=player,
         name=name or "دهکده جدید",
@@ -250,7 +271,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         max_granary=max_granary,
     )
 
-    _create_default_buildings(new_village)
+    _create_default_buildings(village, distribution_key=distribution_key)
 
     return new_village
 
@@ -268,9 +289,10 @@ def abandon_village(player, village):
     village.delete()
 
 
-def _create_resource_fields_only(village):
+def _create_resource_fields_only(village, distribution_key='NORMAL'):
     position = 1
-    for type_name, count in _RESOURCE_FIELD_DEFS:
+    field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
+    for type_name, count in field_defs.items():
         building_type = _get_or_create_building_type(type_name, category='RESOURCE')
         for _ in range(count):
             VillageBuilding.objects.create(village=village, building_type=building_type, position=position, level=1)

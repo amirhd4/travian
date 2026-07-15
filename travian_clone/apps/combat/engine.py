@@ -16,25 +16,6 @@ def troop_population_value(troop_type):
     return total_cost / TROOP_POPULATION_DIVISOR
 
 
-def calculate_catapult_damage(catapults, target_current_level):
-    """
-    فرمول کاهش سطح یک ساختمان (دیوار یا هر ساختمان دیگر) بر اساس تعداد
-    واحدهای محاصره‌ای (قوچ یا منجنیق) اعزامی و سطح فعلی آن ساختمان.
-    این تابع برای هم «قوچ روی دیوار» و هم «منجنیق روی ساختمان انتخابی»
-    یکسان استفاده می‌شود (دقیقا مثل تراوین اصلی که هر دو از یک فرمول
-    استفاده می‌کنند، فقط هدفشان فرق دارد).
-    """
-    needed_catapults = round(
-        ((2 * (target_current_level ** 2) - 2 * target_current_level + 2) / 8)
-    )
-
-    reduction = int(
-        catapults / (needed_catapults + 1) * target_current_level
-    )
-
-    return max(0, target_current_level - reduction)
-
-
 def calculate_demolition_by_defender_casualties(defender_loss_percent, target_current_level, is_ww=False):
     """
     فرمول تخریب ساختمان بر اساس درصد تلفات مدافع (طبق مشخصات §13).

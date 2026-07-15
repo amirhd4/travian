@@ -14,7 +14,7 @@ from .models import (
     Adventure, TroopUpgrade, CombatReport, TrappedTroop, HeroItem, HeroAuction,
     TroopEvasionSetting,
 )
-from .engine import calculate_combat, calculate_catapult_damage, calculate_demolition_by_defender_casualties, troop_population_value
+from .engine import calculate_combat, calculate_demolition_by_defender_casualties, troop_population_value
 from .hero_utils import resolve_adventure, generate_adventures_for_player
 from apps.game_engine.utils import calculate_player_total_population, calculate_morale_multiplier
 
@@ -579,7 +579,10 @@ def _resolve_attack_or_raid(movement):
     wall_damage_msg = ""
     if victory == "attacker" and wall_building and ram_units_sent > 0:
         old_wall_level = wall_building.level
-        wall_building.level = calculate_catapult_damage(ram_units_sent, wall_building.level)
+
+        wall_building.level = calculate_demolition_by_defender_casualties(
+            defender_loss_ratio * 100, wall_building.level, is_ww=False
+        )
         wall_building.is_upgrading = False
         wall_building.save()
         wall_damage_msg = f"\nقوچ‌ها دیوار دهکده را از سطح {old_wall_level} به سطح {wall_building.level} تخریب کردند."

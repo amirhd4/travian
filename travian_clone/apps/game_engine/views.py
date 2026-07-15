@@ -1353,7 +1353,14 @@ INSTANT_RALLY_POINT_GOLD_COST = 50
 
 
 class InstantRallyPointView(APIView):
-    """احداث فوری اردوگاه سطح ۱ با طلا."""
+    """احداث فوری محل گردهمایی سطح ۱ با طلا.
+
+    ✅ FIX: قبلا این ویو دنبال ساختمانی به نام «اردوگاه» می‌گشت که اصلا در
+    سیستم دهکده‌سازی وجود نداشت (ساختمان واقعی «محل گردهمایی» نام دارد و
+    برای هر دهکده‌ای در position=39 از قبل ساخته می‌شود). تلاش برای ساخت
+    یک VillageBuilding جدید در همان position همیشه با IntegrityError
+    (نقض unique_together=('village','position')) کرش می‌کرد.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -1365,36 +1372,40 @@ class InstantRallyPointView(APIView):
         except Village.DoesNotExist:
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
-        # بررسی آیا اردوگاه از قبل وجود دارد
         rally_point = VillageBuilding.objects.filter(
-            village=village, building_type__name="اردوگاه"
+            village=village, building_type__name="محل گردهمایی"
         ).first()
-        if rally_point and rally_point.level >= 1:
-            return Response({"error": "اردوگاه از قبل ساخته شده است."}, status=400)
+
+        if rally_point is None:
+            # این حالت عملا نباید پیش بیاید چون هر دهکده‌ای موقع ساخت یک
+            # محل گردهمایی (با سطح پیش‌فرض ۱ یا ۰) دریافت می‌کند؛ اما برای
+            # اطمینان این حالت را هم مدیریت می‌کنیم.
+            return Response({"error": "محل گردهمایی در این دهکده یافت نشد."}, status=404)
+
+        if rally_point.level >= 1:
+            return Response({"error": "محل گردهمایی از قبل ساخته شده است."}, status=400)
 
         if player.gold_coins < INSTANT_RALLY_POINT_GOLD_COST:
-            return Response({"error": f"طلای کافی ندارید. هزینه: {INSTANT_RALLY_POINT_GOLD_COST} سکه."}, status=400)
+            return Response(
+                {"error": f"طلای کافی ندارید. هزینه: {INSTANT_RALLY_POINT_GOLD_COST} سکه."},
+                status=400,
+            )
 
         player.gold_coins -= INSTANT_RALLY_POINT_GOLD_COST
         player.save(update_fields=['gold_coins'])
 
-        if rally_point:
-            rally_point.level = 1
-            rally_point.save()
-        else:
-            from .services import _get_or_create_building_type
-            rally_type = _get_or_create_building_type("اردوگاه", category='INFRASTRUCTURE', max_level=20)
-            VillageBuilding.objects.create(
-                village=village, building_type=rally_type, position=39, level=1
-            )
+        rally_point.level = 1
+        rally_point.is_upgrading = False
+        rally_point.upgrade_end_time = None
+        rally_point.save()
 
         GameLog.objects.create(
             village=village, log_type='BUILDING',
-            description="اردوگاه با طلا به سطح ۱ ارتقا یافت."
+            description="محل گردهمایی با طلا به سطح ۱ ارتقا یافت."
         )
 
         return Response({
-            "message": "اردوگاه با موفقیت ساخته شد!",
+            "message": "محل گردهمایی با موفقیت ساخته شد!",
             "gold_coins": player.gold_coins,
         })
 
@@ -1493,13 +1504,15 @@ class BuyGoldClubView(APIView):
 
 
 class CropperSearchView(APIView):
-    """جستجوی ۹ گندمی و ۱۵ گندمی روی نقشه."""
+    """جستجوی دهکده‌های ۹ گندمی و ۱۵ گندمی روی نقشه (مخصوص اعضای کلوپ طلایی)."""
     permission_classes = [IsAuthenticated]
+
+    CROP_FIELD_NAME = "مزرعه گندم"
+    TARGET_CROP_COUNTS = {'9': 9, '15': 15}
 
     def get(self, request):
         player = request.user
 
-        # نیاز به کلوپ طلایی
         if not player.has_gold_club:
             return Response({"error": "برای استفاده از این قابلیت به کلوپ طلایی نیاز دارید."}, status=403)
 
@@ -1509,45 +1522,32 @@ class CropperSearchView(APIView):
         except (TypeError, ValueError):
             return Response({"error": "مختصات نامعتبر است."}, status=400)
 
-        target_type = request.query_params.get('type', '9')  # '9' or '15'
+        target_type = request.query_params.get('type', '9')
+        if target_type not in self.TARGET_CROP_COUNTS:
+            return Response({"error": "نوع جستجو باید 9 یا 15 باشد."}, status=400)
+        required_crop_fields = self.TARGET_CROP_COUNTS[target_type]
+
         radius = min(max(int(request.query_params.get('radius', 20) or 20), 5), 100)
 
         from .models import Village
-        from django.db.models import Q
 
-        # جستجوی دهکده‌هایی که تعداد فیلدهای گندم مشخص شده را دارند
-        # فرض: دهکده‌های عادی 6 گندمی، 9 گندمی 9 فیلد، 15 گندمی 15 فیلد
-        # از آنجایی که فیلد مشخصی برای تعداد فیلدهای گندم نداریم،
-        # از تعداد کل ساختمانات منابع استفاده می‌کنیم
-
-        cropper_villages = Village.objects.filter(
+        candidate_villages = Village.objects.filter(
             x_coord__range=(center_x - radius, center_x + radius),
             y_coord__range=(center_y - radius, center_y + radius),
             is_farm_village=False,
             is_natar_ww_site=False,
+            is_natar_plan_guard=False,
+            is_natar_artifact_site=False,
         ).exclude(player=player)
 
-        # فیلتر بر اساس نوع گندمی
         results = []
-        for v in cropper_villages:
-            # شمارش فیلدهای منابع
-            resource_buildings = VillageBuilding.objects.filter(
-                village=v, building_type__category='RESOURCE'
-            )
-            total_resource_fields = resource_buildings.count()
+        for v in candidate_villages:
+            crop_field_count = VillageBuilding.objects.filter(
+                village=v, building_type__name=self.CROP_FIELD_NAME
+            ).count()
 
-            # شمارش فیلدهای گندم (فرض: فیلدهای گندم معمولاً در انتهای لیست هستند)
-            # از آنجایی که اطلاعات دقیقی نداریم، از تعداد کل فیلدها استفاده می‌کنیم
-            if target_type == '9' and total_resource_fields >= 9:
-                results.append({
-                    "id": v.id,
-                    "name": v.name,
-                    "x_coord": v.x_coord,
-                    "y_coord": v.y_coord,
-                    "player_name": v.player.username,
-                    "distance": ((v.x_coord - center_x) ** 2 + (v.y_coord - center_y) ** 2) ** 0.5,
-                })
-            elif target_type == '15' and total_resource_fields >= 15:
+            # ✅ FIX: مقایسه‌ی دقیق (نه >=) تا "۹ گندمی" با "۱۵ گندمی" قاطی نشود
+            if crop_field_count == required_crop_fields:
                 results.append({
                     "id": v.id,
                     "name": v.name,
@@ -1557,15 +1557,14 @@ class CropperSearchView(APIView):
                     "distance": ((v.x_coord - center_x) ** 2 + (v.y_coord - center_y) ** 2) ** 0.5,
                 })
 
-        # مرتب‌سازی بر اساس فاصله
         results.sort(key=lambda x: x['distance'])
 
         return Response({
             "type": f"{target_type}-cropper",
-            "results": results[:20],  # حداکثر 20 نتیجه
+            "results": results[:20],
             "total_found": len(results),
         })
-
+    
 
 GOLD_TO_SILVER_RATE = 100  # 10 Gold = 1,000 Silver (100 Silver per Gold)
 
