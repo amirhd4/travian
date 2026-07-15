@@ -72,11 +72,6 @@ export default function GoldFeatures() {
         () => api.post('game/gold/buy-gold-club/'),
         () => setGoldClubStatus((s) => ({ ...s, has_gold_club: true })));
 
-    const handleResourceBonus = () => {
-        if (!activeVillageId) return;
-        runAction('resource_bonus', () => api.post('game/gold/resource-bonus/', { village_id: activeVillageId }));
-    };
-
     const handleBuyWarehouse = () => {
         if (!activeVillageId) return;
         runAction('warehouse', () => api.post('game/gold/buy-warehouse/', {
@@ -169,7 +164,7 @@ export default function GoldFeatures() {
                 </div>
                 <div className="flex items-center gap-2">
                     <select value={warehouseResourceType} onChange={(e) => setWarehouseResourceType(e.target.value)} className="field text-xs">
-                        {RESOURCE_TYPES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                        {RESOURCE_BONUS_TYPES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
                     <button onClick={handleBuyWarehouse} disabled={busy === 'warehouse' || !activeVillageId} className="btn-gold text-xs flex-1">
                         {busy === 'warehouse' ? '...' : '📦 پر کردن فوری انبار/سیلو'}

@@ -13,7 +13,7 @@ MAP_SEARCH_RADIUS = 200
 MAX_COORDINATE_ATTEMPTS = 500
 
 SETTLERS_REQUIRED = 3
-MAX_VILLAGES = 3
+# MAX_VILLAGES = 3
 
 FIELD_DISTRIBUTIONS = {
     'NORMAL': {
@@ -228,10 +228,10 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
             f"(در حال حاضر {int(player.culture_points)} امتیاز دارید)."
         )
 
-    if current_village_count >= MAX_VILLAGES:
-        raise ValidationError(
-            f"شما به حداکثر {MAX_VILLAGES} دهکده رسیده‌اید و امکان تاسیس دهکده جدید وجود ندارد."
-        )
+    # if current_village_count >= MAX_VILLAGES:
+    #     raise ValidationError(
+    #         f"شما به حداکثر {MAX_VILLAGES} دهکده رسیده‌اید و امکان تاسیس دهکده جدید وجود ندارد."
+    #     )
 
     if target_x is not None and target_y is not None:
         if Village.objects.filter(x_coord=target_x, y_coord=target_y).exists():

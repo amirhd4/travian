@@ -1217,7 +1217,13 @@ class ResourceBonusView(APIView):
 
         cache.set(bonus_key, True, timeout=RESOURCE_BONUS_DURATION_HOURS * 3600)
 
-        resource_label = {"wood": "چوب", "clay": "خشت/آهن", "iron": "خشت/آهن", "crop": "گندم", "all": "همه منابع"}[resource_type]
+        resource_label = {
+            "wood": "چوب",
+            "clay": "خشت",
+            "iron": "آهن",
+            "crop": "گندم",
+            "all": "همه منابع",
+        }[resource_type]
         GameLog.objects.create(
             village=village, log_type='SYSTEM',
             description=f"بونوس {RESOURCE_BONUS_PERCENT}% تولید {resource_label} به مدت {RESOURCE_BONUS_DURATION_HOURS} ساعت فعال شد."
