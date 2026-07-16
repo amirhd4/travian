@@ -6,3 +6,8 @@ travian_clone/venv
 
 **/.env
 .aider*
+**/*.dat
+**/*.bak
+**/*.dir
+
+.mimocode

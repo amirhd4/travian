@@ -71,11 +71,11 @@ export default function ServerStatusBanner() {
         );
     }
 
-    if (banners.length === 0) return null;
+    // if (banners.length === 0) return null;
 
     return (
         <div className="fixed bottom-0 left-0 w-full z-[999] shadow-lg" dir="rtl">
-            {banners}
+            {/*{banners}*/}
         </div>
     );
 }

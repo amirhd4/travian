@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -66,6 +67,10 @@ class CookieTokenRefreshView(APIView):
             serializer.is_valid(raise_exception=True)
         except TokenError:
             response = Response({"error": "نشست نامعتبر است، دوباره وارد شوید."}, status=status.HTTP_401_UNAUTHORIZED)
+            clear_refresh_cookie(response)
+            return response
+        except ObjectDoesNotExist:
+            response = Response({"error": "حساب کاربری یافت نشد یا حذف شده است."}, status=status.HTTP_401_UNAUTHORIZED)
             clear_refresh_cookie(response)
             return response
 

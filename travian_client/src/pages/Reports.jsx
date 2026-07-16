@@ -6,9 +6,9 @@ import EmptyState from '../components/EmptyState';
 import { AlertModal, ConfirmModal } from '../components/Modal';
 
 const LOG_STYLES = {
-    COMBAT:   { icon: '⚔️', image: '/assets/reports/attack.jpg', border: 'border-rose-400', bg: 'bg-rose-50' },
+    COMBAT:   { icon: '⚔️', image: '/assets/reports/1.gif', border: 'border-rose-400', bg: 'bg-rose-50' },
     BUILDING: { icon: '🏗️', image: '/assets/ui/buildings-icon.gif', border: 'border-blue-400', bg: 'bg-blue-50' },
-    TRADE:    { icon: '🤝', image: '/assets/reports/trade.jpg', border: 'border-gold-400', bg: 'bg-gold-50' },
+    TRADE:    { icon: '🤝', image: '/assets/reports/4.gif', border: 'border-gold-400', bg: 'bg-gold-50' },
     SYSTEM:   { icon: 'ℹ️', image: null, border: 'border-parchment-400', bg: 'bg-parchment-100' },
 };
 

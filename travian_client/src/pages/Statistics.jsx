@@ -6,7 +6,7 @@ import EmptyState from '../components/EmptyState';
 import { AlertModal } from '../components/Modal';
 
 const TABS = [
-    { key: 'general', label: '🏆 رتبه‌بندی بازیکنان', image: '/assets/ui/top10.png' },
+    { key: 'general', label: '🏆 رتبه‌بندی بازیکنان', image: '/assets/ui/status-top10.gif' },
     { key: 'attackers', label: '⚔️ مهاجم برتر (کلی)', image: '/assets/ui/status-off.gif' },
     { key: 'defenders', label: '🛡️ مدافع برتر (کلی)', image: '/assets/ui/status-def.gif' },
     { key: 'daily', label: '🎖️ مدال‌های روزانه', image: '/assets/ui/artefacts.gif' },

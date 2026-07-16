@@ -5,15 +5,15 @@ export const BG = {
   main: '/assets/bgs/bodybg.jpg',
   login: '/assets/bgs/artwork1.jpg',
   login2: '/assets/bgs/artwork2.jpg',
-  messages: '/assets/bgs/bg-messages.png',
-  reports: '/assets/bgs/bg-reports.png',
-  statistics: '/assets/bgs/bg-statistics.png',
-  map: '/assets/bgs/bg-map.png',
-  settings: '/assets/bgs/bg-settings.png',
-  plus: '/assets/bgs/bg-plus.png',
-  warsim: '/assets/bgs/bg-warsim.png',
-  alliance: '/assets/bgs/bg-alliance.png',
-  villageName: '/assets/bgs/bg-village-name.png',
+  messages: '/assets/bgs/bg0.jpg',
+  reports: '/assets/bgs/bg0.jpg',
+  statistics: '/assets/bgs/dyn-bg1.jpg',
+  map: '/assets/bgs/bg0.jpg',
+  settings: '/assets/bgs/bg0.jpg',
+  plus: '/assets/bgs/bg0.jpg',
+  warsim: '/assets/bgs/bg0.jpg',
+  alliance: '/assets/bgs/bg0.jpg',
+  villageName: '/assets/bgs/bg0.jpg',
   dyn: '/assets/bgs/dyn-bg1.jpg',
   bigsize: '/assets/bgs/bigsize-bg.jpg',
   header: '/assets/bgs/header-bg.jpg',
@@ -25,6 +25,7 @@ export const BG = {
   night: '/assets/bgs/night.gif',
 };
 
+// Resource icons (from img/un/res/)
 export const RESOURCES = {
   wood: '/assets/ui/res-1.gif',
   clay: '/assets/ui/res-2.gif',
@@ -51,33 +52,49 @@ export const TRIBES = {
 };
 
 // Building name → image path mapping (g{N}.gif from img/g/)
+// Source: gpack/travian_default/img/g/ — authoritative TravianZ building IDs
 export const BUILDINGS = {
-  main_building: '/assets/buildings/g1.gif',
-  warehouse: '/assets/buildings/g10.gif',
-  granary: '/assets/buildings/g11.gif',
-  barracks: '/assets/buildings/g13.gif',
-  stable: '/assets/buildings/g14.gif',
-  workshop: '/assets/buildings/g15.gif',
-  academy: '/assets/buildings/g16.gif',
-  smithy: '/assets/buildings/g17.gif',
-  rally_point: '/assets/buildings/g16.gif',
-  marketplace: '/assets/buildings/g17.gif',
-  embassy: '/assets/buildings/g18.gif',
-  residence: '/assets/buildings/g19.gif',
-  palace: '/assets/buildings/g25.gif',
-  treasury: '/assets/buildings/g21.gif',
-  town_hall: '/assets/buildings/g22.gif',
-  wall: '/assets/buildings/g12.gif',
   woodcutter: '/assets/buildings/g1.gif',
   claypit: '/assets/buildings/g2.gif',
   ironmine: '/assets/buildings/g3.gif',
   cropland: '/assets/buildings/g4.gif',
-  mill: '/assets/buildings/g9.gif',
-  bakery: '/assets/buildings/g8.gif',
-  smithy: '/assets/buildings/g13.gif',
-  tournament_square: '/assets/buildings/g20.gif',
-  hero_mansion: '/assets/buildings/g39.gif',
-  wonder: '/assets/buildings/g40.gif',
+  sawmill: '/assets/buildings/g5.gif',
+  brickyard: '/assets/buildings/g6.gif',
+  iron_foundry: '/assets/buildings/g7.gif',
+  mill: '/assets/buildings/g8.gif',
+  bakery: '/assets/buildings/g9.gif',
+  warehouse: '/assets/buildings/g10.gif',
+  granary: '/assets/buildings/g11.gif',
+  blacksmith: '/assets/buildings/g12.gif',
+  armoury: '/assets/buildings/g13.gif',
+  tournament_square: '/assets/buildings/g14.gif',
+  main_building: '/assets/buildings/g15.gif',
+  rally_point: '/assets/buildings/g16.gif',
+  marketplace: '/assets/buildings/g17.gif',
+  embassy: '/assets/buildings/g18.gif',
+  barracks: '/assets/buildings/g19.gif',
+  stable: '/assets/buildings/g20.gif',
+  workshop: '/assets/buildings/g21.gif',
+  academy: '/assets/buildings/g22.gif',
+  cranny: '/assets/buildings/g23.gif',
+  town_hall: '/assets/buildings/g24.gif',
+  residence: '/assets/buildings/g25.gif',
+  palace: '/assets/buildings/g26.gif',
+  treasury: '/assets/buildings/g27.gif',
+  trade_office: '/assets/buildings/g28.gif',
+  great_barracks: '/assets/buildings/g29.gif',
+  great_stable: '/assets/buildings/g30.gif',
+  city_wall: '/assets/buildings/g31.gif',
+  earth_wall: '/assets/buildings/g32.gif',
+  palisade: '/assets/buildings/g33.gif',
+  trapper: '/assets/buildings/g34.gif',
+  hero_mansion: '/assets/buildings/g35.gif',
+  merchant: '/assets/buildings/g36.gif',
+  wonder: '/assets/buildings/g37.gif',
+  horse_trough: '/assets/buildings/g38.gif',
+  wall: '/assets/buildings/g39.gif',
+  hospital: '/assets/buildings/g40.gif',
+  stonemason: '/assets/buildings/g41.gif',
 };
 
 // Building backgrounds for village views
@@ -114,52 +131,62 @@ export const HERO = {
   team: '/assets/hero/team.png',
 };
 
-// Report type images
+// Report type images (from gpack/travian_default/img/r/)
 export const REPORTS = {
-  attack: '/assets/reports/attack.jpg',
-  spy: '/assets/reports/spy.jpg',
-  reinforcement: '/assets/reports/reinforcement.jpg',
-  trade: '/assets/reports/trade.jpg',
-  units: '/assets/reports/units.jpg',
-  adventure: '/assets/reports/adventure.jpg',
+  attack: '/assets/reports/1.gif',
+  spy: '/assets/reports/2.gif',
+  reinforcement: '/assets/reports/3.gif',
+  trade: '/assets/reports/4.gif',
+  units: '/assets/reports/5.gif',
+  adventure: '/assets/reports/6.gif',
+  scout: '/assets/reports/7.gif',
 };
 
 // Quest images by type
 export const getQuestImage = (type) => `/assets/quests/${type}.jpg`;
 
-// Artifact type images
+// Artifact type images (from gpack/travian_default/img/artefact/)
 export const ARTIFACTS = {
   type1: '/assets/ui/artifact-type1.gif',
   type2: '/assets/ui/artifact-type2.gif',
-  type3: '/assets/ui/artifact-type3.gif',
   type4: '/assets/ui/artifact-type4.gif',
   type5: '/assets/ui/artifact-type5.gif',
   type6: '/assets/ui/artifact-type6.gif',
-  type7: '/assets/ui/artifact-type7.gif',
   type8: '/assets/ui/artifact-type8.gif',
-  type9: '/assets/ui/artifact-type9.gif',
   typeww: '/assets/ui/artifact-typeww.gif',
+  typeFool: '/assets/ui/artifact-type-fool.gif',
+  // Negative types (type-1 through type-10)
+  neg1: '/assets/ui/artifact-type-n1.gif',
+  neg2: '/assets/ui/artifact-type-n2.gif',
+  neg3: '/assets/ui/artifact-type-n3.gif',
+  neg4: '/assets/ui/artifact-type-n4.gif',
+  neg5: '/assets/ui/artifact-type-n5.gif',
+  neg6: '/assets/ui/artifact-type-n6.gif',
+  neg7: '/assets/ui/artifact-type-n7.gif',
+  neg8: '/assets/ui/artifact-type-n8.gif',
+  neg9: '/assets/ui/artifact-type-n9.gif',
+  neg10: '/assets/ui/artifact-type-n10.gif',
 };
 
-// UI elements
+// UI elements (from gpack/travian_default/img/a/ and img/misc/)
 export const UI = {
   logo: '/assets/ui/travian-logo.png',
-  gold: '/assets/ui/gold.gif',
-  goldG: '/assets/ui/gold_g.gif',
-  plus: '/assets/ui/plus.png',
-  gp: '/assets/ui/gp.png',
-  npc: '/assets/ui/npc.png',
+  gold: '/assets/ui/gold-icon.gif',
+  goldG: '/assets/ui/gold-icon-g.gif',
+  plus: '/assets/ui/plus-icon.gif',
+  gp: '/assets/ui/gp.gif',
+  npc: '/assets/ui/npc.gif',
   level: '/assets/ui/level.png',
-  top10: '/assets/ui/top10.png',
+  top10: '/assets/ui/status-top10.gif',
   tick: '/assets/ui/tick.png',
   cancel: '/assets/ui/cancel.gif',
-  opened: '/assets/ui/opened.png',
-  closed: '/assets/ui/closed.png',
-  header: '/assets/ui/header.png',
+  opened: '/assets/ui/opened.gif',
+  closed: '/assets/ui/closed.gif',
+  header: '/assets/bgs/header-bg.jpg',
   headerGold: '/assets/ui/header-gold-grad.png',
   headerGrad: '/assets/ui/header-grad.gif',
   headerLine: '/assets/ui/header-line.png',
-  footer: '/assets/ui/footer.png',
+  footer: '/assets/bgs/footer-bg.gif',
   menu: '/assets/ui/menu.png',
   online: '/assets/ui/online.gif',
   attackSymbol: '/assets/ui/attack-symbol.gif',
@@ -200,7 +227,7 @@ export const MAP = {
   mapBg: '/assets/map/map-bg.jpg',
 };
 
-// Navigation icons (from img/a/)
+// Navigation icons (from gpack/travian_default/img/a/)
 export const NAV_ICONS = {
   buildings: '/assets/ui/buildings-icon.gif',
   troops: '/assets/ui/troops-icon.gif',
@@ -214,15 +241,15 @@ export const NAV_ICONS = {
   navi: '/assets/ui/navi.gif',
 };
 
-// Special effects
+// Special effects (from gpack/travian_default/img/r/ and img/special/)
 export const EFFECTS = {
-  easter: '/assets/ui/easter.gif',
-  newYear: '/assets/ui/newy.gif',
-  peace: '/assets/ui/peace.gif',
-  christmas: '/assets/ui/xmas.gif',
+  easter: '/assets/reports/easter.gif',
+  newYear: '/assets/reports/newy.gif',
+  peace: '/assets/reports/peace.gif',
+  christmas: '/assets/reports/xmas.gif',
 };
 
-// Status icons
+// Status icons (from gpack/travian_default/img/s/)
 export const STATUS = {
   off: '/assets/ui/status-off.gif',
   def: '/assets/ui/status-def.gif',

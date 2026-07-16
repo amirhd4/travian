@@ -118,7 +118,7 @@ export default function Colonize() {
         <div
             className="w-full flex flex-col items-center"
             style={{
-                backgroundImage: "linear-gradient(180deg, rgba(15,35,20,.55), rgba(15,35,20,.75)), url('/assets/bgs/bg-map.png')",
+                backgroundImage: "linear-gradient(180deg, rgba(15,35,20,.55), rgba(15,35,20,.75)), url('/assets/bgs/bg0.jpg')",
                 backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#12321c',
             }}
         >

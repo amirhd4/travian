@@ -105,27 +105,27 @@ html, body {
   }
   .bg-messages {
     background:
-      url('/assets/bgs/bg-messages.png') center/cover no-repeat,
+      url('/assets/bgs/bg0.jpg') center/cover no-repeat,
       url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
   }
   .bg-reports {
     background:
-      url('/assets/bgs/bg-reports.png') center/cover no-repeat,
+      url('/assets/bgs/bg0.jpg') center/cover no-repeat,
       url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
   }
   .bg-statistics {
     background:
-      url('/assets/bgs/bg-statistics.png') center/cover no-repeat,
+      url('/assets/bgs/dyn-bg1.jpg') center/cover no-repeat,
       url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
   }
   .bg-map {
     background:
-      url('/assets/bgs/bg-map.png') center/cover no-repeat,
+      url('/assets/bgs/bg0.jpg') center/cover no-repeat,
       url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
   }
   .bg-plus {
     background:
-      url('/assets/bgs/bg-plus.png') center/cover no-repeat,
+      url('/assets/bgs/bg0.jpg') center/cover no-repeat,
       url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
   }
 

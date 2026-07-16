@@ -51,7 +51,7 @@ export default function WorldWonder() {
     };
 
     const bgStyle = {
-        backgroundImage: "linear-gradient(180deg, rgba(10,10,25,.7), rgba(10,10,25,.85)), url('/assets/bgs/bg-warsim.png')",
+        backgroundImage: "linear-gradient(180deg, rgba(10,10,25,.7), rgba(10,10,25,.85)), url('/assets/bgs/bg0.jpg')",
         backgroundSize: 'cover', backgroundPosition: 'center', backgroundColor: '#0f172a',
     };
 

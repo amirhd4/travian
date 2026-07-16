@@ -12,7 +12,7 @@ const NAV_ITEMS = [
     { path: '/movements', icon: '📡', image: '/assets/ui/car-icon.gif', label: 'گردهمایی' },
     { path: '/farm-list', icon: '🌾', image: '/assets/ui/buildings-icon.gif', label: 'مزرعه' },
     { path: '/reports', icon: '📜', image: '/assets/ui/report-icons.gif', label: 'گزارشات' },
-    { path: '/statistics', icon: '📊', image: '/assets/ui/top10.png', label: 'آمار' },
+    { path: '/statistics', icon: '📊', image: '/assets/ui/status-top10.gif', label: 'آمار' },
     { path: '/marketplace', icon: '⚖️', image: '/assets/ui/car-icon.gif', label: 'بازارچه' },
     { path: '/world-wonder', icon: '🏆', image: '/assets/ui/buildings-icon.gif', label: 'شگفتی جهان' },
     { path: '/messages', icon: '✉️', image: '/assets/ui/friends-icon.gif', label: 'پیام‌ها' },
