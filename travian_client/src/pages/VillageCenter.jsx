@@ -29,32 +29,33 @@ const DORF2_SLOTS = {
 // g29=greatbarracks, g30=greatstable, g31=citywall, g32=earthwall,
 // g33=palisade, g34=trapper, g35=heromansion, g36=merchant,
 // g37=wonder, g38=horsedrinking, g39=wall, g40=hospital
+// NOTE: PixiJS cannot parse GIF, so we use PNG conversions of the source GIFs
 const BUILDING_META = {
-    'ساختمان اصلی': { asset: '/assets/buildings/g15.gif', color: 0xb5652f, icon: '🏛️' },
-    'انبار': { asset: '/assets/buildings/g10.gif', color: 0x8a6b4a, icon: '📦' },
-    'سیلوی غله': { asset: '/assets/buildings/g11.gif', color: 0xd9a62e, icon: '🌾' },
-    'پادگان': { asset: '/assets/buildings/g19.gif', color: 0x8b3a3a, icon: '⚔️' },
-    'اصطبل': { asset: '/assets/buildings/g20.gif', color: 0x6b4a2f, icon: '🐎' },
-    'کارگاه': { asset: '/assets/buildings/g21.gif', color: 0x555555, icon: '🎯' },
-    'بازارچه': { asset: '/assets/buildings/g17.gif', color: 0xd9942a, icon: '⚖️' },
-    'سفارتخانه': { asset: '/assets/buildings/g18.gif', color: 0x2f6b8a, icon: '🏰' },
-    'خزانه‌داری': { asset: '/assets/buildings/g27.gif', color: 0xb5972f, icon: '💰' },
-    'آکادمی': { asset: '/assets/buildings/g22.gif', color: 0x4a6b8a, icon: '🎓' },
-    'اقامتگاه': { asset: '/assets/buildings/g25.gif', color: 0x8a4a6b, icon: '🏯' },
-    'تالار شهر': { asset: '/assets/buildings/g24.gif', color: 0x6b6b4a, icon: '🏢' },
-    'مخفیگاه': { asset: '/assets/buildings/g23.gif', color: 0x3a3a3a, icon: '🕳️' },
-    'آهنگری': { asset: '/assets/buildings/g12.gif', color: 0x4a3a2f, icon: '🔨' },
-    'کارگاه سنگ‌تراشی': { asset: '/assets/buildings/g41.gif', color: 0x7a7a7a, icon: '⛏️' },
-    'عمارت قهرمان': { asset: '/assets/buildings/g35.gif', color: 0x8a2f6b, icon: '🦸' },
-    'آبشخور اسب': { asset: '/assets/buildings/g38.gif', color: 0x4a8a6b, icon: '💧' },
-    'اداره تجارت': { asset: '/assets/buildings/g28.gif', color: 0xd9942a, icon: '🐪' },
-    'پادگان بزرگ': { asset: '/assets/buildings/g29.gif', color: 0x8b3a3a, icon: '⚔️' },
-    'آسیاب': { asset: '/assets/buildings/g8.gif', color: 0xc4a265, icon: '⚙️' },
-    'قصر': { asset: '/assets/buildings/g26.gif', color: 0xb5972f, icon: '👑' },
-    'محل گردهمایی': { asset: '/assets/buildings/g16.gif', color: 0x2f8a4a, icon: '🚩' },
-    'دیوار': { asset: '/assets/buildings/g39.gif', color: 0x6b6b6b, icon: '🧱' },
-    'شگفتی جهان': { asset: '/assets/buildings/g37.gif', color: 0xd9b52f, icon: '🏛️' },
-    'تله': { asset: '/assets/buildings/g34.gif', color: 0x4a2f4a, icon: '🪤' },
+    'ساختمان اصلی': { asset: '/assets/buildings/g15.png', color: 0xb5652f, icon: '🏛️' },
+    'انبار': { asset: '/assets/buildings/g10.png', color: 0x8a6b4a, icon: '📦' },
+    'سیلوی غله': { asset: '/assets/buildings/g11.png', color: 0xd9a62e, icon: '🌾' },
+    'پادگان': { asset: '/assets/buildings/g19.png', color: 0x8b3a3a, icon: '⚔️' },
+    'اصطبل': { asset: '/assets/buildings/g20.png', color: 0x6b4a2f, icon: '🐎' },
+    'کارگاه': { asset: '/assets/buildings/g21.png', color: 0x555555, icon: '🎯' },
+    'بازارچه': { asset: '/assets/buildings/g17.png', color: 0xd9942a, icon: '⚖️' },
+    'سفارتخانه': { asset: '/assets/buildings/g18.png', color: 0x2f6b8a, icon: '🏰' },
+    'خزانه‌داری': { asset: '/assets/buildings/g27.png', color: 0xb5972f, icon: '💰' },
+    'آکادمی': { asset: '/assets/buildings/g22.png', color: 0x4a6b8a, icon: '🎓' },
+    'اقامتگاه': { asset: '/assets/buildings/g25.png', color: 0x8a4a6b, icon: '🏯' },
+    'تالار شهر': { asset: '/assets/buildings/g24.png', color: 0x6b6b4a, icon: '🏢' },
+    'مخفیگاه': { asset: '/assets/buildings/g23.png', color: 0x3a3a3a, icon: '🕳️' },
+    'آهنگری': { asset: '/assets/buildings/g12.png', color: 0x4a3a2f, icon: '🔨' },
+    'کارگاه سنگ‌تراشی': { asset: '/assets/buildings/g41.png', color: 0x7a7a7a, icon: '⛏️' },
+    'عمارت قهرمان': { asset: '/assets/buildings/g35.png', color: 0x8a2f6b, icon: '🦸' },
+    'آبشخور اسب': { asset: '/assets/buildings/g38.png', color: 0x4a8a6b, icon: '💧' },
+    'اداره تجارت': { asset: '/assets/buildings/g28.png', color: 0xd9942a, icon: '🐪' },
+    'پادگان بزرگ': { asset: '/assets/buildings/g29.png', color: 0x8b3a3a, icon: '⚔️' },
+    'آسیاب': { asset: '/assets/buildings/g8.png', color: 0xc4a265, icon: '⚙️' },
+    'قصر': { asset: '/assets/buildings/g26.png', color: 0xb5972f, icon: '👑' },
+    'محل گردهمایی': { asset: '/assets/buildings/g16.png', color: 0x2f8a4a, icon: '🚩' },
+    'دیوار': { asset: '/assets/buildings/g39.png', color: 0x6b6b6b, icon: '🧱' },
+    'شگفتی جهان': { asset: '/assets/buildings/g37.png', color: 0xd9b52f, icon: '🏛️' },
+    'تله': { asset: '/assets/buildings/g34.png', color: 0x4a2f4a, icon: '🪤' },
 };
 
 function remainingSeconds(endTimeIso) {
@@ -137,7 +138,7 @@ export default function VillageCenter() {
                 const meta = BUILDING_META[b.name] || { color: 0x999999, icon: '❔' };
                 const hasLevel = b.level > 0 || b.is_upgrading;
 
-                // Load and display the actual building GIF image
+                // Load and display the actual building image (PNG for PixiJS compatibility)
                 try {
                     const texture = await PIXI.Assets.load(meta.asset);
                     const sprite = new PIXI.Sprite(texture);
