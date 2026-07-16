@@ -874,6 +874,10 @@ class ServerStatusView(APIView):
                 days=active_server.duration_days * (active_server.artifact_release_duration_percent / 100)
             )
 
+        data["server_end_at"] = active_server.start_date + datetime.timedelta(
+            days=active_server.duration_days
+        )
+
         if active_server.is_finished:
             data["finished_at"] = active_server.finished_at
             data["winner_username"] = active_server.winner_player.username if active_server.winner_player else None

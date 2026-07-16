@@ -217,7 +217,7 @@ def create_starter_village(player, name="دهکده اول", starting_quadrant='
         prod_wood=20,
         prod_clay=20,
         prod_iron=20,
-        prod_crop=20,
+        prod_crop=50,
         max_storage=max_storage,
         max_granary=max_granary,
     )
