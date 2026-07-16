@@ -1006,11 +1006,16 @@ class CombatReportUnreadCountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        count = CombatReport.objects.filter(
+        from .models import ReinforcementReport
+        combat_count = CombatReport.objects.filter(
             Q(attacker_player=request.user, is_read_by_attacker=False, hidden_from_attacker=False) |
             Q(defender_player=request.user, is_read_by_defender=False, hidden_from_defender=False)
         ).count()
-        return Response({"unread_count": count})
+        reinforcement_count = ReinforcementReport.objects.filter(
+            Q(sender_player=request.user, is_read_by_sender=False, hidden_from_sender=False) |
+            Q(receiver_player=request.user, is_read_by_receiver=False, hidden_from_receiver=False)
+        ).count()
+        return Response({"unread_count": combat_count + reinforcement_count})
 
 
 class CombatReportDetailView(APIView):
@@ -1149,11 +1154,22 @@ class HeroAuctionBidView(APIView):
 
     def post(self, request):
         from .models import HeroAuction
+        from apps.game_engine.economy import SILVER_PER_GOLD
+
         auction_id = request.data.get('auction_id')
+        currency = request.data.get('currency', 'gold')
+        if currency not in ('gold', 'silver'):
+            return Response({"error": "واحد پول نامعتبر است."}, status=400)
+
         try:
             bid_amount = int(request.data.get('bid_amount', 0))
         except (TypeError, ValueError):
             return Response({"error": "مقدار پیشنهاد نامعتبر است."}, status=400)
+        if bid_amount <= 0:
+            return Response({"error": "مقدار پیشنهاد باید مثبت باشد."}, status=400)
+
+        # current_bid همیشه بر حسب «معادل طلا» ذخیره می‌شود تا پیشنهادهای طلا/نقره قابل مقایسه باشند
+        bid_amount_in_gold = bid_amount if currency == 'gold' else (bid_amount / SILVER_PER_GOLD)
 
         with transaction.atomic():
             try:
@@ -1163,28 +1179,43 @@ class HeroAuctionBidView(APIView):
             except HeroAuction.DoesNotExist:
                 return Response({"error": "این حراجی یافت نشد یا به پایان رسیده است."}, status=404)
 
-            min_required = auction.current_bid + HeroAuction.MIN_BID_INCREMENT
-            if bid_amount < min_required:
-                return Response({"error": f"پیشنهاد باید حداقل {min_required} سکه طلا باشد."}, status=400)
+            min_required_gold = auction.current_bid + HeroAuction.MIN_BID_INCREMENT
+            if bid_amount_in_gold < min_required_gold:
+                min_in_currency = min_required_gold if currency == 'gold' else int(min_required_gold * SILVER_PER_GOLD)
+                unit_label = "سکه طلا" if currency == 'gold' else "نقره"
+                return Response({"error": f"پیشنهاد باید حداقل {min_in_currency} {unit_label} باشد."}, status=400)
 
             bidder = request.user
-            if bidder.gold_coins < bid_amount:
-                return Response({"error": "سکه طلای کافی ندارید."}, status=400)
+            if currency == 'gold':
+                if bidder.gold_coins < bid_amount:
+                    return Response({"error": "سکه طلای کافی ندارید."}, status=400)
+                bidder.gold_coins -= bid_amount
+            else:
+                if bidder.silver_coins < bid_amount:
+                    return Response({"error": "نقره کافی ندارید."}, status=400)
+                bidder.silver_coins -= bid_amount
+            bidder.save(update_fields=['gold_coins', 'silver_coins'])
 
-            bidder.gold_coins -= bid_amount
-            bidder.save(update_fields=['gold_coins'])
-
+            # بازپرداخت پیشنهاد قبلی، دقیقا در همان واحدی که پرداخت شده بود
             if auction.current_bidder_id:
                 previous_bidder = auction.current_bidder
-                previous_bidder.gold_coins += auction.current_bid
-                previous_bidder.save(update_fields=['gold_coins'])
+                if auction.current_bid_currency == 'silver':
+                    previous_bidder.silver_coins += auction.current_bid_original_amount
+                else:
+                    previous_bidder.gold_coins += auction.current_bid_original_amount
+                previous_bidder.save(update_fields=['gold_coins', 'silver_coins'])
 
-            auction.current_bid = bid_amount
+            auction.current_bid = int(round(bid_amount_in_gold))
+            auction.current_bid_currency = currency
+            auction.current_bid_original_amount = bid_amount
             auction.current_bidder = bidder
             auction.save()
 
-        return Response({"message": "پیشنهاد شما ثبت شد.", "current_bid": auction.current_bid})
-
+        return Response({
+            "message": "پیشنهاد شما ثبت شد.",
+            "current_bid": auction.current_bid,
+            "current_bid_currency": auction.current_bid_currency,
+        })
 
 class FarmListManageView(APIView):
     """مدیریت خودِ فارم‌لیست‌ها: ساخت، تغییر نام، حذف."""
@@ -1229,3 +1260,68 @@ class FarmListManageView(APIView):
         if not deleted:
             return Response({"error": "لیست یافت نشد."}, status=404)
         return Response({"message": "لیست حذف شد."})
+
+
+class ReinforcementReportListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import ReinforcementReport
+        qs = ReinforcementReport.objects.filter(
+            Q(sender_player=request.user, hidden_from_sender=False) |
+            Q(receiver_player=request.user, hidden_from_receiver=False)
+        ).order_by('-created_at')[:100]
+
+        def serialize(r):
+            is_sender = r.sender_player_id == request.user.id
+            return {
+                "id": r.id,
+                "is_sender": is_sender,
+                "source_village_name": r.source_village_name,
+                "target_village_name": r.target_village_name,
+                "source_coords": r.source_coords,
+                "target_coords": r.target_coords,
+                "troops_sent": r.troops_sent,
+                "hero_sent": r.hero_sent,
+                "is_read": r.is_read_by_sender if is_sender else r.is_read_by_receiver,
+                "created_at": r.created_at,
+            }
+
+        return Response([serialize(r) for r in qs])
+
+
+class ReinforcementReportDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, report_id):
+        from .models import ReinforcementReport
+        try:
+            r = ReinforcementReport.objects.get(
+                Q(id=report_id) & (Q(sender_player=request.user) | Q(receiver_player=request.user))
+            )
+        except ReinforcementReport.DoesNotExist:
+            return Response({"error": "گزارش یافت نشد."}, status=404)
+
+        is_sender = r.sender_player_id == request.user.id
+        if is_sender and not r.is_read_by_sender:
+            r.is_read_by_sender = True
+            r.save(update_fields=['is_read_by_sender'])
+        elif not is_sender and not r.is_read_by_receiver:
+            r.is_read_by_receiver = True
+            r.save(update_fields=['is_read_by_receiver'])
+        return Response({"message": "خوانده شد"})
+
+    def delete(self, request, report_id):
+        from .models import ReinforcementReport
+        try:
+            r = ReinforcementReport.objects.get(
+                Q(id=report_id) & (Q(sender_player=request.user) | Q(receiver_player=request.user))
+            )
+        except ReinforcementReport.DoesNotExist:
+            return Response({"error": "گزارش یافت نشد."}, status=404)
+        if r.sender_player_id == request.user.id:
+            r.hidden_from_sender = True
+        else:
+            r.hidden_from_receiver = True
+        r.save()
+        return Response({"message": "گزارش حذف شد."})

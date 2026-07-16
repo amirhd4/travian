@@ -31,7 +31,7 @@ def get_required_training_building(troop_type):
     if troop_type.is_siege_weapon:
         return "کارگاه"
     if troop_type.is_chief:
-        return "عمارت اقامتی"
+        return "اقامتگاه"
     if troop_type.is_cavalry:
         return "اصطبل"
     return "پادگان"

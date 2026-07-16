@@ -74,6 +74,11 @@ export default function ResourceBar() {
                     <span className="w-6 h-6 rounded-full bg-gold-500/20 border border-gold-500/50 flex items-center justify-center">💰</span>
                     <span className="text-gold-300">{(user?.gold_coins ?? 0).toLocaleString()}</span>
                 </span>
+
+                <span className="text-xs font-bold flex items-center gap-1.5">
+                    <span className="w-6 h-6 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">🪙</span>
+                    <span className="text-parchment-300">{(user?.silver_coins ?? 0).toLocaleString()}</span>
+                </span>
             </div>
 
             <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-3 sm:gap-6 px-3 pb-2">

@@ -107,6 +107,7 @@ function AuctionTab() {
     const [loading, setLoading] = useState(true);
     const [bidding, setBidding] = useState(null);
     const [bidAmounts, setBidAmounts] = useState({});
+    const [bidCurrency, setBidCurrency] = useState({});
     const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchAuctions = useCallback(async () => {
@@ -123,10 +124,13 @@ function AuctionTab() {
 
     const handleBid = async (auctionId) => {
         const bidAmount = bidAmounts[auctionId];
+        const currency = bidCurrency[auctionId] || 'gold';
         if (!bidAmount) return;
         setBidding(auctionId);
         try {
-            const { data } = await api.post('combat/hero/auction/bid/', { auction_id: auctionId, bid_amount: bidAmount });
+            const { data } = await api.post('combat/hero/auction/bid/', {
+                auction_id: auctionId, bid_amount: bidAmount, currency,
+            });
             setAlertMsg({ tone: 'success', text: data.message });
             fetchAuctions();
         } catch (error) {
@@ -144,15 +148,23 @@ function AuctionTab() {
             ) : (
                 <div className="space-y-2">
                     {auctions.map((a) => (
-                        <div key={a.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 rounded-xl p-3 gap-2">
+                        <div key={a.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 rounded-xl p-3 gap-2 flex-wrap">
                             <div className="flex-1 min-w-0">
                                 <p className="font-bold text-sm text-ink-800">{a.item_name}</p>
                                 <p className="text-xs text-ink-500">
-                                    بالاترین پیشنهاد: {a.current_bid} 💰 {a.current_bidder ? `(${a.current_bidder})` : ''}
+                                    بالاترین پیشنهاد: {a.current_bid} 💰 (معادل طلا) {a.current_bidder ? `(${a.current_bidder})` : ''}
                                 </p>
                                 <p className="text-[10px] text-ink-400 font-mono" dir="ltr">{formatDuration(a.remaining_seconds)}</p>
                             </div>
-                            <input type="number" min={a.current_bid + 2} placeholder={`حداقل ${a.current_bid + 2}`}
+                            <select
+                                value={bidCurrency[a.id] || 'gold'}
+                                onChange={(e) => setBidCurrency((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                                className="field text-xs !w-24"
+                            >
+                                <option value="gold">💰 طلا</option>
+                                <option value="silver">🪙 نقره</option>
+                            </select>
+                            <input type="number" min={1} placeholder="مبلغ"
                                 value={bidAmounts[a.id] || ''}
                                 onChange={(e) => setBidAmounts((prev) => ({ ...prev, [a.id]: e.target.value }))}
                                 className="field w-24 text-center text-xs" />

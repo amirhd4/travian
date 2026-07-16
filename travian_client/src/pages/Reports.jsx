@@ -22,7 +22,6 @@ const TABS = [
 function CombatReportRow({ report, onOpen }) {
     const resultIcon = report.won ? '🟢' : '🔴';
     const directionLabel = report.is_attacker ? 'اعزامی' : 'ورودی';
-
     return (
         <div
             onClick={() => onOpen(report)}
@@ -48,6 +47,53 @@ function CombatReportRow({ report, onOpen }) {
                 </p>
                 <p className="text-[10px] text-ink-400" dir="ltr">{new Date(report.created_at).toLocaleString('fa-IR')}</p>
             </div>
+        </div>
+    );
+}
+
+function ReinforcementReportRow({ report, onMarkRead, onDelete }) {
+    const [expanded, setExpanded] = useState(false);
+    const directionLabel = report.is_sender ? 'ارسالی' : 'دریافتی';
+
+    const handleClick = () => {
+        setExpanded((v) => !v);
+        if (!report.is_read) onMarkRead(report.id);
+    };
+
+    return (
+        <div className={`rounded-xl border p-3 transition ${report.is_read ? 'bg-brand-50 border-brand-200' : 'bg-gold-50 border-gold-300 font-bold'}`}>
+            <div onClick={handleClick} className="flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-3">
+                    <span className="text-xl">🛡️</span>
+                    <div>
+                        <p className="text-sm text-ink-800">
+                            {directionLabel} — {report.source_village_name} ➡ {report.target_village_name}
+                        </p>
+                        <p className="text-xs text-ink-500">
+                            {report.source_coords} → {report.target_coords}
+                            {report.hero_sent && <span className="text-purple-700 font-bold"> · 🦸 همراه قهرمان</span>}
+                        </p>
+                    </div>
+                </div>
+                <span className="text-[10px] text-ink-400" dir="ltr">{new Date(report.created_at).toLocaleString('fa-IR')}</span>
+            </div>
+
+            {expanded && (
+                <div className="mt-3 pt-3 border-t border-parchment-200">
+                    {Object.keys(report.troops_sent || {}).length === 0 ? (
+                        <p className="text-xs text-ink-400">اطلاعاتی از نیرو ثبت نشده.</p>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-1 text-xs mb-2">
+                            {Object.entries(report.troops_sent).map(([name, count]) => (
+                                <span key={name} className="text-ink-700">{name}: <b>{count}</b></span>
+                            ))}
+                        </div>
+                    )}
+                    <button onClick={() => onDelete(report.id)} className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded hover:bg-rose-200">
+                        🗑️ حذف
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
@@ -127,29 +173,31 @@ export default function Reports() {
     const [activeTab, setActiveTab] = useState('all');
     const [logs, setLogs] = useState([]);
     const [combatReports, setCombatReports] = useState([]);
+    const [reinforcementReports, setReinforcementReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [openReport, setOpenReport] = useState(null);
     const [confirmState, setConfirmState] = useState(null);
     const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchLogs = useCallback(async () => {
-        try {
-            const response = await api.get('game/logs/');
-            setLogs(response.data);
-        } catch (error) { console.error(error); }
+        try { const response = await api.get('game/logs/'); setLogs(response.data); }
+        catch (error) { console.error(error); }
     }, []);
 
     const fetchCombatReports = useCallback(async () => {
-        try {
-            const response = await api.get('combat/reports/');
-            setCombatReports(response.data);
-        } catch (error) { console.error(error); }
+        try { const response = await api.get('combat/reports/'); setCombatReports(response.data); }
+        catch (error) { console.error(error); }
+    }, []);
+
+    const fetchReinforcementReports = useCallback(async () => {
+        try { const response = await api.get('combat/reports/reinforcements/'); setReinforcementReports(response.data); }
+        catch (error) { console.error(error); }
     }, []);
 
     useEffect(() => {
         setLoading(true);
-        Promise.all([fetchLogs(), fetchCombatReports()]).finally(() => setLoading(false));
-    }, [fetchLogs, fetchCombatReports]);
+        Promise.all([fetchLogs(), fetchCombatReports(), fetchReinforcementReports()]).finally(() => setLoading(false));
+    }, [fetchLogs, fetchCombatReports, fetchReinforcementReports]);
 
     const handleOpenReport = async (report) => {
         try {
@@ -176,38 +224,52 @@ export default function Reports() {
         setConfirmState({ message: 'این گزارش جنگی حذف شود؟', danger: true, onConfirm: () => doDeleteReport(id) });
     };
 
-    // فیلتر کردن گزارشات بر اساس تب فعال
+    const handleMarkReinforcementRead = async (id) => {
+        try {
+            await api.post(`combat/reports/reinforcements/${id}/`);
+            setReinforcementReports((prev) => prev.map((r) => (r.id === id ? { ...r, is_read: true } : r)));
+        } catch (error) { /* silent */ }
+    };
+
+    const handleDeleteReinforcement = (id) => {
+        setConfirmState({
+            message: 'این گزارش نیروی پشتیبان حذف شود؟', danger: true,
+            onConfirm: async () => {
+                setConfirmState(null);
+                try {
+                    await api.delete(`combat/reports/reinforcements/${id}/`);
+                    fetchReinforcementReports();
+                } catch (error) {
+                    setAlertMsg({ tone: 'error', text: 'خطا در حذف گزارش' });
+                }
+            },
+        });
+    };
+
     const getFilteredLogs = () => {
         switch (activeTab) {
-            case 'trade':
-                return logs.filter(log => log.log_type === 'TRADE');
-            case 'reinforcement':
-                return logs.filter(log => log.description.includes('پشتیبان') || log.description.includes('نیروهای پشتیبان'));
-            case 'misc':
-                return logs.filter(log => log.log_type === 'COMBAT' || log.log_type === 'BUILDING');
+            case 'trade': return logs.filter((log) => log.log_type === 'TRADE');
+            case 'reinforcement': return [];
+            case 'misc': return logs.filter((log) => log.log_type === 'COMBAT' || log.log_type === 'BUILDING');
             case 'all':
-            default:
-                return logs;
+            default: return logs;
         }
     };
 
     const getFilteredCombatReports = () => {
-        switch (activeTab) {
-            case 'trade':
-                return [];
-            case 'reinforcement':
-                return combatReports.filter(r => r.movement_type === 'REINFORCEMENT');
-            case 'misc':
-                return combatReports;
-            case 'all':
-            default:
-                return combatReports;
-        }
+        if (activeTab === 'trade' || activeTab === 'reinforcement') return [];
+        return combatReports;
+    };
+
+    const getFilteredReinforcementReports = () => {
+        if (activeTab === 'all' || activeTab === 'reinforcement') return reinforcementReports;
+        return [];
     };
 
     const filteredLogs = getFilteredLogs();
     const filteredCombatReports = getFilteredCombatReports();
-    const hasAnyReports = filteredLogs.length > 0 || filteredCombatReports.length > 0;
+    const filteredReinforcementReports = getFilteredReinforcementReports();
+    const hasAnyReports = filteredLogs.length > 0 || filteredCombatReports.length > 0 || filteredReinforcementReports.length > 0;
 
     return (
         <PageShell maxWidth="max-w-3xl">
@@ -227,38 +289,38 @@ export default function Reports() {
 
                 <div className="panel-body">
                     {loading ? <LoadingState label="در حال بارگذاری اطلاعات..." /> : (
-                        <>
-                            {!hasAnyReports ? (
-                                <EmptyState icon="📜" title="هیچ گزارشی برای نمایش وجود ندارد." />
-                            ) : (
-                                <div className="flex flex-col gap-3">
-                                    {/* نمایش گزارشات عمومی */}
-                                    {filteredLogs.map((log) => {
-                                        const style = LOG_STYLES[log.log_type] || LOG_STYLES.SYSTEM;
-                                        return (
-                                            <div key={log.id} className={`flex items-start p-4 rounded-xl border-r-4 ${style.border} ${style.bg}`}>
-                                                {style.image ? (
-                                                    <img src={style.image} alt="" className="w-10 h-10 ml-4 flex-shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
-                                                ) : null}
-                                                <span className="text-2xl ml-4 hidden">{style.icon}</span>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
-                                                        <span className="font-bold text-sm text-ink-700">{log.log_type_display}</span>
-                                                        <span className="text-xs text-ink-400 font-mono" dir="ltr">{new Date(log.created_at).toLocaleString('fa-IR')}</span>
-                                                    </div>
-                                                    <p className="text-ink-800 text-sm leading-relaxed whitespace-pre-wrap">{log.description}</p>
+                        !hasAnyReports ? (
+                            <EmptyState icon="📜" title="هیچ گزارشی برای نمایش وجود ندارد." />
+                        ) : (
+                            <div className="flex flex-col gap-3">
+                                {filteredLogs.map((log) => {
+                                    const style = LOG_STYLES[log.log_type] || LOG_STYLES.SYSTEM;
+                                    return (
+                                        <div key={log.id} className={`flex items-start p-4 rounded-xl border-r-4 ${style.border} ${style.bg}`}>
+                                            {style.image ? (
+                                                <img src={style.image} alt="" className="w-10 h-10 ml-4 flex-shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                            ) : null}
+                                            <span className="text-2xl ml-4 hidden">{style.icon}</span>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
+                                                    <span className="font-bold text-sm text-ink-700">{log.log_type_display}</span>
+                                                    <span className="text-xs text-ink-400 font-mono" dir="ltr">{new Date(log.created_at).toLocaleString('fa-IR')}</span>
                                                 </div>
+                                                <p className="text-ink-800 text-sm leading-relaxed whitespace-pre-wrap">{log.description}</p>
                                             </div>
-                                        );
-                                    })}
+                                        </div>
+                                    );
+                                })}
 
-                                    {/* نمایش گزارشات جنگی */}
-                                    {filteredCombatReports.map((r) => (
-                                        <CombatReportRow key={r.id} report={r} onOpen={handleOpenReport} />
-                                    ))}
-                                </div>
-                            )}
-                        </>
+                                {filteredReinforcementReports.map((r) => (
+                                    <ReinforcementReportRow key={`ref-${r.id}`} report={r} onMarkRead={handleMarkReinforcementRead} onDelete={handleDeleteReinforcement} />
+                                ))}
+
+                                {filteredCombatReports.map((r) => (
+                                    <CombatReportRow key={r.id} report={r} onOpen={handleOpenReport} />
+                                ))}
+                            </div>
+                        )
                     )}
                 </div>
             </div>

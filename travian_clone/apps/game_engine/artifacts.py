@@ -40,7 +40,7 @@ def spawn_artifact_sites():
             prod_wood=15, prod_clay=15, prod_iron=15, prod_crop=15,
             max_storage=600, max_granary=600,
         )
-        # فقط مزارع منابع (بدون عمارت اقامتی) -> دقیقا مثل دهکده‌های ویرانه‌ی
+        # فقط مزارع منابع (بدون اقامتگاه) -> دقیقا مثل دهکده‌های ویرانه‌ی
         # شگفتی جهان، یعنی همیشه بدون نیاز به تخریب چیزی قابل تسخیر است.
         _create_resource_fields_only(village)
         _spawn_artifact_guard(village)

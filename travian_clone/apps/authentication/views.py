@@ -103,11 +103,9 @@ class MeView(APIView):
     def get(self, request):
         user = request.user
         return Response({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "tribe": user.tribe,
-            "gold_coins": user.gold_coins,
+            "id": user.id, "username": user.username, "email": user.email,
+            "tribe": user.tribe, "gold_coins": user.gold_coins,
+            "silver_coins": user.silver_coins,
         }, status=status.HTTP_200_OK)
 
 

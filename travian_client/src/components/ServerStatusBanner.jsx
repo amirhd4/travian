@@ -32,6 +32,14 @@ export default function ServerStatusBanner() {
         fetchStatus();
     }, []);
 
+    useEffect(() => {
+        if (lastMessage?.type === 'SERVER_FINISHED') {
+            api.get('game/server-status/')
+                .then(({ data }) => setStatus(data))
+                .catch(() => setStatus((prev) => ({ ...prev, is_finished: true, winner_username: lastMessage.data.winner })));
+        }
+    }, [lastMessage]);
+
     // اعلان زنده برای کاربرانی که همین الان آنلاین هستند (بدون نیاز به رفرش صفحه)
     useEffect(() => {
         if (lastMessage?.type === 'SERVER_FINISHED') {
@@ -48,37 +56,20 @@ export default function ServerStatusBanner() {
                 className="fixed bottom-0 left-0 w-full bg-gradient-to-l from-amber-600 to-amber-800 text-white text-center py-2 z-[999] font-bold shadow-lg text-sm"
                 dir="rtl"
             >
-                🏆 این سرور به پایان رسیده است! برنده: <span className="text-yellow-200">{status.winner_username}</span>
-                {status.winner_alliance_tag && <span> (اتحاد [{status.winner_alliance_tag}])</span>}
-                {' '}— دیگر امکان ساخت‌وساز، آموزش یا اعزام نیرو وجود ندارد.
+                <div>
+                    🏆 این سرور به پایان رسیده است! برنده: <span className="text-yellow-200">{status.winner_username}</span>
+                    {status.winner_alliance_tag && <span> (اتحاد [{status.winner_alliance_tag}])</span>}
+                </div>
+                {(status.greatest_empire_username || status.top_attacker_username || status.top_defender_username) && (
+                    <div className="text-xs font-normal mt-1 flex flex-wrap justify-center gap-3">
+                        {status.greatest_empire_username && <span>👑 بزرگترین امپراتوری: {status.greatest_empire_username}</span>}
+                        {status.top_attacker_username && <span>⚔️ برترین مهاجم: {status.top_attacker_username}</span>}
+                        {status.top_defender_username && <span>🛡️ برترین مدافع: {status.top_defender_username}</span>}
+                    </div>
+                )}
             </div>
         );
     }
-
-    // نمایش شمارش معکوس آزادسازی کتیبه‌ها و نقشه ساخت
-    const banners = [];
-
-    // if (!status.artifacts_unlocked && status.artifacts_release_at) {
-    //     const remaining = formatCountdown(status.artifacts_release_at);
-    //     if (remaining) {
-    //         banners.push(
-    //             // <div key="artifacts" className="bg-gradient-to-l from-purple-700 to-purple-900 text-purple-100 text-center py-1.5 text-xs font-bold">
-    //             //     🏺 کتیبه‌ها {remaining} دیگر آزاد می‌شوند
-    //             // </div>
-    //         );
-    //     }
-    // }
-
-    // if (!status.ww_unlocked && status.ww_plans_release_at) {
-    //     const remaining = formatCountdown(status.ww_plans_release_at);
-    //     if (remaining) {
-    //         banners.push(
-    //             <div key="ww" className="bg-gradient-to-l from-amber-700 to-amber-900 text-amber-100 text-center py-1.5 text-xs font-bold">
-    //                 🗺️ نقشه ساخت شگفتی جهان {remaining} دیگر آزاد می‌شود
-    //             </div>
-    //         );
-    //     }
-    // }
 
     if (banners.length === 0) return null;
 

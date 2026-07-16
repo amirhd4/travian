@@ -36,31 +36,56 @@ FIELD_DISTRIBUTION_WEIGHTS = {
 # ساختمان‌های داخل شهر (Dorf2) که در جایگاه‌های ۱۹ تا ۳۸ قرار می‌گیرند.
 # ✅ یکی از سه «مخفیگاه» تکراری با «آهنگری» (ارتقای نیرو تا لول ۲۰) جایگزین شد
 # تا مجموع اسلات‌ها همچنان ۴۰ باقی بماند.
+# _CITY_BUILDING_DEFS = (
+#     ("ساختمان اصلی", 1, 'INFRASTRUCTURE'),
+#     ("انبار", 1, 'INFRASTRUCTURE'),
+#     ("سیلوی غله", 1, 'INFRASTRUCTURE'),
+#     ("پادگان", 0, 'MILITARY'),
+#     ("اصطبل", 0, 'MILITARY'),
+#     ("کارگاه", 0, 'MILITARY'),
+#     ("بازارچه", 0, 'INFRASTRUCTURE'),
+#     ("سفارتخانه", 0, 'INFRASTRUCTURE'),
+#     ("خزانه‌داری", 0, 'INFRASTRUCTURE'),
+#     ("آکادمی", 0, 'MILITARY'),
+#     ("اقامتگاه", 0, 'INFRASTRUCTURE'),
+#     ("تالار شهر", 0, 'INFRASTRUCTURE'),
+#     ("مخفیگاه", 0, 'INFRASTRUCTURE'),
+#     ("مخفیگاه", 0, 'INFRASTRUCTURE'),
+#     ("آهنگری", 0, 'MILITARY'),
+#     ("کارگاه سنگ‌تراشی", 0, 'INFRASTRUCTURE'),
+#     ("عمارت قهرمان", 0, 'INFRASTRUCTURE'),
+#     ("آبشخور اسب", 0, 'MILITARY'),
+#     ("اداره تجارت", 0, 'INFRASTRUCTURE'),
+#     ("پادگان بزرگ", 0, 'MILITARY'),
+# )
+
+
 _CITY_BUILDING_DEFS = (
     ("ساختمان اصلی", 1, 'INFRASTRUCTURE'),
     ("انبار", 1, 'INFRASTRUCTURE'),
     ("سیلوی غله", 1, 'INFRASTRUCTURE'),
+
     ("پادگان", 0, 'MILITARY'),
     ("اصطبل", 0, 'MILITARY'),
     ("کارگاه", 0, 'MILITARY'),
+    ("آهنگری", 0, 'MILITARY'),
+    ("آکادمی", 0, 'MILITARY'),
+
     ("بازارچه", 0, 'INFRASTRUCTURE'),
     ("سفارتخانه", 0, 'INFRASTRUCTURE'),
     ("خزانه‌داری", 0, 'INFRASTRUCTURE'),
-    ("آکادمی", 0, 'MILITARY'),
-    ("عمارت اقامتی", 0, 'INFRASTRUCTURE'),
+    ("اقامتگاه", 0, 'INFRASTRUCTURE'),
+    ("قصر", 0, 'INFRASTRUCTURE'),
     ("تالار شهر", 0, 'INFRASTRUCTURE'),
     ("مخفیگاه", 0, 'INFRASTRUCTURE'),
     ("مخفیگاه", 0, 'INFRASTRUCTURE'),
-    ("آهنگری", 0, 'MILITARY'),
+    ("آسیاب", 0, 'INFRASTRUCTURE'),
     ("کارگاه سنگ‌تراشی", 0, 'INFRASTRUCTURE'),
     ("عمارت قهرمان", 0, 'INFRASTRUCTURE'),
-    ("آبشخور اسب", 0, 'MILITARY'),
-    ("اداره تجارت", 0, 'INFRASTRUCTURE'),
-    ("پادگان بزرگ", 0, 'MILITARY'),
 )
 
 _RALLY_POINT_DEF = ("محل گردهمایی", 1, 'INFRASTRUCTURE')
-_WALL_DEF = ("دیوار (Wall)", 0, 'WALL')
+_WALL_DEF = ("دیوار", 0, 'WALL')
 
 
 def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=None):

@@ -38,7 +38,7 @@ const BUILDING_META = {
     'سفارتخانه': { asset: '/assets/buildings/g18.gif', color: 0x2f6b8a, icon: '🏰' },
     'خزانه‌داری': { asset: '/assets/buildings/g17.gif', color: 0xb5972f, icon: '💰' },
     'آکادمی': { asset: '/assets/buildings/g16.gif', color: 0x4a6b8a, icon: '🎓' },
-    'عمارت اقامتی': { asset: '/assets/buildings/g19.gif', color: 0x8a4a6b, icon: '🏯' },
+    'اقامتگاه': { asset: '/assets/buildings/g19.gif', color: 0x8a4a6b, icon: '🏯' },
     'تالار شهر': { asset: '/assets/buildings/g18.gif', color: 0x6b6b4a, icon: '🏢' },
     'مخفیگاه': { asset: '/assets/buildings/g17.gif', color: 0x3a3a3a, icon: '🕳️' },
     'آهنگری': { asset: '/assets/buildings/g21.gif', color: 0x4a3a2f, icon: '🔨' },
@@ -50,7 +50,7 @@ const BUILDING_META = {
     'آسیاب': { asset: '/assets/buildings/g8.gif', color: 0xc4a265, icon: '⚙️' },
     'قصر': { asset: '/assets/buildings/g19.gif', color: 0xb5972f, icon: '👑' },
     'محل گردهمایی': { asset: '/assets/buildings/g11.gif', color: 0x2f8a4a, icon: '🚩' },
-    'دیوار (Wall)': { asset: '/assets/buildings/g39.gif', color: 0x6b6b6b, icon: '🧱' },
+    'دیوار': { asset: '/assets/buildings/g39.gif', color: 0x6b6b6b, icon: '🧱' },
     'شگفتی جهان': { asset: '/assets/buildings/g40.gif', color: 0xd9b52f, icon: '🏛️' },
     'تله': { asset: '/assets/buildings/g34.gif', color: 0x4a2f4a, icon: '🪤' },
 };

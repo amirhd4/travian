@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -93,5 +94,7 @@ class UpgradeWWView(APIView):
                 _check_for_winner(active_server_obj)
 
             return Response({"message": f"شگفتی جهان به سطح {ww.level} ارتقا یافت!"})
+        except ValidationError as e:
+            return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
         except Exception as e:
             return Response({"error": str(e)}, status=400)

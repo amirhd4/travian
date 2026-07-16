@@ -747,6 +747,12 @@ class EmbassyView(APIView):
             if action == 'create':
                 name = request.data.get('name')
                 tag = request.data.get('tag')
+                if not name or not tag:
+                    return Response({"error": "نام و تگ اتحاد الزامی است."}, status=400)
+                if Alliance.objects.filter(name=name).exists():
+                    return Response({"error": "این نام اتحاد قبلا استفاده شده است."}, status=400)
+                if Alliance.objects.filter(tag=tag).exists():
+                    return Response({"error": "این تگ قبلا استفاده شده است."}, status=400)
 
                 with transaction.atomic():
                     alliance = Alliance.objects.create(name=name, tag=tag, founder=request.user)
@@ -855,16 +861,15 @@ class ServerStatusView(APIView):
             "duration_days": active_server.duration_days,
             "start_date": active_server.start_date,
             "new_player_protection_days": active_server.new_player_protection_days,
-            "ww_unlocked": active_server.ww_unlocked,                    # ✅ جدید
-            "artifacts_unlocked": active_server.artifacts_unlocked,      # ✅ جدید
+            "ww_unlocked": active_server.ww_unlocked,
+            "artifacts_unlocked": active_server.artifacts_unlocked,
         }
 
-        if not active_server.ww_unlocked:  # ✅ جدید
+        if not active_server.ww_unlocked:
             data["ww_plans_release_at"] = active_server.start_date + datetime.timedelta(
                 days=active_server.duration_days * 0.7
             )
-
-        if not active_server.artifacts_unlocked:  # ✅ جدید
+        if not active_server.artifacts_unlocked:
             data["artifacts_release_at"] = active_server.start_date + datetime.timedelta(
                 days=active_server.duration_days * (active_server.artifact_release_duration_percent / 100)
             )
@@ -873,6 +878,16 @@ class ServerStatusView(APIView):
             data["finished_at"] = active_server.finished_at
             data["winner_username"] = active_server.winner_player.username if active_server.winner_player else None
             data["winner_alliance_tag"] = active_server.winner_alliance.tag if active_server.winner_alliance else None
+            # ✅ جدید: عناوین پایان بازی که قبلاً فقط در پیام درون‌بازی ارسال می‌شدند
+            data["greatest_empire_username"] = (
+                active_server.greatest_empire_player.username if active_server.greatest_empire_player else None
+            )
+            data["top_attacker_username"] = (
+                active_server.top_attacker_player.username if active_server.top_attacker_player else None
+            )
+            data["top_defender_username"] = (
+                active_server.top_defender_player.username if active_server.top_defender_player else None
+            )
 
         return Response(data)
 
@@ -1306,13 +1321,10 @@ MAX_PROTECTION_PURCHASES = 10
 
 
 class BuyProtectionView(APIView):
-    """خرید محافظت تازه‌وارد با طلا."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         player = request.user
-
-        # بررسی تعداد دفعات خرید
         protection_purchases_key = f"protection_purchases_{player.id}"
         from django.core.cache import cache
         purchases_count = cache.get(protection_purchases_key, 0)
@@ -1320,12 +1332,16 @@ class BuyProtectionView(APIView):
         if purchases_count >= MAX_PROTECTION_PURCHASES:
             return Response({"error": f"حداکثر {MAX_PROTECTION_PURCHASES} بار خرید محافظت در هر سرور مجاز است."}, status=400)
 
-        # بررسی آیا محافظت فعال است
-        if player.has_attacked:
-            return Response({"error": "شما قبلا حمله کرده‌اید و نمی‌توانید محافظت بخرید."}, status=400)
-
-        # بررسی آیا نقشه‌های ساخت شگفتی جهان آزاد شده‌اند
         server_settings = ServerSetting.objects.filter(is_active=True).first()
+        protection_days = server_settings.new_player_protection_days if server_settings else 7
+        currently_protected = (
+            not player.has_attacked
+            and protection_days > 0
+            and timezone.now() < player.date_joined + datetime.timedelta(days=protection_days)
+        )
+        if currently_protected:
+            return Response({"error": "شما هم‌اکنون در محافظت هستید و نیازی به خرید مجدد ندارید."}, status=400)
+
         if server_settings and server_settings.ww_unlocked:
             return Response({"error": "پس از آزادسازی نقشه‌های ساخت شگفتی جهان، خرید محافظت غیرفعال است."}, status=400)
 
@@ -1333,9 +1349,8 @@ class BuyProtectionView(APIView):
             return Response({"error": f"طلای کافی ندارید. هزینه: {PROTECTION_GOLD_COST} سکه."}, status=400)
 
         player.gold_coins -= PROTECTION_GOLD_COST
-        player.has_attacked = False  # بازنشانی محافظت
+        player.has_attacked = False
         player.save(update_fields=['gold_coins', 'has_attacked'])
-
         cache.set(protection_purchases_key, purchases_count + 1, timeout=None)
 
         return Response({
@@ -1449,7 +1464,7 @@ class InstantConstructionView(APIView):
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
         # ساختمان‌های در حال ارتقا (به جز قصر و اقامتگاه)
-        EXCLUDED_BUILDINGS = ("عمارت اقامتی", "تالار شهر", "شگفتی جهان")
+        EXCLUDED_BUILDINGS = ("اقامتگاه", "تالار شهر", "شگفتی جهان")
         upgrading_buildings = VillageBuilding.objects.filter(
             village=village, is_upgrading=True
         ).exclude(
@@ -1587,11 +1602,10 @@ class CropperSearchView(APIView):
         })
     
 
-GOLD_TO_SILVER_RATE = 100  # 10 Gold = 1,000 Silver (100 Silver per Gold)
+from .economy import SILVER_PER_GOLD  # به‌جای GOLD_TO_SILVER_RATE محلی
 
 
 class GoldToSilverExchangeView(APIView):
-    """تبدیل طلا به نقره با نرخ ۱۰ طلا = ۱,۰۰۰ نقره."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -1599,7 +1613,7 @@ class GoldToSilverExchangeView(APIView):
         return Response({
             "gold_coins": player.gold_coins,
             "silver_coins": player.silver_coins,
-            "exchange_rate": f"10 طلا = 1,000 نقره (هر طلا = {GOLD_TO_SILVER_RATE} نقره)",
+            "exchange_rate": f"10 طلا = 1,000 نقره (هر طلا = {SILVER_PER_GOLD} نقره)",
         })
 
     def post(self, request):
@@ -1608,15 +1622,12 @@ class GoldToSilverExchangeView(APIView):
 
         if gold_amount <= 0:
             return Response({"error": "مقدار طلا نامعتبر است."}, status=400)
-
         if gold_amount % 10 != 0:
             return Response({"error": "مقدار طلا باید مضربی از ۱۰ باشد."}, status=400)
-
         if player.gold_coins < gold_amount:
             return Response({"error": f"طلای کافی ندارید. موجودی: {player.gold_coins} سکه."}, status=400)
 
-        silver_amount = gold_amount * GOLD_TO_SILVER_RATE
-
+        silver_amount = gold_amount * SILVER_PER_GOLD
         player.gold_coins -= gold_amount
         player.silver_coins += silver_amount
         player.save(update_fields=['gold_coins', 'silver_coins'])
@@ -1629,18 +1640,14 @@ class GoldToSilverExchangeView(APIView):
 
 
 class GoldTroopShopView(APIView):
-    """فروشگاه خرید نیرو با طلا - نیروهای نژاد بازیکن یا حیوانات طبیعی."""
     permission_classes = [IsAuthenticated]
-
-    # قیمت نیروها به ازای هر واحد (بر اساس هزینه منابع * ضریب)
-    TROOP_GOLD_MULTIPLIER = 2  # 2 طلا به ازای هر 1000 واحد هزینه منابع
+    TROOP_GOLD_MULTIPLIER = 2
 
     def get(self, request):
         from apps.combat.models import TroopType, Animal
+        from apps.game_engine.economy import SILVER_PER_GOLD
 
         player = request.user
-
-        # نیروهای نژاد بازیکن
         tribe_troops = TroopType.objects.filter(tribe=player.tribe).exclude(
             is_scout=True, is_settler=True, is_chief=True
         )
@@ -1649,50 +1656,51 @@ class GoldTroopShopView(APIView):
             total_cost = troop.wood_cost + troop.clay_cost + troop.iron_cost + troop.crop_cost
             gold_price = max(1, int((total_cost / 1000) * self.TROOP_GOLD_MULTIPLIER))
             troops_data.append({
-                "id": troop.id,
-                "name": troop.name,
-                "type": "troop",
+                "id": troop.id, "name": troop.name, "type": "troop",
                 "attack_power": troop.attack_power,
                 "defense_infantry": troop.defense_infantry,
                 "defense_cavalry": troop.defense_cavalry,
                 "gold_price": gold_price,
+                "silver_price": gold_price * SILVER_PER_GOLD,
             })
 
-        # حیوانات طبیعی
-        animals = Animal.objects.all()
         animals_data = []
-        for animal in animals:
+        for animal in Animal.objects.all():
             animals_data.append({
-                "id": animal.id,
-                "name": animal.name,
-                "type": "animal",
+                "id": animal.id, "name": animal.name, "type": "animal",
                 "defense_infantry": animal.defense_infantry,
                 "defense_cavalry": animal.defense_cavalry,
                 "gold_price": animal.gold_price,
+                "silver_price": animal.gold_price * SILVER_PER_GOLD,
             })
 
         return Response({
-            "troops": troops_data,
-            "animals": animals_data,
-            "gold_coins": player.gold_coins,
+            "troops": troops_data, "animals": animals_data,
+            "gold_coins": player.gold_coins, "silver_coins": player.silver_coins,
         })
 
     def post(self, request):
         from apps.combat.models import TroopType, Animal, VillageTroop, VillageAnimal
+        from apps.game_engine.economy import charge_player, SILVER_PER_GOLD
 
         village_id = request.data.get('village_id')
         item_id = request.data.get('item_id')
-        item_type = request.data.get('item_type', 'troop')  # 'troop' or 'animal'
+        item_type = request.data.get('item_type', 'troop')
         quantity = int(request.data.get('quantity', 1))
+        currency = request.data.get('currency', 'gold')
 
         if quantity <= 0:
             return Response({"error": "تعداد نامعتبر است."}, status=400)
+        if currency not in ('gold', 'silver'):
+            return Response({"error": "واحد پول نامعتبر است."}, status=400)
 
         player = request.user
         try:
             village = Village.objects.get(id=village_id, player=player)
         except Village.DoesNotExist:
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        unit_label = "طلا" if currency == 'gold' else "نقره"
 
         if item_type == 'troop':
             try:
@@ -1703,27 +1711,24 @@ class GoldTroopShopView(APIView):
             total_cost = troop.wood_cost + troop.clay_cost + troop.iron_cost + troop.crop_cost
             gold_price = max(1, int((total_cost / 1000) * self.TROOP_GOLD_MULTIPLIER))
             total_gold = gold_price * quantity
+            total_in_currency = total_gold if currency == 'gold' else total_gold * SILVER_PER_GOLD
 
-            if player.gold_coins < total_gold:
-                return Response({"error": f"طلای کافی ندارید. هزینه: {total_gold} سکه."}, status=400)
+            try:
+                charge_player(player, total_in_currency, currency)
+            except ValidationError as e:
+                return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
 
-            player.gold_coins -= total_gold
-            player.save(update_fields=['gold_coins'])
-
-            village_troop, _ = VillageTroop.objects.get_or_create(
-                village=village, troop_type=troop, defaults={'count': 0}
-            )
+            village_troop, _ = VillageTroop.objects.get_or_create(village=village, troop_type=troop, defaults={'count': 0})
             village_troop.count += quantity
             village_troop.save()
 
             GameLog.objects.create(
                 village=village, log_type='SYSTEM',
-                description=f"{quantity} {troop.name} با طلا خریداری شد (هزینه: {total_gold} سکه)."
+                description=f"{quantity} {troop.name} با {unit_label} خریداری شد (هزینه: {total_in_currency} {unit_label})."
             )
-
             return Response({
                 "message": f"{quantity} {troop.name} با موفقیت خریداری شد!",
-                "gold_coins": player.gold_coins,
+                "gold_coins": player.gold_coins, "silver_coins": player.silver_coins,
             })
 
         elif item_type == 'animal':
@@ -1733,26 +1738,24 @@ class GoldTroopShopView(APIView):
                 return Response({"error": "حیوان یافت نشد."}, status=404)
 
             total_gold = animal.gold_price * quantity
-            if player.gold_coins < total_gold:
-                return Response({"error": f"طلای کافی ندارید. هزینه: {total_gold} سکه."}, status=400)
+            total_in_currency = total_gold if currency == 'gold' else total_gold * SILVER_PER_GOLD
 
-            player.gold_coins -= total_gold
-            player.save(update_fields=['gold_coins'])
+            try:
+                charge_player(player, total_in_currency, currency)
+            except ValidationError as e:
+                return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
 
-            village_animal, _ = VillageAnimal.objects.get_or_create(
-                village=village, animal=animal, defaults={'count': 0}
-            )
+            village_animal, _ = VillageAnimal.objects.get_or_create(village=village, animal=animal, defaults={'count': 0})
             village_animal.count += quantity
             village_animal.save()
 
             GameLog.objects.create(
                 village=village, log_type='SYSTEM',
-                description=f"{quantity} {animal.name} با طلا خریداری شد (هزینه: {total_gold} سکه)."
+                description=f"{quantity} {animal.name} با {unit_label} خریداری شد."
             )
-
             return Response({
                 "message": f"{quantity} {animal.name} با موفقیت خریداری شد!",
-                "gold_coins": player.gold_coins,
+                "gold_coins": player.gold_coins, "silver_coins": player.silver_coins,
             })
 
         return Response({"error": "نوع آیتم نامعتبر است."}, status=400)
@@ -1826,11 +1829,14 @@ class OasisMapView(APIView):
 
 class OasisAttackView(APIView):
     """
-    ⚠️ نسخه‌ی ساده‌شده: برخلاف حمله‌ی عادی، بدون زمان سفر و به‌صورت فوری نتیجه‌گیری می‌شود.
-    طبق راهنما: هر بازیکن حداکثر ۳ آبادی می‌تواند داشته باشد (نه هر دهکده).
+    ۱) اوسیس آزاد (owner_village=None): تلاش برای «تصاحب» - نیازمند عمارت
+       قهرمان و سقف ۳ آبادی. در پیروزی، مالک می‌شود.
+    ۲) اوسیس متعلق به بازیکن دیگر: «غارت» - نیازی به عمارت قهرمان ندارد،
+       مالکیت عوض نمی‌شود، فقط ۲۵٪ منابع دهکده‌ی متصل غارت می‌شود.
     """
     permission_classes = [IsAuthenticated]
-    MAX_OASES_PER_PLAYER = 3  # ✅ اصلاح شد: محدودیت بر اساس بازیکن، نه دهکده
+    MAX_OASES_PER_PLAYER = 3
+    OASIS_RAID_PERCENT = 0.25
 
     def post(self, request):
         from .models import Oasis
@@ -1847,12 +1853,6 @@ class OasisAttackView(APIView):
         with transaction.atomic():
             try:
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
-
-                residence_ok = VillageBuilding.objects.filter(
-                    village=village, building_type__name="عمارت قهرمان", level__gt=0
-                ).exists()
-                if not residence_ok:
-                    return Response({"error": "برای تصاحب اوسیس ابتدا باید عمارت قهرمان بسازید."}, status=400)
             except Village.DoesNotExist:
                 return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
@@ -1864,22 +1864,22 @@ class OasisAttackView(APIView):
             if oasis.owner_village_id == village.id:
                 return Response({"error": "این اوسیس همین الان متعلق به همین دهکده است."}, status=400)
 
-            residence_ok = VillageBuilding.objects.filter(
-                village=village, building_type__name__in=["عمارت اقامتی", "تالار شهر"], level__gt=0
-            ).exists()
-            if not residence_ok:
-                return Response({"error": "برای تصاحب اوسیس ابتدا باید عمارت اقامتی یا تالار شهر بسازید."}, status=400)
+            is_conquest_attempt = oasis.owner_village_id is None
 
-            if oasis.owner_village_id is None:
-                # ✅ اصلاح شد: محدودیت ۳ آبادی بر اساس بازیکن (نه دهکده)
-                player_village_ids = Village.objects.filter(
-                    player=request.user
-                ).values_list('id', flat=True)
-                owned_count = Oasis.objects.filter(
-                    owner_village_id__in=player_village_ids
-                ).count()
+            if is_conquest_attempt:
+                has_hero_mansion = VillageBuilding.objects.filter(
+                    village=village, building_type__name="عمارت قهرمان", level__gt=0
+                ).exists()
+                if not has_hero_mansion:
+                    return Response({"error": "برای تصاحب اوسیس ابتدا باید عمارت قهرمان بسازید."}, status=400)
+
+                player_village_ids = Village.objects.filter(player=request.user).values_list('id', flat=True)
+                owned_count = Oasis.objects.filter(owner_village_id__in=player_village_ids).count()
                 if owned_count >= self.MAX_OASES_PER_PLAYER:
-                    return Response({"error": f"هر بازیکن حداکثر {self.MAX_OASES_PER_PLAYER} آبادی می‌تواند داشته باشد."}, status=400)
+                    return Response(
+                        {"error": f"هر بازیکن حداکثر {self.MAX_OASES_PER_PLAYER} آبادی می‌تواند داشته باشد."},
+                        status=400,
+                    )
 
             troop_type_cache = {t.id: t for t in TroopType.objects.filter(id__in=[int(k) for k in troops_payload.keys()])}
             attack_power = 0
@@ -1907,16 +1907,45 @@ class OasisAttackView(APIView):
             )
 
             loss_ratio = combat_result["attacker_loss_percent"] / 100
+            surviving_troops = {}
             for vt, sent_qty in village_troops.items():
-                vt.count = max(0, vt.count - int(round(sent_qty * loss_ratio)))
+                lost = int(round(sent_qty * loss_ratio))
+                vt.count = max(0, vt.count - lost)
                 vt.save()
+                surviving_troops[vt.troop_type_id] = max(0, sent_qty - lost)
 
             if combat_result["victory"] == "attacker":
-                oasis.owner_village = village
-                oasis.save()
-                message = f"🌿 اوسیس ({oasis.x_coord}|{oasis.y_coord}) با موفقیت تصاحب شد!"
+                if is_conquest_attempt:
+                    oasis.owner_village = village
+                    oasis.save()
+                    message = f"🌿 اوسیس ({oasis.x_coord}|{oasis.y_coord}) با موفقیت تصاحب شد!"
+                else:
+                    owner = oasis.owner_village
+                    loot = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+                    if owner:
+                        available = {res: int(getattr(owner, res) * self.OASIS_RAID_PERCENT)
+                                     for res in ("wood", "clay", "iron", "crop")}
+                        total_capacity = sum(
+                            qty * troop_type_cache[tid].carry_capacity
+                            for tid, qty in surviving_troops.items() if tid in troop_type_cache
+                        )
+                        total_available = sum(available.values())
+                        if total_available > 0 and total_capacity > 0:
+                            take_total = min(total_capacity, total_available)
+                            for res_name, res_amount in available.items():
+                                loot[res_name] = int(min(res_amount, (res_amount / total_available) * take_total))
+                            owner.wood -= loot["wood"]; owner.clay -= loot["clay"]
+                            owner.iron -= loot["iron"]; owner.crop -= loot["crop"]
+                            owner.save()
+                            village.wood = min(village.max_storage, village.wood + loot["wood"])
+                            village.clay = min(village.max_storage, village.clay + loot["clay"])
+                            village.iron = min(village.max_storage, village.iron + loot["iron"])
+                            village.crop = min(village.max_granary, village.crop + loot["crop"])
+                            village.save()
+                    message = (f"⚔️ اوسیس ({oasis.x_coord}|{oasis.y_coord}) غارت شد! "
+                               f"🪵{loot['wood']} 🧱{loot['clay']} ⚒️{loot['iron']} 🌾{loot['crop']}")
             else:
-                message = f"شکست خوردید؛ اوسیس ({oasis.x_coord}|{oasis.y_coord}) تصاحب نشد و بخشی از نیروها را از دست دادید."
+                message = f"شکست خوردید؛ اوسیس ({oasis.x_coord}|{oasis.y_coord}) نتیجه‌ای نداد و بخشی از نیروها را از دست دادید."
 
             GameLog.objects.create(village=village, log_type='COMBAT', description=message)
 

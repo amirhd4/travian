@@ -46,11 +46,9 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             "refresh": str(refresh),
             "access": str(refresh.access_token),
             "user": {
-                "id": user.id,
-                "username": user.username,
-                "email": user.email,
-                "tribe": user.tribe,
-                "gold_coins": user.gold_coins,
+                "id": user.id, "username": user.username, "email": user.email,
+                "tribe": user.tribe, "gold_coins": user.gold_coins,
+                "silver_coins": user.silver_coins,   # ✅ جدید
             }
         }
 

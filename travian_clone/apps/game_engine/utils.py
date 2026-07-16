@@ -9,7 +9,7 @@ from .models import ServerSetting, GameLog, VillageBuilding, Village
 STARVATION_LOSS_PERCENT_PER_HOUR = 10
 POPULATION_RESOURCE_DIVISOR = 100
 
-# ✅ نرخ ترمیم وفاداری توسط عمارت اقامتی (امتیاز در ساعت) - قبلا اشتباهاً ۱ بود
+# ✅ نرخ ترمیم وفاداری توسط اقامتگاه (امتیاز در ساعت) - قبلا اشتباهاً ۱ بود
 LOYALTY_REGEN_PER_HOUR = 10
 
 
@@ -147,7 +147,7 @@ def update_village_resources(village):
 
     if village.loyalty < 100:
         residence_exists = VillageBuilding.objects.filter(
-            village=village, building_type__name="عمارت اقامتی", level__gt=0
+            village=village, building_type__name="اقامتگاه", level__gt=0
         ).exists()
         if residence_exists:
             elapsed_hours_loyalty = (delta_seconds * speed) / 3600

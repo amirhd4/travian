@@ -199,25 +199,34 @@ def resolve_combat_movement(movement_id):
 
 
 def _resolve_reinforcement(movement):
+    from .models import ReinforcementReport
+
+    source = movement.source_village
     target = Village.objects.select_for_update().get(id=movement.target_village_id)
 
+    troop_type_cache = {
+        t.id: t for t in TroopType.objects.filter(
+            id__in=[int(k) for k in movement.troops_payload.keys()]
+        )
+    }
+    troops_named = {}
     for troop_id_str, qty in movement.troops_payload.items():
         qty = int(qty)
         if qty <= 0:
             continue
-        try:
-            troop_type = TroopType.objects.get(id=int(troop_id_str))
-        except TroopType.DoesNotExist:
+        troop_type = troop_type_cache.get(int(troop_id_str))
+        if not troop_type:
             continue
         village_troop, _ = VillageTroop.objects.select_for_update().get_or_create(
             village=target, troop_type=troop_type, defaults={'count': 0}
         )
         village_troop.count += qty
         village_troop.save()
+        troops_named[troop_type.name] = troops_named.get(troop_type.name, 0) + qty
 
-    # ✅ جدید: اگر قهرمان همراه این پشتیبانی اعزام شده بود، با رسیدن نیرو آزاد می‌شود
     hero_note = ""
-    if movement.hero_participating:
+    hero_sent = movement.hero_participating
+    if hero_sent:
         hero = Hero.objects.select_for_update().filter(player=movement.source_village.player).first()
         if hero:
             hero.is_away = False
@@ -228,10 +237,22 @@ def _resolve_reinforcement(movement):
     movement.save()
 
     description = (
-        f"نیروهای پشتیبان از دهکده {movement.source_village.name} "
+        f"نیروهای پشتیبان از دهکده {source.name} "
         f"به دهکده {target.name} رسیدند." + hero_note
     )
     GameLog.objects.create(village=target, log_type='COMBAT', description=description)
+
+    ReinforcementReport.objects.create(
+        sender_player=source.player,
+        receiver_player=target.player,
+        source_village_name=source.name,
+        target_village_name=target.name,
+        source_coords=f"{source.x_coord}|{source.y_coord}",
+        target_coords=f"{target.x_coord}|{target.y_coord}",
+        troops_sent=troops_named,
+        hero_sent=hero_sent,
+    )
+
     _notify_player(target.player_id, "REINFORCEMENT_ARRIVED", {
         "message": description, "village_id": target.id
     })
@@ -583,6 +604,7 @@ def _resolve_attack_or_raid(movement):
 
     # ------- آسیب قوچ به دیوار -------
     wall_damage_msg = ""
+    catapult_damage_msg = ""  # ✅ این خط اضافه شود
     if victory == "attacker" and wall_building and ram_units_sent > 0:
         old_wall_level = wall_building.level
 
@@ -666,34 +688,29 @@ def _resolve_attack_or_raid(movement):
     # ------- غارت منابع -------
     loot = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
     if movement.movement_type == "RAID" and victory == "attacker":
-        # ✅ جدید: اگر هدف آبادی (Oasis) باشد، غارت ۲۵٪ منابع دهکده متصل است
-        if target.is_farm_village and target.owner_village:
-            # غارت آبادی: ۲۵٪ منابع دهکده متصل
-            OASIS_RAID_PERCENT = 0.25
-            owner = target.owner_village
-            available = {
-                "wood": int(owner.wood * OASIS_RAID_PERCENT),
-                "clay": int(owner.clay * OASIS_RAID_PERCENT),
-                "iron": int(owner.iron * OASIS_RAID_PERCENT),
-                "crop": int(owner.crop * OASIS_RAID_PERCENT),
-            }
-            total_capacity = sum(
-                qty * troop_type_cache[tid].carry_capacity
-                for tid, qty in attacker_survivors.items() if tid in troop_type_cache
-            )
-            total_available = sum(available.values())
-            if total_available > 0 and total_capacity > 0:
-                take_total = min(total_capacity, total_available)
-                for res_name, res_amount in available.items():
-                    share = (res_amount / total_available) * take_total
-                    share = min(res_amount, share)
-                    loot[res_name] = int(share)
-                # کسر منابع از دهکده متصل (نه خود آبادی)
-                owner.wood -= loot["wood"]
-                owner.clay -= loot["clay"]
-                owner.iron -= loot["iron"]
-                owner.crop -= loot["crop"]
-                owner.save()
+        cranny_levels_sum = VillageBuilding.objects.filter(
+            village=target, building_type__name="مخفیگاه"
+        ).aggregate(total=Sum('level'))['total'] or 0
+        protected_amount = cranny_levels_sum * CRANNY_PROTECTION_PER_LEVEL
+
+        total_capacity = sum(
+            qty * troop_type_cache[tid].carry_capacity
+            for tid, qty in attacker_survivors.items() if tid in troop_type_cache
+        )
+        available = {
+            "wood": max(0, target.wood - protected_amount),
+            "clay": max(0, target.clay - protected_amount),
+            "iron": max(0, target.iron - protected_amount),
+            "crop": max(0, target.crop - protected_amount),
+        }
+        total_available = sum(available.values())
+        if total_available > 0 and total_capacity > 0:
+            take_total = min(total_capacity, total_available)
+            for res_name, res_amount in available.items():
+                share = min(res_amount, (res_amount / total_available) * take_total)
+                loot[res_name] = int(share)
+                setattr(target, res_name, getattr(target, res_name) - int(share))
+            target.save()
         else:
             # غارت عادی دهکده
             cranny_levels_sum = VillageBuilding.objects.filter(
@@ -731,7 +748,7 @@ def _resolve_attack_or_raid(movement):
         ]
         if chief_ids_sent:
             residence_destroyed = not VillageBuilding.objects.filter(
-                village=target, building_type__name="عمارت اقامتی", level__gt=0
+                village=target, building_type__name="اقامتگاه", level__gt=0
             ).exists()
 
             still_protected = _is_still_protected(target)
@@ -765,7 +782,7 @@ def _resolve_attack_or_raid(movement):
                 if still_protected:
                     conquest_blocked_reason = "\n🛡️ این دهکده هنوز در دوره‌ی محافظت تازه‌واردان است؛ چیف اثری نداشت."
                 else:
-                    conquest_blocked_reason = "\n🛡️ عمارت اقامتی این دهکده هنوز سرپاست؛ چیف اثری نداشت."
+                    conquest_blocked_reason = "\n🛡️ اقامتگاه این دهکده هنوز سرپاست؛ چیف اثری نداشت."
 
     plan_message = ""
     if victory == "attacker" and movement.movement_type == 'ATTACK' and movement.hero_participating:
@@ -774,7 +791,7 @@ def _resolve_attack_or_raid(movement):
         all_defenders_dead = not VillageTroop.objects.filter(village=target, count__gt=0).exists()
         available_plan = WWBuildingPlan.objects.filter(holder_village=target).first()
 
-        if all_defenders_dead and catapult_units_sent > 0 and available_plan:
+        if all_defenders_dead and available_plan:
             attacker_hero = Hero.objects.filter(player=source.player).first()
             thief_treasury_ok = bool(
                 attacker_hero and attacker_hero.home_village and VillageBuilding.objects.filter(
@@ -1041,8 +1058,10 @@ def generate_hero_auctions():
     for _ in range(max(0, 5 - active_count)):
         item = random.choice(candidate_items)
         ends_at = timezone.now() + datetime.timedelta(hours=6)
+        starting_bid = random.choice([10, 15, 20, 25])
         auction = HeroAuction.objects.create(
-            item=item, current_bid=random.choice([10, 15, 20, 25]), ends_at=ends_at,
+            item=item, current_bid=starting_bid, current_bid_currency='gold',
+            current_bid_original_amount=starting_bid, ends_at=ends_at,
         )
         resolve_hero_auction.apply_async(args=[auction.id], eta=ends_at)
         created += 1

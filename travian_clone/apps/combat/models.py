@@ -403,9 +403,12 @@ class TrappedTroop(models.Model):
 
 
 class HeroAuction(models.Model):
-    """حراجی دوره‌ای آیتم قهرمان که بازیکنان با سکه طلا روی آن پیشنهاد می‌دهند."""
     item = models.ForeignKey(HeroItem, on_delete=models.CASCADE, related_name='auctions')
-    current_bid = models.PositiveIntegerField(default=10)
+    current_bid = models.PositiveIntegerField(default=10)  # همیشه بر حسب «معادل طلا» ذخیره می‌شود
+    current_bid_currency = models.CharField(          # ✅ جدید
+        max_length=10, choices=[('gold', 'طلا'), ('silver', 'نقره')], default='gold'
+    )
+    current_bid_original_amount = models.PositiveIntegerField(default=10)  # ✅ جدید - مبلغ واقعی پرداخت‌شده
     current_bidder = models.ForeignKey(
         'authentication.Player', null=True, blank=True, on_delete=models.SET_NULL, related_name='+'
     )
@@ -417,3 +420,35 @@ class HeroAuction(models.Model):
 
     def __str__(self):
         return f"Auction #{self.id} - {self.item.name} ({self.current_bid} گلد)"
+
+
+class ReinforcementReport(models.Model):
+    """
+    گزارش ساختاری ارسال/دریافت نیروی پشتیبان - از CombatReport جداست چون
+    هیچ نبردی رخ نمی‌دهد و فیلدهای جنگی (تلفات، غارت، دیوار و ...) اینجا
+    بی‌معنی‌اند. قبلاً این رویداد فقط یک GameLog متنی داشت و فیلتر تب
+    «نیروی کمکی» در فرانت با جست‌وجوی رشته‌ای شکننده انجام می‌شد.
+    """
+    sender_player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='sent_reinforcements')
+    receiver_player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='received_reinforcements')
+
+    source_village_name = models.CharField(max_length=50)
+    target_village_name = models.CharField(max_length=50)
+    source_coords = models.CharField(max_length=20)
+    target_coords = models.CharField(max_length=20)
+
+    troops_sent = models.JSONField(default=dict)
+    hero_sent = models.BooleanField(default=False)
+
+    is_read_by_sender = models.BooleanField(default=False)
+    is_read_by_receiver = models.BooleanField(default=False)
+    hidden_from_sender = models.BooleanField(default=False)
+    hidden_from_receiver = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.source_village_name} -> {self.target_village_name}"

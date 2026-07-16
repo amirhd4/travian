@@ -113,11 +113,14 @@ export default function GoldFeatures() {
         }
     };
 
+    const [shopCurrency, setShopCurrency] = useState('gold');
+
     const handleBuyTroopShopItem = (item) => {
         const quantity = troopShopQty[`${item.type}-${item.id}`] || 0;
         if (quantity <= 0 || !activeVillageId) return;
         runAction(`troopshop-${item.type}-${item.id}`, () => api.post('game/gold/troop-shop/', {
-            village_id: activeVillageId, item_id: item.id, item_type: item.type, quantity,
+            village_id: activeVillageId, item_id: item.id, item_type: item.type,
+            quantity, currency: shopCurrency,
         }));
     };
 
@@ -238,15 +241,24 @@ export default function GoldFeatures() {
             )}
 
             <WoodSign title="⚔️ فروشگاه نیروی طلایی" icon="⚔️">
+                <div className="flex items-center justify-end gap-2 mb-2">
+                    <span className="text-xs font-bold text-ink-600">پرداخت با:</span>
+                    <select value={shopCurrency} onChange={(e) => setShopCurrency(e.target.value)} className="field text-xs !w-24">
+                        <option value="gold">💰 طلا</option>
+                        <option value="silver">🪙 نقره</option>
+                    </select>
+                </div>
                 {allShopItems.length === 0 ? (
                     <p className="text-xs text-ink-400 text-center py-3">در حال بارگذاری فروشگاه...</p>
                 ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         {allShopItems.map((item) => {
                             const key = `${item.type}-${item.id}`;
+                            const price = shopCurrency === 'gold' ? item.gold_price : item.silver_price;
+                            const unit = shopCurrency === 'gold' ? '💰' : '🪙';
                             return (
                                 <div key={key} className="flex items-center justify-between gap-2 bg-parchment-50 border border-parchment-200 rounded-lg px-3 py-2">
-                                    <span className="text-xs font-bold flex-1">{item.name} ({item.gold_price} 💰/عدد)</span>
+                                    <span className="text-xs font-bold flex-1">{item.name} ({price} {unit}/عدد)</span>
                                     <input
                                         type="number" min="0" value={troopShopQty[key] || ''}
                                         onChange={(e) => setTroopShopQty((prev) => ({ ...prev, [key]: parseInt(e.target.value, 10) || 0 }))}
