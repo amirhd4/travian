@@ -76,7 +76,7 @@ export default function ResourceFields() {
 
         async function initPixi() {
             await app.init({
-                width: 660, height: 500,
+                width: 555, height: 420,
                 backgroundColor: 0x8ab961,
                 resolution: window.devicePixelRatio || 1,
                 autoDensity: true, antialias: true,
@@ -207,68 +207,89 @@ export default function ResourceFields() {
     };
 
     return (
-        <div className="game-bg flex flex-col items-center">
+        <div>
             {loading ? (
-                <p className="font-bold text-ink-700 mt-16">در حال بارگذاری دهکده...</p>
+                <p style={{ fontWeight: 'bold', marginTop: '64px', color: '#252525' }}>در حال بارگذاری دهکده...</p>
             ) : (
-                <div className="w-full max-w-4xl px-4 flex flex-col items-center gap-4 mt-4">
+                <div>
                     {villageInfo && (
-                        <div className="flex items-center gap-3">
-                            <span className="badge-green text-sm px-4 py-1.5">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <span className="badge-green">
                                 👥 جمعیت: {villageInfo.population?.toLocaleString() ?? '—'}
                             </span>
-                            <span className="badge-gold text-sm px-4 py-1.5">
+                            <span className="badge-gold">
                                 {villageInfo.name}
                             </span>
                         </div>
                     )}
 
-                    <div className="rounded-2xl overflow-hidden shadow-card border-4 border-ink-800 bg-ink-900"
-                         ref={pixiContainerRef} style={{ width: '660px', height: '500px', maxWidth: '100%' }} />
+                    {/* PixiJS canvas */}
+                    <div style={{ border: '1px solid #C9C9C9', background: '#C3EDAE', width: '100%', maxWidth: '555px', overflow: 'hidden' }}>
+                        <div ref={pixiContainerRef} style={{ width: '555px', height: '420px' }} />
+                    </div>
                 </div>
             )}
 
             {selectedSlot && (
-                <div className="fixed inset-0 bg-ink-900/70 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
-                    <div className="panel max-w-sm w-full p-6 relative">
-                        <button onClick={() => setSelectedSlot(null)}
-                            className="absolute top-3 left-3 w-8 h-8 rounded-full bg-rose-100 text-rose-600 font-bold hover:bg-rose-200 transition">×</button>
-
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-2xl">{RESOURCE_ICONS[selectedSlot.name] || '🏗️'}</span>
-                            <h3 className="text-xl font-extrabold text-ink-800">
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                    <div style={{ background: '#FFF', border: '2px solid #C9C9C9', maxWidth: '400px', width: '100%', position: 'relative' }}>
+                        {/* Header */}
+                        <div style={{
+                            height: '39px',
+                            background: "url('/assets/layout/contentTitle.png') repeat-x",
+                            backgroundColor: '#498843',
+                            color: '#FFF',
+                            fontWeight: 'bold',
+                            fontSize: '13px',
+                            padding: '0 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                        }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>{RESOURCE_ICONS[selectedSlot.name] || '🏗️'}</span>
                                 {selectedSlot.level > 0 ? selectedSlot.name : 'زمین خالی'}
-                            </h3>
+                            </span>
+                            <button onClick={() => setSelectedSlot(null)}
+                                style={{ background: '#DE0000', border: '1px solid #aa0000', color: '#FFF', width: '18px', height: '18px', cursor: 'pointer', fontSize: '12px', lineHeight: '18px', textAlign: 'center', padding: 0 }}>
+                                ×
+                            </button>
                         </div>
-                        <p className="text-sm text-ink-600 mb-4">سطح فعلی: <span className="font-bold">{selectedSlot.level}</span></p>
+                        {/* Body */}
+                        <div style={{ padding: '12px' }}>
+                            <p style={{ fontSize: '13px', marginBottom: '12px', color: '#252525' }}>
+                                سطح فعلی: <span style={{ fontWeight: 'bold' }}>{selectedSlot.level}</span>
+                            </p>
 
-                        {selectedSlot.is_upgrading ? (
-                            <div className="bg-gold-50 border border-gold-300 rounded-lg p-3 text-center mb-4">
-                                <p className="text-sm font-bold text-gold-700">در حال ارتقا...</p>
-                            </div>
-                        ) : selectedSlot.is_max_level ? (
-                            <div className="bg-brand-50 border border-brand-300 rounded-lg p-3 text-center mb-4">
-                                <p className="text-sm font-bold text-brand-700">🏆 این مزرعه به حداکثر سطح رسیده است.</p>
-                            </div>
-                        ) : (
-                            <div className="bg-parchment-100 rounded-lg border border-parchment-300 p-4 mb-4 text-sm">
-                                <p className="font-bold text-ink-800 mb-2">هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
-                                <div className="grid grid-cols-2 gap-2 text-xs font-bold mb-3">
-                                    <span>🪵 {selectedSlot.next_level_cost.wood}</span>
-                                    <span>🧱 {selectedSlot.next_level_cost.clay}</span>
-                                    <span>⚒️ {selectedSlot.next_level_cost.iron}</span>
-                                    <span>🌾 {selectedSlot.next_level_cost.crop}</span>
+                            {selectedSlot.is_upgrading ? (
+                                <div style={{ padding: '12px', textAlign: 'center', marginBottom: '16px', background: '#ffe4b5', border: '1px solid #F88C1F' }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#b3721f', margin: 0 }}>در حال ارتقا...</p>
                                 </div>
-                                <p className="text-xs text-ink-600">⏱ زمان ساخت: {formatDuration(selectedSlot.next_level_time_seconds)}</p>
-                                {!canAfford(selectedSlot) && <p className="text-xs text-rose-600 font-bold mt-3">منابع کافی ندارید.</p>}
-                            </div>
-                        )}
+                            ) : selectedSlot.is_max_level ? (
+                                <div style={{ padding: '12px', textAlign: 'center', marginBottom: '16px', background: '#E5EECC', border: '1px solid #99C01A' }}>
+                                    <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#228B22', margin: 0 }}>🏆 این مزرعه به حداکثر سطح رسیده است.</p>
+                                </div>
+                            ) : (
+                                <div style={{ padding: '16px', marginBottom: '16px', fontSize: '13px', background: '#F5F5F5', border: '1px solid #C9C9C9' }}>
+                                    <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#252525' }}>هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', fontWeight: 'bold', marginBottom: '12px', color: '#252525' }}>
+                                        <span>🪵 {selectedSlot.next_level_cost.wood}</span>
+                                        <span>🧱 {selectedSlot.next_level_cost.clay}</span>
+                                        <span>⚒️ {selectedSlot.next_level_cost.iron}</span>
+                                        <span>🌾 {selectedSlot.next_level_cost.crop}</span>
+                                    </div>
+                                    <p style={{ fontSize: '11px', color: '#777', margin: 0 }}>⏱ زمان ساخت: {formatDuration(selectedSlot.next_level_time_seconds)}</p>
+                                    {!canAfford(selectedSlot) && <p style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '12px', color: '#DE0000' }}>منابع کافی ندارید.</p>}
+                                </div>
+                            )}
 
-                        <button onClick={handleUpgrade}
-                            disabled={selectedSlot.is_upgrading || upgrading || selectedSlot.is_max_level || !canAfford(selectedSlot)}
-                            className="btn-primary w-full py-3">
-                            {upgrading ? "صبر کنید..." : `ارتقا به سطح ${selectedSlot.level + 1}`}
-                        </button>
+                            <button onClick={handleUpgrade}
+                                disabled={selectedSlot.is_upgrading || upgrading || selectedSlot.is_max_level || !canAfford(selectedSlot)}
+                                className="btn-primary"
+                                style={{ width: '100%', padding: '8px 20px' }}>
+                                {upgrading ? "صبر کنید..." : `ارتقا به سطح ${selectedSlot.level + 1}`}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

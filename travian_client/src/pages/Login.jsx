@@ -11,6 +11,9 @@ export default function Login() {
     const [captchaLoading, setCaptchaLoading] = useState(true);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [showForgot, setShowForgot] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState("");
+    const [forgotMsg, setForgotMsg] = useState("");
 
     const navigate = useNavigate();
     const setUser = useGameStore((s) => s.setUser);
@@ -23,7 +26,7 @@ export default function Login() {
             const { data } = await api.get("auth/captcha/");
             setCaptcha(data);
         } catch (err) {
-            console.error("خطا در دریافت کپچا", err);
+            console.error(err);
         } finally {
             setCaptchaLoading(false);
         }
@@ -59,74 +62,158 @@ export default function Login() {
         }
     };
 
+    const handleForgotPassword = async (e) => {
+        e.preventDefault();
+        setForgotMsg("");
+        try {
+            await api.post("auth/forgot-password/", { email: forgotEmail });
+            setForgotMsg("ایمیل بازیابی رمز عبور برای شما ارسال شد.");
+        } catch (err) {
+            setForgotMsg(err.response?.data?.error || "خطا در ارسال ایمیل");
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-login flex items-center justify-center p-4">
-            {/* دکوری پس‌زمینه - جای عکس تپه/درخت رو اینجا میتونی بذاری */}
-            <div className="w-full max-w-md">
-                <div className="panel overflow-hidden">
-                    <div className="bg-gradient-to-b from-ink-800/90 to-ink-900/95 px-8 py-7 text-center">
-                        <h1 className="text-2xl font-extrabold text-parchment-50">ورود به بازی</h1>
-                        <p className="text-sm text-parchment-200 mt-1">
-                            دنیای تراوین منتظر شماست
-                        </p>
+        <div style={{ minHeight: '100vh', background: '#A1BB79', direction: 'rtl' }}>
+            {/* Background */}
+            <div style={{
+                width: '100%',
+                minHeight: '100vh',
+                backgroundImage: "url('/assets/bgs/bgOutside-rtl.jpg')",
+                backgroundPosition: 'center top',
+                backgroundRepeat: 'no-repeat',
+            }}>
+                {/* Header with logo */}
+                <div id="header" style={{ height: '115px' }}>
+                    <div id="mtop" style={{ margin: '0 auto', width: '990px', position: 'relative' }}>
+                        <a id="logo" href="/" title="Travian" />
+                        <div className="clear" />
                     </div>
+                </div>
 
-                    <div className="p-7">
-                        {error && (
-                            <div className="bg-rose-50 border border-rose-300 text-rose-700 p-3 rounded-lg mb-4 text-sm text-center">
-                                {error}
-                            </div>
-                        )}
+                {/* Main content */}
+                <div id="mid" style={{ margin: '9px auto 0', minHeight: '500px', width: '990px', position: 'relative' }}>
+                    {/* Side navigation */}
+                    <div id="side_navi">
+                        <ul>
+                            <li><a href="/">خانه</a></li>
+                            <li className="active"><a href="/login">ورود</a></li>
+                            <li><a href="/register">ثبت‌نام</a></li>
+                            <li><a href="#">انجمن</a></li>
+                            <li><a href="#">پشتیبانی</a></li>
+                        </ul>
+                    </div>
+                    <div className="clear" />
 
-                        <form onSubmit={handleLogin} className="space-y-4">
-                            <div>
-                                <label className="field-label">نام کاربری یا ایمیل</label>
-                                <input
-                                    className="field"
-                                    value={login} onChange={(e) => setLogin(e.target.value)}
-                                    placeholder="example@domain.com" required
-                                />
-                            </div>
+                    {/* Content area */}
+                    <div id="contentOuterContainer">
+                        <div className="contentTitle">&nbsp;</div>
+                        <div className="contentContainer">
+                            <div id="content" className="login" style={{ padding: '23px 23px 26px 23px' }}>
+                                <h1 style={{ fontSize: '18px', marginBottom: '8px' }}>ورود به بازی</h1>
 
-                            <div>
-                                <label className="field-label">رمز عبور</label>
-                                <input
-                                    type="password" className="field"
-                                    value={password} onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••" required
-                                />
-                            </div>
+                                {error && (
+                                    <div style={{ background: '#fcd1d1', border: '1px solid #DE0000', color: '#DE0000', padding: '10px', marginBottom: '15px', fontSize: '12px', fontWeight: 'bold' }}>
+                                        {error}
+                                    </div>
+                                )}
 
-                            <div>
-                                <label className="field-label">تایید امنیتی</label>
-                                <div className="flex items-center gap-3">
-                                    {captchaLoading ? (
-                                        <div className="w-32 h-[52px] bg-parchment-200 animate-pulse rounded-lg" />
-                                    ) : (
-                                        <img src={captcha.image} alt="کپچا" className="rounded-lg border border-parchment-300" />
-                                    )}
-                                    <button type="button" onClick={fetchCaptcha} className="text-xs font-bold text-brand-600 hover:underline">
-                                        🔄 تصویر جدید
-                                    </button>
+                                <div className="outerLoginBox">
+                                    <h2>خوش آمدید</h2>
+
+                                    <div className="innerLoginBox">
+                                        <form onSubmit={handleLogin}>
+                                            <table className="loginTable">
+                                                <tbody>
+                                                    <tr className="account">
+                                                        <td className="accountNameOrEmailAddress" style={{ paddingBottom: '15px' }}>نام کاربری</td>
+                                                        <td style={{ paddingBottom: '15px' }}>
+                                                            <input type="text" value={login} onChange={(e) => setLogin(e.target.value)} className="text" style={{ width: '175px' }} required />
+                                                            <div style={{ height: '15px', fontSize: '11px', color: '#DE0000' }}>&nbsp;</div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr className="pass">
+                                                        <td style={{ paddingBottom: '20px' }}>رمز عبور</td>
+                                                        <td style={{ paddingBottom: '20px' }}>
+                                                            <input type="password" maxLength={20} value={password} onChange={(e) => setPassword(e.target.value)} className="text" style={{ width: '175px' }} required />
+                                                            <div style={{ height: '15px', fontSize: '11px', color: '#DE0000' }}>&nbsp;</div>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style={{ verticalAlign: 'top', paddingTop: '3px' }}>تایید امنیتی</td>
+                                                        <td>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                                                {captchaLoading ? (
+                                                                    <div style={{ width: '128px', height: '52px', background: '#E5E5E5' }} />
+                                                                ) : (
+                                                                    <img src={captcha.image} alt="کپچا" style={{ border: '1px solid #CCC' }} />
+                                                                )}
+                                                                <button type="button" onClick={fetchCaptcha} style={{ background: 'none', border: 'none', color: '#99C01A', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>
+                                                                    🔄 تصویر جدید
+                                                                </button>
+                                                            </div>
+                                                            <input type="text" required value={captchaAnswer} onChange={(e) => setCaptchaAnswer(e.target.value)} placeholder="کد داخل تصویر" className="text" style={{ width: '175px', textAlign: 'center', letterSpacing: '2px', fontWeight: 'bold' }} />
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td></td>
+                                                        <td style={{ paddingTop: '25px' }}>
+                                                            <button type="submit" disabled={loading} className="btn-primary">
+                                                                {loading ? "در حال ورود..." : "ورود به بازی"}
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </form>
+                                    </div>
                                 </div>
-                                <input
-                                    type="text" required value={captchaAnswer}
-                                    onChange={(e) => setCaptchaAnswer(e.target.value)}
-                                    placeholder="کد داخل تصویر را وارد کنید"
-                                    className="field mt-2 text-center tracking-widest font-bold"
-                                />
+
+                                {/* Forgot password */}
+                                <div className="greenbox">
+                                    <div className="greenbox-top" />
+                                    <div className="greenbox-content">
+                                        <button onClick={() => setShowForgot(!showForgot)} style={{ background: 'none', border: 'none', color: '#228B22', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', padding: '10px 15px' }}>
+                                            {showForgot ? '▲ بستن' : '▼ رمز عبور را فراموش کرده‌اید؟'}
+                                        </button>
+
+                                        {showForgot && (
+                                            <div style={{ padding: '0 15px 15px 15px' }}>
+                                                <form onSubmit={handleForgotPassword} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                                                    <input type="email" required className="text" style={{ width: '250px' }} placeholder="ایمیل خود را وارد کنید" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} />
+                                                    <button type="submit" className="btn-primary" style={{ whiteSpace: 'nowrap' }}>ارسال لینک بازیابی</button>
+                                                </form>
+                                                {forgotMsg && (
+                                                    <p style={{ fontSize: '11px', marginTop: '10px', color: '#228B22', fontWeight: 'bold' }}>{forgotMsg}</p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="greenbox-bottom" />
+                                    <div className="clear" />
+                                </div>
+
+                                <div style={{ fontSize: '12px', marginTop: '15px' }}>
+                                    <span>اکانت ندارید؟ </span>
+                                    <a href="/register">ثبت‌نام</a>
+                                </div>
                             </div>
-
-                            <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-                                {loading ? "در حال ورود..." : "ورود به بازی"}
-                            </button>
-                        </form>
-
-                        <div className="mt-6 text-center text-sm text-ink-600">
-                            <span>اکانت ندارید؟ </span>
-                            <a href="/register" className="text-brand-600 font-bold hover:underline">ثبت‌نام</a>
                         </div>
+                        <div className="contentFooter">&nbsp;</div>
                     </div>
+                </div>
+
+                {/* Footer */}
+                <div id="footer">
+                    <div id="mfoot">
+                        <a href="/">خانه</a>
+                        <a href="#">انجمن</a>
+                        <a href="/login">ورود</a>
+                        <a href="/register">ثبت‌نام</a>
+                        <a href="#">پشتیبانی</a>
+                        <div className="clear" />
+                    </div>
+                    <p style={{ marginTop: '10px' }}>&copy; {new Date().getFullYear()} تمامی حقوق محفوظ است</p>
                 </div>
             </div>
         </div>

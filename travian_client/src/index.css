@@ -2,142 +2,813 @@
 @tailwind components;
 @tailwind utilities;
 
-@font-face {
-  font-family: Tahoma;
-  /*src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2');*/
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: Tahoma;
-  /*src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2');*/
-  font-weight: 700;
-  font-display: swap;
-}
-
-html, body {
-  font-family: 'Vazirmatn', Tahoma, sans-serif;
-  background-color: #eef2e6;
-  color: #2b2318;
+/* ===== Global Reset & Base (RTL Persian) ===== */
+body {
+  text-align: right;
+  direction: rtl;
+  margin: 0;
+  background-color: #A1BB79;
+  background-repeat: repeat-x;
+  background-attachment: scroll;
+  background-image: url('/assets/bgs/bgV.jpg');
+  color: #252525;
+  font-size: 13px;
+  font-family: Arial, Helvetica, Verdana, sans-serif;
+  font-weight: normal;
+  line-height: 16px;
+  min-width: 990px;
 }
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #b3721f #f1e4c6;
+/* ===== Wrapper ===== */
+#wrapper {
+  background-image: url('/assets/bgs/bgVillage-rtl.jpg');
+  background-position: center top;
+  position: relative;
+  width: 100%;
 }
-*::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-track { background: #f1e4c6; }
-*::-webkit-scrollbar-thumb { background: #b3721f; border-radius: 999px; }
+#wrapper .bodyWrapper {
+  margin: 0 auto;
+  position: relative;
+  width: 990px;
+}
 
-@layer components {
-  /* ===== پس‌زمینه‌ی عمومی صفحات بازی ===== */
-  .game-bg {
-    @apply w-full h-full;
-    background:
-      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
-    background-size: auto;
-  }
+/* ===== Static overlay elements ===== */
+#staticElements {
+  background-image: url('/assets/layout/bgIngameStaticElements-rtl.png');
+  background-position: center top;
+  position: absolute;
+  height: 730px;
+  width: 100%;
+  pointer-events: none;
+}
 
-  /* ===== کارت اصلی محتوا ===== */
-  .panel {
-    @apply relative bg-parchment-50 rounded-2xl shadow-card border border-parchment-300;
-  }
-  .panel-header {
-    @apply flex items-center justify-between gap-3 px-5 py-4 border-b border-parchment-300 bg-gradient-to-l from-parchment-100 to-parchment-50 rounded-t-2xl;
-  }
-  .panel-title {
-    @apply text-lg font-bold text-ink-800 flex items-center gap-2;
-  }
-  .panel-body { @apply p-5; }
+/* ===== Login/Register backgrounds ===== */
+body.login, body.register {
+  background-image: url('/assets/bgs/bgO.jpg');
+}
+body.login #wrapper, body.register #wrapper {
+  background-image: url('/assets/bgs/bgOutside-rtl.jpg');
+}
 
-  /* ===== تابلوی چوبی (نسخه‌ی مدرن‌تر WoodSign) ===== */
-  .wood-sign {
-    @apply relative bg-parchment-50 border border-parchment-300 rounded-2xl shadow-card p-4;
-  }
+/* ===== Typography ===== */
+img { border: 0; }
+h1, h2, h4, span, form, img, li { margin: 0; padding: 0; }
+h1 { font-size: 18px; margin-bottom: 8px; }
+h2 { font-size: 15px; color: #252525; }
+h4 { font-size: 14px; color: #252525; margin-bottom: 12px; }
+p { margin: 14px 0; padding: 0; }
+* { background-repeat: no-repeat; background-position: top left; }
 
-  /* ===== دکمه‌ها ===== */
-  .btn {
-    @apply inline-flex items-center justify-center gap-1.5 font-bold rounded-full px-5 py-2.5
-           transition-all duration-150 select-none disabled:opacity-40 disabled:cursor-not-allowed
-           active:scale-[0.97];
-  }
-  .btn-primary {
-    @apply btn text-white bg-gradient-to-b from-brand-500 to-brand-700 shadow-soft
-           hover:from-brand-400 hover:to-brand-600;
-  }
-  .btn-gold {
-    @apply btn text-ink-900 bg-gradient-to-b from-gold-400 to-gold-600 shadow-soft
-           hover:from-gold-300 hover:to-gold-500;
-  }
-  .btn-danger {
-    @apply btn text-white bg-gradient-to-b from-rose-500 to-rose-700 shadow-soft
-           hover:from-rose-400 hover:to-rose-600;
-  }
-  .btn-ghost {
-    @apply btn text-ink-700 bg-white/70 border border-parchment-300 hover:bg-white;
-  }
-  .btn-icon {
-    @apply relative flex items-center justify-center w-11 h-11 rounded-full bg-white/90
-           border border-parchment-300 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card;
-  }
-  .btn-icon.active {
-    @apply bg-gradient-to-b from-gold-300 to-gold-500 border-gold-600 shadow-glow;
-  }
+/* ===== Links ===== */
+a, .a {
+  text-decoration: none;
+  font-weight: bold;
+  color: #99C01A;
+  cursor: pointer;
+}
+a:visited { color: #99C01A; }
+a:active { color: #FF8000; }
+a:hover, .a:hover { color: #00BC00; }
 
-  /* ===== ورودی‌ها ===== */
-  .field {
-    @apply w-full rounded-lg border border-parchment-300 bg-white/90 px-3 py-2
-           text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200;
-  }
-  .field-label { @apply block text-xs font-bold text-ink-600 mb-1; }
+/* ===== Round headers ===== */
+h4.round, div.round {
+  display: block;
+  width: 531px;
+  height: 16px;
+  padding: 4px 15px;
+  background: url('/assets/layout/contentTitle.png') repeat-x;
+  background-color: #498843;
+  color: #FFF;
+  font-weight: bold;
+  margin-bottom: 12px;
+  position: relative;
+  left: -5px;
+}
 
-  /* ===== نشان/بج ===== */
-  .badge { @apply inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full; }
-  .badge-green { @apply badge bg-brand-100 text-brand-700; }
-  .badge-gold  { @apply badge bg-gold-100 text-gold-700 bg-opacity-60; }
-  .badge-red   { @apply badge bg-rose-100 text-rose-700; }
+/* ===== Tables (exact reference) ===== */
+table {
+  border-collapse: separate;
+  background-color: #C9C9C9;
+  margin: 0;
+  line-height: 16px;
+  width: 100%;
+  empty-cells: show;
+}
+table td, table th {
+  vertical-align: middle;
+  text-align: left;
+  padding: 0;
+  font-weight: normal;
+  font-size: 13px;
+  background-color: #FFF;
+}
+table thead td, table thead th {
+  color: #252525;
+  padding: 6px 3px 3px;
+  text-align: center;
+}
+table tbody th, table tbody td {
+  padding: 6px 9px 3px;
+}
+table tr.hl th, table tr.hl td { background-color: #e7f0ca; }
+table tbody tr.hover:hover th, table tbody tr.hover:hover td { background-color: #fce6c4; }
 
-  /* ===== پس‌زمینه‌ی اختصاصی صفحات ===== */
-  .bg-login {
-    background:
-      url('/assets/bgs/login-rtl.jpg') center/cover no-repeat,
-      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
-  }
-  .bg-messages {
-    background:
-      url('/assets/bgs/bg0.jpg') center/cover no-repeat,
-      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
-  }
-  .bg-reports {
-    background:
-      url('/assets/bgs/bg0.jpg') center/cover no-repeat,
-      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
-  }
-  .bg-statistics {
-    background:
-      url('/assets/bgs/dyn-bg1.jpg') center/cover no-repeat,
-      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
-  }
-  .bg-map {
-    background:
-      url('/assets/bgs/bg0.jpg') center/cover no-repeat,
-      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
-  }
-  .bg-plus {
-    background:
-      url('/assets/bgs/bg0.jpg') center/cover no-repeat,
-      url('/assets/bgs/bgResources-rtl.jpg') repeat center center;
-  }
+/* ===== Form elements ===== */
+input.text, select {
+  border: 1px solid #CCC;
+  padding: 1px 2px;
+  margin: 0;
+  font-size: 11px;
+  font-family: Arial, Helvetica, Verdana, sans-serif;
+}
+textarea {
+  border: 1px solid #CCC;
+  padding: 0;
+  margin: 0;
+  line-height: 16px;
+  font-size: 13px;
+  font-family: Arial, Helvetica, Verdana, sans-serif;
+}
+label { white-space: nowrap; }
 
-  /* ===== نوار پیشرفت منابع ===== */
-  .progress-track { @apply w-full h-2 rounded-full bg-ink-900/10 overflow-hidden; }
-  .progress-fill   { @apply h-full rounded-full bg-gradient-to-l from-rose-400 to-rose-600 transition-all; }
+/* ===== Clear ===== */
+div.clear, span.clear {
+  clear: both !important;
+  width: 0 !important;
+  height: 0 !important;
+  line-height: 0 !important;
+  font-size: 0 !important;
+}
 
-  /* ===== اسلات تجهیزات قهرمان ===== */
-  .equip-slot {
-    @apply w-full aspect-square rounded-xl border-2 border-dashed border-parchment-300 bg-white/70
-           flex items-center justify-center relative overflow-hidden transition
-           hover:border-gold-500 cursor-pointer;
-  }
-  .equip-slot.filled { @apply border-solid border-gold-500 bg-gold-50; }
+/* ===== Text utilities ===== */
+.none, .inactive, .disabled, .noData { color: #777; }
+.error, .alert { color: #DE0000; font-weight: bold; }
+.warning, .notice { color: #F88C1F; }
+.info { color: #228B22; }
+.hide { display: none; }
+
+/* ===== Buttons (matching reference sprite buttons) ===== */
+button {
+  background-color: transparent;
+  border: 0 solid transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 15px;
+  white-space: nowrap;
+  font-family: Arial, Helvetica, Verdana, sans-serif;
+}
+button .btl, button .btc, button .btr, button .bml, button .bmc, button .bmr, button .bbl, button .bbc, button .bbr {
+  background-color: transparent;
+  background-position: left top;
+}
+button .btc, button .bmc, button .bbc {
+  margin-left: 10px;
+  margin-right: 10px;
+  width: auto;
+}
+button .btl { background-repeat: no-repeat; }
+button .btc { background-repeat: repeat-x; }
+button .btr { background-position: right top; background-repeat: no-repeat; }
+button .bml { background-repeat: repeat-y; }
+button .bmc { background-repeat: repeat; }
+button .bmr { background-position: right top; background-repeat: repeat-y; }
+button .bbl, button .bbc { background-position: left bottom; }
+button .bbl { background-repeat: no-repeat; }
+button .bbc { background-repeat: repeat-x; }
+button .bbr { background-position: right bottom; background-repeat: no-repeat; }
+button .button-container {
+  position: relative;
+  padding: 5px 20px;
+}
+button .button-position, button .btl, button .btc, button .btr, button .bml, button .bmc, button .bmr, button .bbl, button .bbc, button .bbr {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+}
+button .bml {
+  top: 10px;
+  bottom: 10px;
+}
+button .button-contents {
+  position: relative;
+  color: #FFF;
+  font-weight: bold;
+  font-size: 11px;
+  line-height: 15px;
+}
+
+/* ===== Green button sprite ===== */
+.btn-travian {
+  display: inline-block;
+  background-image: url('/assets/layout/btn-green-sprite.png');
+  background-repeat: no-repeat;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.btn-travian:hover {
+  background-image: url('/assets/layout/btn-green-sprite-hover.png');
+}
+
+/* ===== Content area (RTL) ===== */
+#contentOuterContainer {
+  position: absolute;
+  right: 0;
+  left: 189px;
+  top: 0;
+}
+#contentOuterContainer .contentTitle {
+  height: 39px;
+  background: url('/assets/layout/contentTitle.png') repeat-x;
+  background-color: #498843;
+}
+#contentOuterContainer .contentContainer {
+  min-height: 400px;
+  background: url('/assets/layout/contentContainer.png') repeat-y;
+  padding: 0 4px 0;
+}
+#contentOuterContainer .contentFooter {
+  height: 26px;
+  background: url('/assets/layout/contentFooter.png') no-repeat;
+}
+
+/* ===== Footer (RTL) ===== */
+#footer {
+  font-size: 11px;
+  line-height: 11px;
+  text-align: center;
+  color: #FFF;
+  background: url('/assets/layout/footer.png') no-repeat;
+  padding: 15px 0 30px;
+}
+#mfoot {
+  margin: 0 auto;
+  width: 990px;
+  position: relative;
+}
+#mfoot a {
+  border-right: 1px solid #FFF;
+  margin: 0 0 0 10px;
+  padding: 0 10px 0 0;
+  color: #FFF;
+  font-weight: normal;
+}
+#mfoot a:first-child { border-right: medium none; }
+
+/* ===== Server time (RTL) ===== */
+.stime {
+  color: #FFF;
+  font-size: 10px;
+  height: 22px;
+  position: absolute;
+  left: 35px;
+  top: 0;
+}
+.stime .content {
+  padding: 3px 20px 3px 5px;
+  background-position: right 3px;
+  margin: 0 5px 0 0;
+  height: 22px;
+  position: relative;
+  white-space: nowrap;
+}
+.stime .content.day {
+  background-image: url('/assets/ui/day.gif');
+}
+.stime .content.night {
+  background-image: url('/assets/ui/night.gif');
+}
+
+/* ===== Navigation (6 main icons) - RTL ===== */
+#navigation {
+  float: right;
+  margin: 10px 75px 0 0;
+  padding: 0;
+  list-style: none;
+  width: 444px;
+  height: 74px;
+}
+#navigation li {
+  float: right;
+  margin-left: 0;
+  position: relative;
+}
+#navigation li a {
+  display: block;
+  height: 74px;
+  width: 74px;
+  background-image: url('/assets/layout/mainNav.png');
+  background-repeat: no-repeat;
+}
+#navigation .resources a { background-position: 0 0; }
+#navigation .resources a:hover, #navigation .resources a.active { background-position: 0 -74px; }
+#navigation .village a { background-position: -74px 0; }
+#navigation .village a:hover, #navigation .village a.active { background-position: -74px -74px; }
+#navigation .map a { background-position: -148px 0; }
+#navigation .map a:hover, #navigation .map a.active { background-position: -148px -148px; }
+#navigation .stats a { background-position: -222px 0; }
+#navigation .stats a:hover, #navigation .stats a.active { background-position: -222px -148px; }
+#navigation .reports a { background-position: -296px 0; }
+#navigation .reports a:hover, #navigation .reports a.active { background-position: -296px -148px; }
+#navigation .messages a { background-position: -370px 0; }
+#navigation .messages a:hover, #navigation .messages a.active { background-position: -370px -148px; }
+
+/* ===== Speech balloon (unread counts) ===== */
+.bubble {
+  color: #FFF;
+  font-size: 10px;
+  height: 21px;
+  text-align: center;
+  position: absolute;
+  z-index: 5;
+  background: url('/assets/layout/speechBalloon_small-rtl.png') no-repeat;
+  padding: 0 8px;
+  line-height: 21px;
+}
+
+/* ===== Village name sign (RTL) ===== */
+#villageName {
+  background: url('/assets/layout/sign_village-rtl.png') no-repeat;
+  font-size: 14px;
+  font-weight: bold;
+  height: 76px;
+  right: 8px;
+  margin: 0;
+  position: absolute;
+  text-align: right;
+  top: 150px;
+  width: 205px;
+  z-index: 50;
+}
+#villageName div {
+  overflow: hidden;
+  white-space: nowrap;
+  height: 38px;
+  width: 144px;
+  position: relative;
+  top: 17px;
+  right: 16px;
+  padding-top: 6px;
+  text-align: center;
+  cursor: pointer;
+}
+#villageName .loyalty {
+  font-size: 10px;
+  font-weight: normal;
+  position: relative;
+  top: -3px;
+}
+
+/* ===== Side info (RTL - right sidebar) ===== */
+#side_info {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 196px;
+  z-index: 10;
+}
+
+/* ===== Hero section (RTL) ===== */
+.sideInfoHero {
+  display: block;
+  height: 136px;
+  right: 33px;
+  position: relative;
+  width: 145px;
+  z-index: 1;
+}
+.sideInfoHero .heroImageBorder {
+  width: 145px;
+  height: 136px;
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: url('/assets/layout/sign_heroBorder-rtl.png') no-repeat;
+}
+.sideInfoHero .heroProfile {
+  display: block;
+  position: absolute;
+  height: 95px;
+  right: 15px;
+  top: 30px;
+  width: 93px;
+}
+
+/* ===== Player name sign (RTL) ===== */
+.sideInfoPlayer {
+  height: 51px;
+  position: relative;
+  width: 182px;
+  right: 5px;
+  margin-top: -13px;
+}
+.sideInfoPlayer .signLink {
+  font-weight: bold;
+  text-align: center;
+  position: absolute;
+  width: 128px;
+  height: 22px;
+  padding-top: 10px;
+  padding-right: 35px;
+  top: 8px;
+  right: 7px;
+  color: #252525;
+}
+
+/* ===== Alliance sign (RTL) ===== */
+.sideInfoAlly {
+  background: url('/assets/layout/sign_ally-rtl.png') no-repeat;
+  height: 48px;
+  width: 178px;
+  position: relative;
+  right: 6px;
+}
+.sideInfoAlly .signLink {
+  font-weight: bold;
+  text-align: center;
+  position: absolute;
+  width: 114px;
+  height: 21px;
+  padding-top: 9px;
+  padding-right: 44px;
+  top: 6px;
+  right: 6px;
+  color: #252525;
+}
+
+/* ===== Village list (RTL) ===== */
+#villageList {
+  position: relative;
+  right: 9px;
+  margin-top: -3px;
+  width: 172px;
+}
+#villageList .head {
+  height: 64px;
+  background: url('/assets/layout/signVillagesTop-rtl.png') no-repeat;
+}
+#villageList .head a {
+  color: #252525;
+  font-size: 12px;
+  position: absolute;
+  top: 21px;
+  right: 18px;
+  display: block;
+  height: 16px;
+  padding-right: 20px;
+}
+#villageList .list {
+  min-height: 17px;
+  padding-top: 1px;
+  background: url('/assets/layout/signVillagesMiddle-rtl.png') repeat-y;
+}
+#villageList ul {
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  list-style: none;
+  position: relative;
+}
+#villageList ul li {
+  height: 14px;
+  line-height: 14px;
+  margin-right: 21px;
+  margin-bottom: 4px;
+}
+#villageList ul a {
+  font-weight: normal;
+  white-space: nowrap;
+  display: block;
+  overflow: hidden;
+  margin-right: 17px;
+  width: 105px;
+  color: #252525;
+}
+#villageList ul a.active { font-weight: bold; }
+#villageList .foot {
+  background: url('/assets/layout/signVillagesBottom-rtl.png') no-repeat;
+  width: 172px;
+  height: 39px;
+}
+
+/* ===== Login box (RTL) ===== */
+.outerLoginBox {
+  width: 551px;
+  margin-bottom: 10px;
+}
+.outerLoginBox h2 {
+  color: #393939;
+  margin-bottom: 15px;
+}
+.outerLoginBox .innerLoginBox {
+  width: 551px;
+  height: 235px;
+  background: url('/assets/layout/bgLogin-rtl.png') no-repeat;
+  margin-bottom: 10px;
+}
+.outerLoginBox table.loginTable {
+  vertical-align: top;
+  width: 400px;
+  position: relative;
+  top: 10px;
+  margin-right: 6px;
+}
+.outerLoginBox table.loginTable td.accountNameOrEmailAddress {
+  width: 115px;
+}
+.outerLoginBox input.text {
+  background-color: #F8F8F8;
+  border: 1px solid #99C01A;
+  font-family: Arial, Helvetica, Verdana, sans-serif;
+  font-size: 11px;
+  margin: 0;
+  padding: 1px 2px;
+  width: 175px;
+}
+
+/* ===== Green box (RTL) ===== */
+.greenbox {
+  width: 551px;
+  position: relative;
+}
+.greenbox .greenbox-top, .greenbox .greenbox-content, .greenbox .greenbox-bottom {
+  float: right;
+}
+.greenbox .greenbox-top, .greenbox .greenbox-bottom {
+  height: 10px;
+  width: 551px;
+  background: url('/assets/layout/contentTitle.png') repeat-x;
+}
+.greenbox .greenbox-content {
+  min-height: 10px;
+  width: 551px;
+  padding: 0;
+  background: #E5EECC;
+}
+.greenbox .greenbox-bottom {
+  background: url('/assets/layout/contentFooter.png') no-repeat;
+}
+
+/* ===== Side navigation (RTL) ===== */
+#side_navi {
+  position: absolute;
+  right: 14px;
+  top: 129px;
+  width: 160px;
+  z-index: 10;
+}
+#side_navi ul {
+  list-style-type: none;
+  margin: 35px 4px 0 0;
+  padding: 0;
+}
+#side_navi ul li {
+  margin: 1px 0;
+  padding: 0;
+  width: 151px;
+  line-height: 23px;
+  height: 25px;
+  font-size: 14px;
+  background: url('/assets/layout/outsideMenu-rtl.png') no-repeat;
+}
+#side_navi ul li.active {
+  background-position: 0 -25px;
+}
+#side_navi ul li a {
+  display: block;
+  padding-right: 20px;
+  color: #381A00;
+  text-decoration: none;
+  font-weight: normal;
+}
+#side_navi ul li.active a {
+  color: #FFF;
+  font-weight: bold;
+}
+
+/* ===== Logo (RTL) ===== */
+#logo {
+  display: block;
+  height: 43px;
+  margin: 24px 7px 0 16px;
+  width: 124px;
+  background: url('/assets/layout/logoSmall.png') no-repeat;
+}
+body.login #logo, body.register #logo {
+  background-image: url('/assets/layout/logoBig.png');
+  margin: 15px 195px 0 0;
+  height: 86px;
+  width: 238px;
+}
+
+/* ===== Resource bar (RTL) ===== */
+#res {
+  font-size: 12px;
+  right: 193px;
+  position: absolute;
+  top: 80px;
+  margin: 0;
+  padding: 0 7px 0 0;
+  list-style: none;
+  width: 597px;
+}
+#res li {
+  float: right;
+  width: 106px;
+}
+#res li p {
+  padding: 0;
+  margin: 0;
+  position: relative;
+}
+#res li p img {
+  width: 18px;
+  height: 16px;
+}
+#res li p .value {
+  position: absolute;
+  left: 0;
+  top: 2px;
+  font-weight: bold;
+}
+#res li .bar-bg {
+  background-color: #CCC;
+  height: 3px;
+  margin: 4px 0 0;
+  width: 107px;
+  float: right;
+}
+#res li .bar {
+  background-color: #FF0;
+  height: 3px;
+  font-size: 0;
+}
+
+/* ===== Plus/Gold/Silver display (RTL) ===== */
+#plusLink {
+  height: 47px;
+  position: absolute;
+  left: 212px;
+  top: 16px;
+  width: 85px;
+  text-align: center;
+}
+#gs {
+  font-size: 10px;
+  line-height: 13px;
+  right: 0;
+  position: absolute;
+  bottom: 0;
+  text-align: center;
+  width: 100%;
+}
+#gs p {
+  background: url('/assets/layout/plusBtn.png') no-repeat;
+  background-position: top left;
+  color: #252525;
+  display: inline-block;
+  height: 33px;
+  text-align: center;
+  width: 41px;
+  margin: 0;
+}
+#gs p:hover {
+  background-position: top right;
+}
+#gs p a {
+  display: block;
+  padding-top: 7px;
+  font-weight: bold;
+  color: #252525;
+}
+
+/* ===== Resource icons ===== */
+img.r1, img.r2, img.r3, img.r4, img.r5 {
+  height: 12px;
+  width: 18px;
+  background-image: url('/assets/ui/res-2.gif');
+  background-repeat: no-repeat;
+}
+img.r1 { background-position: 0 0; }
+img.r2 { background-position: 0 -22px; }
+img.r3 { background-position: 0 -44px; }
+img.r4 { background-position: 0 -66px; }
+img.r5 { background-position: 0 -88px; }
+
+/* ===== Gold/Silver icons ===== */
+img.gold, img.gold_g {
+  width: 12px;
+  height: 12px;
+  background-image: url('/assets/ui/gold-icon.gif');
+  background-repeat: no-repeat;
+}
+img.gold { background-position: 0 0; }
+img.gold_g { background-position: 0 -15px; }
+img.silver, img.silver_g {
+  width: 10px;
+  height: 9px;
+  background-image: url('/assets/ui/plus-icon.gif');
+  background-repeat: no-repeat;
+}
+img.silver { background-position: 0 0; }
+img.silver_g { background-position: 0 -19px; }
+
+/* ===== Custom classes ===== */
+.field {
+  width: 100%;
+  background-color: #F8F8F8;
+  border: 1px solid #99C01A;
+  font-family: Arial, Helvetica, Verdana, sans-serif;
+  font-size: 11px;
+  padding: 1px 2px;
+  margin: 0;
+}
+.field:focus {
+  border-color: #498843;
+  outline: none;
+}
+.field-label {
+  display: block;
+  font-weight: bold;
+  font-size: 11px;
+  color: #252525;
+  margin-bottom: 2px;
+}
+.btn-primary {
+  display: inline-block;
+  background: #498843;
+  color: #FFF;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 5px 20px;
+  border: 1px solid #3a6e35;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.btn-primary:hover {
+  background: #5a9e52;
+}
+.btn-gold {
+  display: inline-block;
+  background: #F88C1F;
+  color: #FFF;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 5px 20px;
+  border: 1px solid #d9942a;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.btn-gold:hover {
+  background: #ffaa44;
+}
+.btn-danger {
+  display: inline-block;
+  background: #DE0000;
+  color: #FFF;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 5px 20px;
+  border: 1px solid #aa0000;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.btn-ghost {
+  display: inline-block;
+  background: #E5E5E5;
+  color: #252525;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 5px 20px;
+  border: 1px solid #C9C9C9;
+  cursor: pointer;
+  border-radius: 2px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+}
+.badge-green {
+  background: #E5EECC;
+  color: #228B22;
+  border: 1px solid #99C01A;
+}
+.badge-gold {
+  background: #ffe4b5;
+  color: #b3721f;
+  border: 1px solid #F88C1F;
+}
+.badge-red {
+  background: #fcd1d1;
+  color: #DE0000;
+  border: 1px solid #DE0000;
 }

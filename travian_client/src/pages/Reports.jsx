@@ -25,27 +25,34 @@ function CombatReportRow({ report, onOpen }) {
     return (
         <div
             onClick={() => onOpen(report)}
-            className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition hover:brightness-[0.98] ${
-                report.is_read ? 'bg-parchment-50 border-parchment-300' : 'bg-gold-50 border-gold-300 font-bold'
-            }`}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                border: '1px solid #C9C9C9',
+                cursor: 'pointer',
+                background: report.is_read ? '#F5F5F5' : '#ffe4b5',
+                fontWeight: report.is_read ? 'normal' : 'bold',
+            }}
         >
-            <div className="flex items-center gap-3">
-                <span className="text-xl">{resultIcon}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px' }}>{resultIcon}</span>
                 <div>
-                    <p className="text-sm text-ink-800">
+                    <p style={{ fontSize: '13px', color: '#252525', margin: 0 }}>
                         {directionLabel} — {report.attacker_village_name} ⚔️ {report.defender_village_name}
                     </p>
-                    <p className="text-xs text-ink-500">
+                    <p style={{ fontSize: '11px', color: '#777', margin: 0 }}>
                         {report.attacker_coords} → {report.defender_coords}
-                        {report.conquered && <span className="text-gold-700 font-bold"> · 🏆 تسخیر شد</span>}
+                        {report.conquered && <span style={{ color: '#F88C1F', fontWeight: 'bold' }}> · 🏆 تسخیر شد</span>}
                     </p>
                 </div>
             </div>
-            <div className="text-left flex-shrink-0">
-                <p className={`text-xs font-bold ${report.won ? 'text-brand-700' : 'text-rose-700'}`}>
+            <div style={{ textAlign: 'left', flexShrink: 0 }}>
+                <p style={{ fontSize: '11px', fontWeight: 'bold', color: report.won ? '#228B22' : '#DE0000', margin: 0 }}>
                     {report.won ? 'پیروزی' : 'شکست'}
                 </p>
-                <p className="text-[10px] text-ink-400" dir="ltr">{new Date(report.created_at).toLocaleString('fa-IR')}</p>
+                <p style={{ fontSize: '10px', color: '#777', margin: 0 }} dir="ltr">{new Date(report.created_at).toLocaleString('fa-IR')}</p>
             </div>
         </div>
     );
@@ -61,21 +68,26 @@ function ReinforcementReportRow({ report, onMarkRead, onDelete }) {
     };
 
     return (
-        <div className={`rounded-xl border p-3 transition ${report.is_read ? 'bg-brand-50 border-brand-200' : 'bg-gold-50 border-gold-300 font-bold'}`}>
-            <div onClick={handleClick} className="flex items-center justify-between cursor-pointer">
-                <div className="flex items-center gap-3">
-                    <span className="text-xl">🛡️</span>
+        <div style={{
+            border: '1px solid #C9C9C9',
+            padding: '8px 12px',
+            background: report.is_read ? '#E5EECC' : '#ffe4b5',
+            fontWeight: report.is_read ? 'normal' : 'bold',
+        }}>
+            <div onClick={handleClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '16px' }}>🛡️</span>
                     <div>
-                        <p className="text-sm text-ink-800">
+                        <p style={{ fontSize: '13px', color: '#252525', margin: 0 }}>
                             {directionLabel} — {report.source_village_name} ➡ {report.target_village_name}
                         </p>
-                        <p className="text-xs text-ink-500">
+                        <p style={{ fontSize: '11px', color: '#777', margin: 0 }}>
                             {report.source_coords} → {report.target_coords}
-                            {report.hero_sent && <span className="text-purple-700 font-bold"> · 🦸 همراه قهرمان</span>}
+                            {report.hero_sent && <span style={{ color: '#7B2D8B', fontWeight: 'bold' }}> · 🦸 همراه قهرمان</span>}
                         </p>
                     </div>
                 </div>
-                <span className="text-[10px] text-ink-400" dir="ltr">{new Date(report.created_at).toLocaleString('fa-IR')}</span>
+                <span style={{ fontSize: '10px', color: '#777' }} dir="ltr">{new Date(report.created_at).toLocaleString('fa-IR')}</span>
             </div>
 
             {expanded && (
@@ -277,36 +289,58 @@ export default function Reports() {
             <ConfirmModal open={!!confirmState} message={confirmState?.message} danger={confirmState?.danger} onConfirm={confirmState?.onConfirm} onCancel={() => setConfirmState(null)} />
             <CombatReportDetail report={openReport} onClose={() => setOpenReport(null)} onDelete={handleDeleteReport} />
 
-            <div className="panel overflow-hidden">
-                <div className="flex border-b border-parchment-300">
-                    {TABS.map((tab) => (
-                        <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                            className={`flex-1 py-3 text-sm font-bold transition ${activeTab === tab.key ? 'bg-gold-500 text-ink-900' : 'bg-parchment-100 text-ink-600 hover:bg-parchment-200'}`}>
-                            {tab.label}
-                        </button>
-                    ))}
+            <div className="panel">
+                <div className="panel-header">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>📜 گزارشات</span>
                 </div>
-
                 <div className="panel-body">
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: '1px solid #C9C9C9', marginBottom: '12px' }}>
+                        {TABS.map((tab) => (
+                            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === tab.key ? '#498843' : '#E5E5E5',
+                                    color: activeTab === tab.key ? '#FFF' : '#252525',
+                                    borderBottom: activeTab === tab.key ? '2px solid #F88C1F' : '1px solid #C9C9C9',
+                                }}>
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
                     {loading ? <LoadingState label="در حال بارگذاری اطلاعات..." /> : (
                         !hasAnyReports ? (
                             <EmptyState icon="📜" title="هیچ گزارشی برای نمایش وجود ندارد." />
                         ) : (
-                            <div className="flex flex-col gap-3">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {filteredLogs.map((log) => {
                                     const style = LOG_STYLES[log.log_type] || LOG_STYLES.SYSTEM;
                                     return (
-                                        <div key={log.id} className={`flex items-start p-4 rounded-xl border-r-4 ${style.border} ${style.bg}`}>
+                                        <div key={log.id} style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            padding: '12px',
+                                            borderRight: '4px solid #C9C9C9',
+                                            background: '#F5F5F5',
+                                            borderLeft: '1px solid #C9C9C9',
+                                            borderTop: '1px solid #C9C9C9',
+                                            borderBottom: '1px solid #C9C9C9',
+                                        }}>
                                             {style.image ? (
-                                                <img src={style.image} alt="" className="w-10 h-10 ml-4 flex-shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
+                                                <img src={style.image} alt="" style={{ width: '40px', height: '40px', marginLeft: '16px', flexShrink: 0 }} onError={(e) => { e.target.style.display='none'; }} />
                                             ) : null}
-                                            <span className="text-2xl ml-4 hidden">{style.icon}</span>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-center mb-1 flex-wrap gap-1">
-                                                    <span className="font-bold text-sm text-ink-700">{log.log_type_display}</span>
-                                                    <span className="text-xs text-ink-400 font-mono" dir="ltr">{new Date(log.created_at).toLocaleString('fa-IR')}</span>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap', gap: '4px' }}>
+                                                    <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#252525' }}>{log.log_type_display}</span>
+                                                    <span style={{ fontSize: '11px', color: '#777', fontFamily: 'monospace' }} dir="ltr">{new Date(log.created_at).toLocaleString('fa-IR')}</span>
                                                 </div>
-                                                <p className="text-ink-800 text-sm leading-relaxed whitespace-pre-wrap">{log.description}</p>
+                                                <p style={{ color: '#252525', fontSize: '13px', lineHeight: '20px', whiteSpace: 'pre-wrap', margin: 0 }}>{log.description}</p>
                                             </div>
                                         </div>
                                     );

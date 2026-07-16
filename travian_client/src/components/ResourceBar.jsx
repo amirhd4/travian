@@ -3,13 +3,6 @@ import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 
-const RESOURCE_CONFIG = [
-    { key: 'wood', icon: '🪵', image: '/assets/ui/res-1.gif', label: 'چوب', maxKey: 'maxStorage' },
-    { key: 'clay', icon: '🧱', image: '/assets/ui/res-2.gif', label: 'خشت', maxKey: 'maxStorage' },
-    { key: 'iron', icon: '⚒️', image: '/assets/ui/res-3.gif', label: 'آهن', maxKey: 'maxStorage' },
-    { key: 'crop', icon: '🌾', image: '/assets/ui/res-4.gif', label: 'گندم', maxKey: 'maxGranary' },
-];
-
 function useLiveClock() {
     const [now, setNow] = useState(new Date());
     useEffect(() => {
@@ -17,6 +10,11 @@ function useLiveClock() {
         return () => clearInterval(t);
     }, []);
     return now;
+}
+
+function isNightTime() {
+    const h = new Date().getHours();
+    return h >= 20 || h < 6;
 }
 
 export default function ResourceBar() {
@@ -43,7 +41,7 @@ export default function ResourceBar() {
                 setProduction(data.production);
                 setCapacities(data.max_storage, data.max_granary);
             } catch (error) {
-                console.error("خطا در دریافت منابع دهکده", error);
+                console.error(error);
             }
         };
         fetchVillageResources();
@@ -56,59 +54,76 @@ export default function ResourceBar() {
         return () => clearInterval(interval);
     }, [tickResources]);
 
-    const isStarving = production.crop < 0 && resources.crop <= 0;
+    const nightMode = isNightTime();
 
     return (
-        <div className="w-full shrink-0 bg-gradient-to-b from-ink-900 to-ink-800 text-parchment-100 shadow-lg">
-            <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-1.5">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gold-500/20 border border-gold-500/50 flex items-center justify-center text-sm">👤</div>
-                    <span className="text-xs font-bold text-parchment-200">{user?.username}</span>
+        <>
+            {/* Server time (RTL: left side) */}
+            <div className="stime">
+                <div className={`content ${nightMode ? 'night' : 'day'}`}>
+                    <span style={{ fontWeight: 'bold' }}>{now.toLocaleTimeString('fa-IR')}</span>
+                    <span>&nbsp;{nightMode ? 'شب' : 'روز'}</span>
                 </div>
-
-                <span className="text-xs font-bold text-gold-300 flex items-center gap-1 font-mono" dir="ltr">
-                    🕐 {now.toLocaleTimeString('fa-IR')}
-                </span>
-
-                <span className="text-xs font-bold flex items-center gap-1.5">
-                    <span className="w-6 h-6 rounded-full bg-gold-500/20 border border-gold-500/50 flex items-center justify-center">💰</span>
-                    <span className="text-gold-300">{(user?.gold_coins ?? 0).toLocaleString()}</span>
-                </span>
-
-                <span className="text-xs font-bold flex items-center gap-1.5">
-                    <span className="w-6 h-6 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">🪙</span>
-                    <span className="text-parchment-300">{(user?.silver_coins ?? 0).toLocaleString()}</span>
-                </span>
             </div>
 
-            <div className="max-w-7xl mx-auto flex flex-wrap justify-center gap-3 sm:gap-6 px-3 pb-2">
-                {RESOURCE_CONFIG.map(({ key, icon, image, label, maxKey }) => {
+            {/* Gold/Silver + Plus (RTL: left side) */}
+            <div id="plusLink">
+                <div id="gs">
+                    <p className="gold">
+                        <a href="/gold-shop" title="طلا">
+                            <img src="/assets/ui/gold-icon.gif" alt="Gold" className="gold" />
+                            <br />
+                            {(user?.gold_coins ?? 0).toLocaleString()}
+                        </a>
+                    </p>
+                    <p className="silver">
+                        <a href="/hero" title="نقره">
+                            <img src="/assets/ui/plus-icon.gif" alt="Silver" className="silver" />
+                            <br />
+                            {(user?.silver_coins ?? 0).toLocaleString()}
+                        </a>
+                    </p>
+                </div>
+                <div>
+                    <a href="/plus" style={{
+                        display: 'inline-block',
+                        height: '18px',
+                        lineHeight: '18px',
+                        textAlign: 'center',
+                        fontWeight: 'bold',
+                        color: '#ab7900',
+                        fontSize: '11px',
+                        padding: '0 5px',
+                    }}>
+                        Plus
+                    </a>
+                </div>
+            </div>
+
+            {/* Resource bar (RTL: right side) */}
+            <ul id="res">
+                {[
+                    { key: 'wood', img: '/assets/ui/res-1.gif', label: 'چوب', maxKey: 'maxStorage' },
+                    { key: 'clay', img: '/assets/ui/res-2.gif', label: 'خشت', maxKey: 'maxStorage' },
+                    { key: 'iron', img: '/assets/ui/res-3.gif', label: 'آهن', maxKey: 'maxStorage' },
+                    { key: 'crop', img: '/assets/ui/res-4.gif', label: 'گندم', maxKey: 'maxGranary' },
+                ].map(({ key, img, label, maxKey }) => {
                     const value = Math.floor(resources[key]);
-                    const prod = Math.round(production[key]);
                     const max = maxKey === 'maxGranary' ? maxGranary : maxStorage;
                     const percent = Math.min(100, (value / (max || 1)) * 100);
-                    const isCrop = key === 'crop';
                     return (
-                        <div key={key} className="flex flex-col items-center min-w-[80px]">
-                            <div className="flex items-center gap-1 mb-0.5">
-                                <img src={image} alt={label} className="w-4 h-4" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
-                                <span className="text-sm hidden">{isCrop && isStarving ? '⚠️' : icon}</span>
-                                <span className="text-[10px] text-parchment-400">{label}</span>
+                        <li key={key}>
+                            <p>
+                                <img src={img} alt={label} />
+                                <span className="value">{value.toLocaleString()}</span>
+                            </p>
+                            <div className="bar-bg">
+                                <div className="bar" style={{ width: `${percent}%` }} />
                             </div>
-                            <span className="text-sm font-bold text-parchment-50">{value.toLocaleString()}</span>
-                            <div className="progress-track w-20 !bg-white/10">
-                                <div
-                                    className={`progress-fill ${isCrop && prod < 0 ? 'animate-pulse' : ''}`}
-                                    style={{ width: `${percent}%` }}
-                                />
-                            </div>
-                            <span className={`text-[10px] font-bold ${prod < 0 ? 'text-rose-400' : 'text-brand-300'}`}>
-                                {prod >= 0 ? '+' : ''}{prod}/ساعت
-                            </span>
-                        </div>
+                        </li>
                     );
                 })}
-            </div>
-        </div>
+            </ul>
+        </>
     );
 }

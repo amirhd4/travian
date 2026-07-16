@@ -104,7 +104,7 @@ export default function VillageCenter() {
 
         async function initPixi() {
             await app.init({
-                width: 660, height: 500, backgroundColor: 0x2b2318,
+                width: 555, height: 420, backgroundColor: 0x2b2318,
                 resolution: window.devicePixelRatio || 1, autoDensity: true, antialias: true,
             });
             if (!isMounted) { app.destroy(true, { children: true }); return; }
@@ -210,26 +210,25 @@ export default function VillageCenter() {
     };
 
     return (
-        <div
-            className="w-full h-full flex flex-col items-center"
-            style={{
-                backgroundImage: "url('/assets/bgs/bgVillage-rtl.jpg')",
-                backgroundSize: "cover", backgroundPosition: "center", backgroundColor: '#cfe0a8',
-            }}
-        >
+        <div>
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="مرکز دهکده" />
 
             {loading ? (
-                <p className="font-bold text-ink-700 mt-16">در حال بارگذاری مرکز دهکده...</p>
+                <p style={{ fontWeight: 'bold', marginTop: '64px', color: '#252525' }}>در حال بارگذاری مرکز دهکده...</p>
             ) : (
-                <div className="flex flex-col items-center w-full max-w-4xl px-4 mt-2">
+                <div>
                     {villageInfo && (
-                        <span className="badge-gold mb-3 text-sm px-4 py-1.5">
-                            👥 جمعیت: {villageInfo.population?.toLocaleString() ?? '—'}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <span className="badge-gold">
+                                👥 جمعیت: {villageInfo.population?.toLocaleString() ?? '—'}
+                            </span>
+                        </div>
                     )}
 
-                    <div className="rounded-2xl overflow-hidden shadow-card border-4 border-ink-800 bg-ink-900" ref={pixiContainerRef} style={{ width: '660px', height: '500px', maxWidth: '100%' }} />
+                    {/* PixiJS canvas */}
+                    <div style={{ border: '1px solid #C9C9C9', background: '#a89361', width: '100%', maxWidth: '555px', overflow: 'hidden' }}>
+                        <div ref={pixiContainerRef} style={{ width: '555px', height: '420px' }} />
+                    </div>
                 </div>
             )}
 
@@ -238,33 +237,36 @@ export default function VillageCenter() {
                 icon={BUILDING_META[selectedSlot?.name]?.icon || '🏗️'}>
                 {selectedSlot && (
                     <>
-                        <p className="text-sm text-ink-600 mb-4">سطح فعلی: <span className="font-bold">{selectedSlot.level}</span></p>
+                        <p style={{ fontSize: '13px', marginBottom: '16px', color: '#252525' }}>
+                            سطح فعلی: <span style={{ fontWeight: 'bold' }}>{selectedSlot.level}</span>
+                        </p>
 
                         {selectedSlot.is_upgrading ? (
-                            <div className="bg-gold-50 border border-gold-300 rounded-xl p-3 text-center mb-4">
-                                <p className="text-sm font-bold text-gold-700">در حال ارتقا...</p>
+                            <div style={{ padding: '12px', textAlign: 'center', marginBottom: '16px', background: '#ffe4b5', border: '1px solid #F88C1F' }}>
+                                <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#b3721f', margin: 0 }}>در حال ارتقا...</p>
                             </div>
                         ) : selectedSlot.is_max_level ? (
-                            <div className="bg-brand-50 border border-brand-300 rounded-xl p-3 text-center mb-4">
-                                <p className="text-sm font-bold text-brand-700">🏆 این ساختمان به حداکثر سطح رسیده است.</p>
+                            <div style={{ padding: '12px', textAlign: 'center', marginBottom: '16px', background: '#E5EECC', border: '1px solid #99C01A' }}>
+                                <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#228B22', margin: 0 }}>🏆 این ساختمان به حداکثر سطح رسیده است.</p>
                             </div>
                         ) : (
-                            <div className="bg-parchment-100 rounded-xl border border-parchment-300 p-4 mb-4 text-sm">
-                                <p className="font-bold text-ink-800 mb-2">هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
-                                <div className="grid grid-cols-2 gap-2 text-xs font-bold mb-3">
+                            <div style={{ padding: '16px', marginBottom: '16px', fontSize: '13px', background: '#F5F5F5', border: '1px solid #C9C9C9' }}>
+                                <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#252525' }}>هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', fontWeight: 'bold', marginBottom: '12px', color: '#252525' }}>
                                     <span>🪵 {selectedSlot.next_level_cost.wood}</span>
                                     <span>🧱 {selectedSlot.next_level_cost.clay}</span>
                                     <span>⚒️ {selectedSlot.next_level_cost.iron}</span>
                                     <span>🌾 {selectedSlot.next_level_cost.crop}</span>
                                 </div>
-                                <p className="text-xs text-ink-600">⏱ زمان ساخت: {formatDuration(selectedSlot.next_level_time_seconds)}</p>
-                                {!canAfford(selectedSlot) && <p className="text-xs text-rose-600 font-bold mt-3">منابع کافی ندارید.</p>}
+                                <p style={{ fontSize: '11px', color: '#777', margin: 0 }}>⏱ زمان ساخت: {formatDuration(selectedSlot.next_level_time_seconds)}</p>
+                                {!canAfford(selectedSlot) && <p style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '12px', color: '#DE0000' }}>منابع کافی ندارید.</p>}
                             </div>
                         )}
 
                         <button onClick={handleUpgrade}
                             disabled={selectedSlot.is_upgrading || upgrading || selectedSlot.is_max_level || !canAfford(selectedSlot)}
-                            className="btn-primary w-full py-3">
+                            className="btn-primary"
+                            style={{ width: '100%', padding: '8px 20px' }}>
                             {upgrading ? "صبر کنید..." : `ارتقا به سطح ${selectedSlot.level + 1}`}
                         </button>
                     </>

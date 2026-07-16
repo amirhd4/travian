@@ -2,28 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useGameStore from "../store/useGameStore.js";
 import api from "../api/axiosConfig.js";
-import SideInfoBoards from "./SideInfoBoards.jsx";
 
 const NAV_ITEMS = [
-    { path: '/village', icon: '🌾', image: '/assets/ui/buildings-icon.gif', label: 'منابع' },
-    { path: '/dorf2', icon: '🏛️', image: '/assets/ui/buildings-icon.gif', label: 'مرکز دهکده' },
-    { path: '/world-map', icon: '🗺️', image: '/assets/ui/car-icon.gif', label: 'نقشه' },
-    { path: '/colonize', icon: '🏕️', image: '/assets/ui/car-icon.gif', label: 'تاسیس' },
-    { path: '/movements', icon: '📡', image: '/assets/ui/car-icon.gif', label: 'گردهمایی' },
-    { path: '/farm-list', icon: '🌾', image: '/assets/ui/buildings-icon.gif', label: 'مزرعه' },
-    { path: '/reports', icon: '📜', image: '/assets/ui/report-icons.gif', label: 'گزارشات' },
-    { path: '/statistics', icon: '📊', image: '/assets/ui/status-top10.gif', label: 'آمار' },
-    { path: '/marketplace', icon: '⚖️', image: '/assets/ui/car-icon.gif', label: 'بازارچه' },
-    { path: '/world-wonder', icon: '🏆', image: '/assets/ui/buildings-icon.gif', label: 'شگفتی جهان' },
-    { path: '/messages', icon: '✉️', image: '/assets/ui/friends-icon.gif', label: 'پیام‌ها' },
-    { path: '/barracks', icon: '⚔️', image: '/assets/ui/troops-icon.gif', label: 'پادگان' },
-    { path: '/embassy', icon: '🏰', image: '/assets/ui/friends-icon.gif', label: 'سفارتخانه' },
-    { path: '/hero', icon: '🦸', image: '/assets/ui/help-icon.gif', label: 'قهرمان' },
-    { path: '/gold-shop', icon: '💰', image: '/assets/ui/gold-icon.gif', label: 'فروشگاه طلا' },
-    { path: '/plus', icon: '👑', image: '/assets/ui/plus-icon.gif', label: 'پلاس' },
-    { path: '/blacksmith', icon: '🔨', image: '/assets/ui/troops-icon.gif', label: 'آهنگری' },
-    { path: '/villages', icon: '🏘️', image: '/assets/ui/buildings-icon.gif', label: 'همه دهکده‌ها' },
-    { path: '/artifacts', icon: '🏺', image: '/assets/ui/artefacts.gif', label: 'کتیبه‌ها' },
+    { path: '/village', class: 'resources', label: 'منابع', accessKey: '1' },
+    { path: '/dorf2', class: 'village', label: 'مرکز دهکده', accessKey: '2' },
+    { path: '/world-map', class: 'map', label: 'نقشه', accessKey: '3' },
+    { path: '/statistics', class: 'stats', label: 'آمار', accessKey: '4' },
+    { path: '/reports', class: 'reports', label: 'گزارشات', accessKey: '5' },
+    { path: '/messages', class: 'messages', label: 'پیام‌ها', accessKey: '6' },
 ];
 
 export default function Navbar() {
@@ -35,53 +21,40 @@ export default function Navbar() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const setActiveVillageId = useGameStore((state) => state.setActiveVillageId);
 
-    const [pendingQuests, setPendingQuests] = useState(0);
-
     const [unreadReports, setUnreadReports] = useState(0);
+    const [unreadMessages, setUnreadMessages] = useState(0);
 
     useEffect(() => {
-        const fetchUnreadReports = async () => {
+        const fetchCounts = async () => {
             try {
                 const { data } = await api.get('combat/reports/unread-count/');
                 setUnreadReports(data.unread_count);
             } catch { /* silent */ }
+            try {
+                const { data } = await api.get('game/messages/unread-count/');
+                setUnreadMessages(data.unread_count);
+            } catch { /* silent */ }
         };
-        fetchUnreadReports();
-        const interval = setInterval(fetchUnreadReports, 30000);
+        fetchCounts();
+        const interval = setInterval(fetchCounts, 30000);
         return () => clearInterval(interval);
     }, []);
 
     const setVillages = useGameStore((state) => state.setVillages);
-    const [renaming, setRenaming] = useState(false);
 
     const handleRename = async () => {
         const activeVillage = villages.find((v) => v.id === activeVillageId);
         if (!activeVillage) return;
         const newName = window.prompt('نام جدید دهکده را وارد کنید:', activeVillage.name);
         if (!newName || !newName.trim()) return;
-        setRenaming(true);
         try {
             await api.post('game/villages/rename/', { village_id: activeVillageId, name: newName.trim() });
             const { data } = await api.get('game/villages/');
             setVillages(data);
         } catch (error) {
             alert(error.response?.data?.error || 'خطا در تغییر نام دهکده');
-        } finally {
-            setRenaming(false);
         }
     };
-
-    useEffect(() => {
-        const fetchQuestCount = async () => {
-            try {
-                const { data } = await api.get('game/quests/');
-                setPendingQuests(data.filter((q) => q.is_completed && !q.is_reward_claimed).length);
-            } catch { /* silent */ }
-        };
-        fetchQuestCount();
-        const interval = setInterval(fetchQuestCount, 30000);
-        return () => clearInterval(interval);
-    }, []);
 
     const handleLogout = async () => {
         try { await api.post('auth/logout/'); } catch { /* ignore */ }
@@ -90,78 +63,97 @@ export default function Navbar() {
 
     return (
         <>
-            <SideInfoBoards />
-            <div className="w-full shrink-0 bg-ink-900/95 backdrop-blur border-b border-gold-600/40 shadow-card">
-                <div className="max-w-7xl mx-auto flex items-center gap-2 px-3 py-2 overflow-x-auto">
-                    {villages.length > 0 && (
+            {/* Village name sign (RTL: right side) */}
+            {villages.length > 0 && activeVillageId && (
+                <div id="villageName">
+                    <div>
                         <select
                             value={activeVillageId || ''}
                             onChange={(e) => setActiveVillageId(Number(e.target.value))}
-                            className="bg-white text-ink-800 font-bold text-xs rounded-full px-3 py-2
-                                       border border-gold-500/60 focus:outline-none cursor-pointer flex-shrink-0"
-                            title="دهکده فعال"
+                            style={{
+                                width: '100%',
+                                fontSize: '14px',
+                                fontWeight: 'bold',
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#252525',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                            }}
                         >
                             {villages.map((v) => (
                                 <option key={v.id} value={v.id}>
-                                    {v.is_capital ? '👑 ' : '🏘️ '}{v.name} ({v.x_coord}|{v.y_coord})
+                                    {v.is_capital ? '★ ' : ''}{v.name}
                                 </option>
                             ))}
                         </select>
-                    )}
-
-                    {villages.length > 0 && (
-                        <button
-                            onClick={handleRename}
-                            disabled={renaming}
-                            title="تغییر نام دهکده فعال"
-                            className="btn-icon flex-shrink-0 !w-9 !h-9 !bg-ink-800/60 !border-ink-700 text-parchment-100"
-                        >
-                            <span className="text-sm">✏️</span>
-                        </button>
-                    )}
-
-                    <div className="w-px h-8 bg-ink-700 flex-shrink-0 mx-1" />
-
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {NAV_ITEMS.map((item) => (
+                        <div className="loyalty">
                             <button
-                                key={item.path}
-                                onClick={() => navigate(item.path)}
-                                title={item.label}
-                                className={`btn-icon flex-shrink-0 relative ${location.pathname === item.path ? 'active' : '!bg-ink-800/60 !border-ink-700 text-parchment-100'}`}
+                                onClick={handleRename}
+                                style={{ background: 'none', border: 'none', color: '#99C01A', fontSize: '10px', cursor: 'pointer' }}
                             >
-                                <img src={item.image} alt={item.label} className="w-5 h-5" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='inline'; }} />
-                                <span className="text-base hidden">{item.icon}</span>
+                                ✏️ تغییر نام
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Main navigation (RTL) */}
+            <ul id="navigation">
+                {NAV_ITEMS.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                        <li key={item.path} className={item.class}>
+                            <a
+                                href="#"
+                                accessKey={item.accessKey}
+                                title={item.label}
+                                className={isActive ? 'active' : ''}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    navigate(item.path);
+                                }}
+                            >
+                                {/* Unread count bubbles */}
                                 {item.path === '/reports' && unreadReports > 0 && (
-                                    <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                                    <span className="bubble" style={{ top: '0', left: '51px' }}>
                                         {unreadReports}
                                     </span>
                                 )}
-                            </button>
-                        ))}
+                                {item.path === '/messages' && unreadMessages > 0 && (
+                                    <span className="bubble" style={{ top: '0', left: '51px' }}>
+                                        {unreadMessages}
+                                    </span>
+                                )}
+                            </a>
+                        </li>
+                    );
+                })}
+            </ul>
 
-                        <button
-                            onClick={() => navigate('/quests')}
-                            title="کوئست‌ها"
-                            className={`btn-icon flex-shrink-0 ${location.pathname === '/quests' ? 'active' : '!bg-ink-800/60 !border-ink-700 text-parchment-100'}`}
-                        >
-                            <span className="text-base">🎯</span>
-                            {pendingQuests > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                                    {pendingQuests}
-                                </span>
-                            )}
-                        </button>
-
-                        <button
-                            onClick={handleLogout}
-                            title="خروج"
-                            className="btn-icon flex-shrink-0 !bg-rose-600/90 !border-rose-700 text-white"
-                        >
-                            <span className="text-base">🚪</span>
-                        </button>
-                    </div>
-                </div>
+            {/* Logout button (RTL: left side) */}
+            <div style={{
+                position: 'absolute',
+                left: '10px',
+                top: '0',
+                zIndex: 10,
+            }}>
+                <button
+                    onClick={handleLogout}
+                    style={{
+                        background: '#DE0000',
+                        border: '1px solid #aa0000',
+                        color: '#FFF',
+                        padding: '4px 8px',
+                        cursor: 'pointer',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                    }}
+                    title="خروج"
+                >
+                    🚪 خروج
+                </button>
             </div>
         </>
     );

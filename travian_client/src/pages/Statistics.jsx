@@ -21,25 +21,25 @@ const medalIcon = (rank) => (rank === 1 ? '🥇' : rank <= 3 ? '🥈' : '🥉');
 function RankTable({ rows, valueLabel }) {
     if (rows.length === 0) return <EmptyState icon="📉" title="هنوز داده‌ای برای این رتبه‌بندی ثبت نشده است." />;
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full text-center border-collapse">
+        <div style={{ overflowX: 'auto' }}>
+            <table className="travian-table" style={{ textAlign: 'center' }}>
                 <thead>
-                    <tr className="bg-parchment-100 text-ink-700 text-sm">
-                        <th className="p-3 rounded-r-lg">رتبه</th>
-                        <th className="p-3">بازیکن</th>
-                        <th className="p-3">اتحاد</th>
-                        <th className="p-3 rounded-l-lg">{valueLabel}</th>
+                    <tr>
+                        <th style={{ textAlign: 'center' }}>رتبه</th>
+                        <th style={{ textAlign: 'center' }}>بازیکن</th>
+                        <th style={{ textAlign: 'center' }}>اتحاد</th>
+                        <th style={{ textAlign: 'center' }}>{valueLabel}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {rows.map((row) => (
-                        <tr key={row.rank} className={`transition hover:bg-parchment-50 ${row.rank <= 3 ? 'bg-gold-50/60' : ''}`}>
-                            <td className="p-3 font-bold text-ink-600 border-b border-parchment-200">
+                        <tr key={row.rank} style={row.rank <= 3 ? { background: '#e7f0ca' } : {}}>
+                            <td style={{ fontWeight: 'bold', color: '#252525', textAlign: 'center' }}>
                                 {row.rank <= 3 ? medalIcon(row.rank) : row.rank}
                             </td>
-                            <td className="p-3 font-semibold text-ink-800 border-b border-parchment-200">{row.player}</td>
-                            <td className="p-3 text-sm text-ink-500 border-b border-parchment-200">{row.alliance}</td>
-                            <td className="p-3 font-bold text-brand-700 border-b border-parchment-200">
+                            <td style={{ fontWeight: 'bold', color: '#252525', textAlign: 'center' }}>{row.player}</td>
+                            <td style={{ fontSize: '12px', color: '#777', textAlign: 'center' }}>{row.alliance}</td>
+                            <td style={{ fontWeight: 'bold', color: '#228B22', textAlign: 'center' }}>
                                 {row.points?.toLocaleString?.() ?? row.population?.toLocaleString?.()}
                             </td>
                         </tr>
@@ -52,16 +52,25 @@ function RankTable({ rows, valueLabel }) {
 
 function DailyMedalColumn({ title, icon, rows }) {
     return (
-        <div className="bg-parchment-50 border border-parchment-300 rounded-xl p-4">
-            <p className="font-bold text-ink-800 mb-3 text-center">{icon} {title}</p>
+        <div style={{ background: '#F5F5F5', border: '1px solid #C9C9C9', padding: '12px' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '12px', textAlign: 'center', color: '#252525' }}>{icon} {title}</p>
             {rows.length === 0 ? (
-                <p className="text-xs text-ink-400 text-center py-4">هنوز مدالی اهدا نشده.</p>
+                <p style={{ fontSize: '11px', textAlign: 'center', padding: '16px 0', color: '#777' }}>هنوز مدالی اهدا نشده.</p>
             ) : (
-                <ul className="space-y-1.5">
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                     {rows.map((r) => (
-                        <li key={r.rank} className="flex items-center justify-between text-sm bg-white/70 rounded-lg px-3 py-1.5">
-                            <span>{medalIcon(r.rank)} رتبه {r.rank}</span>
-                            <span className="font-bold text-ink-800">{r.player}</span>
+                        <li key={r.rank} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: '13px',
+                            padding: '4px 12px',
+                            marginBottom: '4px',
+                            background: '#FFF',
+                            border: '1px solid #C9C9C9',
+                        }}>
+                            <span style={{ color: '#252525' }}>{medalIcon(r.rank)} رتبه {r.rank}</span>
+                            <span style={{ fontWeight: 'bold', color: '#252525' }}>{r.player}</span>
                         </li>
                     ))}
                 </ul>
@@ -165,21 +174,40 @@ export default function Statistics() {
         <PageShell maxWidth="max-w-4xl">
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="آمار" />
 
-            <div className="panel overflow-hidden">
-                <div className="flex overflow-x-auto border-b border-parchment-300">
-                    {TABS.map((tab) => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            className={`flex-1 min-w-[150px] py-3 text-sm font-bold transition whitespace-nowrap flex items-center justify-center gap-1.5 ${activeTab === tab.key ? 'bg-gold-500 text-ink-900' : 'bg-parchment-100 text-ink-600 hover:bg-parchment-200'}`}
-                        >
-                            <img src={tab.image} alt="" className="w-4 h-4" onError={(e) => { e.target.style.display='none'; }} />
-                            {tab.label}
-                        </button>
-                    ))}
+            <div className="panel">
+                <div className="panel-header">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>📊 آمار و رتبه‌بندی</span>
                 </div>
-
                 <div className="panel-body">
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', borderBottom: '1px solid #C9C9C9', marginBottom: '12px', overflowX: 'auto' }}>
+                        {TABS.map((tab) => (
+                            <button
+                                key={tab.key}
+                                onClick={() => setActiveTab(tab.key)}
+                                style={{
+                                    flex: 1,
+                                    minWidth: '150px',
+                                    padding: '8px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: 'bold',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === tab.key ? '#498843' : '#E5E5E5',
+                                    color: activeTab === tab.key ? '#FFF' : '#252525',
+                                    borderBottom: activeTab === tab.key ? '2px solid #F88C1F' : '1px solid #C9C9C9',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                <img src={tab.image} alt="" style={{ width: '16px', height: '16px' }} onError={(e) => { e.target.style.display='none'; }} />
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                     {activeTab === 'general' && (
                         loading ? <LoadingState label="در حال پردازش اطلاعات سرور..." /> : (
                             <RankTable rows={stats.general_ranking} valueLabel="جمعیت" />

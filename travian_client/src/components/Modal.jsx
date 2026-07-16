@@ -10,48 +10,56 @@ export function Modal({ open, onClose, title, icon, children, size = 'md' }) {
 
     if (!open) return null;
 
-    const widths = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-2xl' };
-
     return (
         <div
-            className="fixed inset-0 bg-ink-900/70 backdrop-blur-sm flex items-center justify-center z-[300] p-4"
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
             onClick={onClose}
         >
             <div
-                className={`panel w-full ${widths[size]} p-6 relative animate-[fadeIn_.15s_ease-out]`}
+                style={{ background: '#FFF', border: '2px solid #C9C9C9', maxWidth: size === 'sm' ? '400px' : size === 'md' ? '500px' : '600px', width: '100%', position: 'relative' }}
                 onClick={(e) => e.stopPropagation()}
             >
-                {onClose && (
-                    <button
-                        onClick={onClose}
-                        className="absolute top-3 left-3 w-8 h-8 rounded-full bg-rose-100 text-rose-600 font-bold hover:bg-rose-200 transition"
-                    >
-                        ×
-                    </button>
-                )}
                 {title && (
-                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-parchment-300">
-                        {icon && <span className="text-2xl">{icon}</span>}
-                        <h3 className="text-xl font-extrabold text-ink-800">{title}</h3>
+                    <div style={{
+                        background: '#498843',
+                        color: '#FFF',
+                        fontWeight: 'bold',
+                        fontSize: '13px',
+                        padding: '6px 12px',
+                        borderBottom: '1px solid #3a6e35',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                    }}>
+                        <span className="flex items-center gap-2">
+                            {icon && <span>{icon}</span>}
+                            {title}
+                        </span>
+                        {onClose && (
+                            <button
+                                onClick={onClose}
+                                style={{ background: '#DE0000', border: '1px solid #aa0000', color: '#FFF', width: '18px', height: '18px', cursor: 'pointer', fontSize: '12px', lineHeight: '18px', textAlign: 'center', padding: 0 }}
+                            >
+                                ×
+                            </button>
+                        )}
                     </div>
                 )}
-                {children}
+                <div style={{ padding: '12px' }}>
+                    {children}
+                </div>
             </div>
         </div>
     );
 }
 
-/**
- * ConfirmModal — جایگزین window.confirm.
- * استفاده: <ConfirmModal open={...} onConfirm={...} onCancel={...} message="..." />
- */
 export function ConfirmModal({ open, onConfirm, onCancel, title = 'تایید عملیات', message, danger = false, confirmLabel = 'تایید' }) {
     return (
         <Modal open={open} onClose={onCancel} title={title} icon={danger ? '⚠️' : '❓'} size="sm">
-            <p className="text-sm text-ink-700 mb-6 leading-relaxed">{message}</p>
-            <div className="flex gap-3">
-                <button onClick={onCancel} className="btn-ghost flex-1">انصراف</button>
-                <button onClick={onConfirm} className={`flex-1 ${danger ? 'btn-danger' : 'btn-primary'}`}>
+            <p style={{ fontSize: '13px', color: '#252525', marginBottom: '24px', lineHeight: '20px' }}>{message}</p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={onCancel} className="btn-ghost" style={{ flex: 1 }}>انصراف</button>
+                <button onClick={onConfirm} className={danger ? 'btn-danger' : 'btn-primary'} style={{ flex: 1 }}>
                     {confirmLabel}
                 </button>
             </div>
@@ -59,15 +67,12 @@ export function ConfirmModal({ open, onConfirm, onCancel, title = 'تایید ع
     );
 }
 
-/**
- * AlertModal — جایگزین window.alert.
- */
 export function AlertModal({ open, onClose, title = 'اطلاع', message, tone = 'info' }) {
     const icons = { info: 'ℹ️', success: '✅', error: '⚠️' };
     return (
         <Modal open={open} onClose={onClose} title={title} icon={icons[tone]} size="sm">
-            <p className="text-sm text-ink-700 mb-6 leading-relaxed whitespace-pre-wrap">{message}</p>
-            <button onClick={onClose} className="btn-primary w-full">باشه</button>
+            <p style={{ fontSize: '13px', color: '#252525', marginBottom: '24px', lineHeight: '20px', whiteSpace: 'pre-wrap' }}>{message}</p>
+            <button onClick={onClose} className="btn-primary" style={{ width: '100%' }}>باشه</button>
         </Modal>
     );
 }

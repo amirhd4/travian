@@ -1,8 +1,9 @@
 export default function LoadingState({ label = 'در حال بارگذاری...' }) {
     return (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
-            <p className="font-bold text-ink-600 text-sm">{label}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: '12px' }}>
+            <div style={{ width: '32px', height: '32px', border: '3px solid #E5E5E5', borderTopColor: '#498843', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            <p style={{ fontWeight: 'bold', fontSize: '13px', color: '#252525' }}>{label}</p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 }
