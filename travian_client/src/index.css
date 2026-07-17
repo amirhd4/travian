@@ -32,6 +32,14 @@ body {
   width: 990px;
 }
 
+/* Main content area container */
+#mid {
+  margin: 9px auto 0;
+  min-height: 500px;
+  width: 990px;
+  position: relative;
+}
+
 /* ===== Static overlay elements ===== */
 #staticElements {
   background-image: url('/assets/layout/bgIngameStaticElements-rtl.png');
@@ -42,12 +50,123 @@ body {
   pointer-events: none;
 }
 
-/* ===== Login/Register backgrounds ===== */
-body.login, body.register {
+/* ===== Login/Register/Signup backgrounds ===== */
+body.login, body.signup {
   background-image: url('/assets/bgs/bgO.jpg');
 }
-body.login #wrapper, body.register #wrapper {
+body.login #wrapper, body.signup #wrapper {
   background-image: url('/assets/bgs/bgOutside-rtl.jpg');
+}
+body.login #wrapper .bodyWrapper, body.signup #wrapper .bodyWrapper {
+  background-image: none;
+}
+
+/* Login page content */
+div.login {
+  width: 502px;
+  padding: 0 25px 0;
+}
+div.login h1 {
+  text-align: right;
+}
+div.login p {
+  font-size: 12px;
+  line-height: 17px;
+}
+div.login table {
+  border: 1px dashed #C0C0C0;
+  background-color: #FFF;
+}
+div.login table tr.top th, div.login table tr.top td {
+  padding-top: 9px;
+  padding-bottom: 2px;
+}
+div.login table tr.btm th, div.login table tr.btm td {
+  padding-top: 2px;
+  padding-bottom: 9px;
+}
+div.login table th {
+  width: 38%;
+  padding-right: 20px;
+  font-size: 11px;
+  text-align: right;
+}
+div.login table td {
+  width: 62%;
+  font-size: 11px;
+}
+div.login table td input.text {
+  width: 113px;
+}
+
+/* Signup page content */
+div.signup {
+  width: 502px;
+  padding: 0 25px 0;
+}
+div.signup h1 {
+  text-align: right;
+}
+div.signup p {
+  font-size: 12px;
+  line-height: 17px;
+}
+div.signup table {
+  border: 1px dashed #C0C0C0;
+  background-color: #FFF;
+}
+div.signup table tr.top th, div.signup table tr.top td {
+  padding-top: 9px;
+  padding-bottom: 2px;
+}
+div.signup table tr.btm th, div.signup table tr.btm td {
+  padding-top: 2px;
+  padding-bottom: 9px;
+}
+div.signup table th, div.signup table td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  font-size: 11px;
+  text-align: right;
+}
+div.signup input.text {
+  width: 113px;
+}
+div.signup input.radio {
+  position: relative;
+  top: 2px;
+  margin-right: 5px;
+  float: right;
+}
+div.signup input.check {
+  position: relative;
+  top: 2px;
+  margin-left: 5px;
+  float: right;
+}
+div.signup table#sign_input {
+  margin-bottom: 15px;
+}
+div.signup table#sign_input th {
+  width: 38%;
+  padding-right: 20px;
+}
+div.signup table#sign_input td {
+  width: 62%;
+}
+div.signup table#sign_select {
+  line-height: 19px;
+}
+div.signup table#sign_select th,
+div.signup table#sign_select td {
+  padding-right: 10px;
+}
+div.signup table#sign_select td.pos2 {
+  width: 45%;
+}
+div.signup .important {
+  color: #FF8000;
+  font-weight: bold;
 }
 
 /* ===== Typography ===== */
@@ -215,6 +334,21 @@ button .button-contents {
 }
 .btn-travian:hover {
   background-image: url('/assets/layout/btn-green-sprite-hover.png');
+}
+
+/* ===== Logout container ===== */
+#logoutContainer {
+  position: absolute;
+  left: 10px;
+  top: 0;
+  z-index: 10;
+}
+#logout {
+  display: block;
+  width: 30px;
+  height: 30px;
+  background: url('/assets/ui/cancel.gif') no-repeat center center;
+  cursor: pointer;
 }
 
 /* ===== Content area (RTL) ===== */
@@ -582,15 +716,14 @@ button .button-contents {
   height: 25px;
   line-height: 25px;
   font-size: 14px;
-  background: #E5E5E5;
-  border-bottom: 1px solid #C9C9C9;
+  background-image: url('/assets/layout/outsideMenu-rtl.png');
 }
 #side_navi ul li.active {
-  background: #498843;
+  background-position: 0 -25px;
 }
 #side_navi ul li a {
   display: block;
-  padding-right: 20px;
+  padding-left: 20px;
   color: #381A00;
   text-decoration: none;
   font-weight: normal;
@@ -608,7 +741,7 @@ button .button-contents {
   width: 124px;
   background: url('/assets/layout/logoSmall.png') no-repeat;
 }
-body.login #logo, body.register #logo {
+body.login #logo, body.signup #logo {
   background-image: url('/assets/layout/logoBig.png');
   margin: 15px 195px 0 0;
   height: 86px;
@@ -820,4 +953,470 @@ img.silver_g { background-position: 0 -19px; }
   background: #fcd1d1;
   color: #DE0000;
   border: 1px solid #DE0000;
+}
+
+/* ===== Village Map (dorf1) - PHP matching styles ===== */
+div.village1 {
+  width: 100%;
+  padding: 0;
+}
+
+div.village1 #village_map {
+  width: 500px;
+  height: 370px;
+  position: relative;
+  margin: 0 0 15px 0;
+  background-color: #C3EDAE;
+  background-position: center bottom;
+}
+
+div.village1 #village_map img {
+  position: absolute;
+  z-index: 20;
+}
+
+/* Level badge - PHP green gradient circle */
+div.village1 .level {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  font-size: 11px;
+  text-align: center;
+  border-radius: 50%;
+  line-height: 23px;
+  border: 1px solid #506d00;
+  background-image: linear-gradient(to top, #7da100, #c7e94f);
+  margin: 1px;
+}
+
+/* Map details area (below village map) */
+div.village1 #map_details {
+  float: left;
+  width: 100%;
+  margin-top: 0;
+}
+
+div.village1 #map_details table {
+  margin-bottom: 14px;
+  background-color: #FFF;
+}
+
+div.village1 #map_details table thead th {
+  background-image: none;
+  background-color: #FFF;
+  text-align: right;
+  padding: 6px 9px 3px;
+}
+
+div.village1 #map_details table tbody td {
+  padding: 1px 2px;
+}
+
+div.village1 #map_details table td.ico {
+  width: 18px;
+  padding-right: 4px;
+}
+
+div.village1 #map_details table td.num {
+  text-align: left;
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+/* Movements table */
+div.village1 table#movements td {
+  padding: 1px 0;
+}
+
+div.village1 table#movements td.typ {
+  width: 32px;
+  vertical-align: top;
+}
+
+div.village1 table#movements td.typ img {
+  float: right;
+  position: relative;
+  top: 3px;
+  margin: 0 0 0 4px;
+}
+
+div.village1 table#movements div.mov {
+  float: right;
+}
+
+div.village1 table#movements div.dur_r {
+  float: left;
+  padding-left: 2px;
+}
+
+div.village1 table#movements td.wrap {
+  line-height: 10px;
+}
+
+div.village1 table#movements div.dur_l {
+  float: right;
+  padding-bottom: 2px;
+}
+
+/* Movement colors */
+div.village1 table#movements .a1 { color: #F00; }
+div.village1 table#movements .d1 { color: #228B22; }
+div.village1 table#movements .a2,
+div.village1 table#movements .d2 { color: #F2C700; }
+div.village1 table#movements .a3,
+div.village1 table#movements .d3 { color: #B500A3; }
+
+/* Production table */
+div.village1 table#production td.res { width: 20%; }
+div.village1 table#production td.per { width: 40%; }
+
+/* Troops table */
+div.village1 table#troops td.un { width: 80%; }
+
+/* Boxes widget (rounded corners) */
+.boxes {
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.boxes .boxes-contents {
+  padding: 11px;
+  background: #FFF;
+}
+
+.boxes .boxes-contents table {
+  width: 100%;
+  background-color: #FFF;
+}
+
+.boxes.villageList {
+  width: 100%;
+}
+
+/* Refresh captcha button */
+.refreshCaptcha {
+  background: none;
+  border: none;
+  color: #99C01A;
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.refreshCaptcha:hover {
+  color: #00BC00;
+}
+
+/* Transparent table (for forms) */
+table.transparent {
+  background: none;
+  border-collapse: separate;
+}
+
+table.transparent td,
+table.transparent th {
+  background: none;
+  border: none;
+}
+
+/* Sign input table */
+#sign_input th {
+  width: 115px;
+  font-weight: bold;
+  font-size: 11px;
+  padding-bottom: 10px;
+  vertical-align: top;
+  padding-top: 3px;
+}
+
+#sign_input td {
+  padding-bottom: 10px;
+}
+
+/* Tribe select */
+.tribeSelect {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tribeSelect .tribe {
+  text-align: center;
+  cursor: pointer;
+  flex: 1;
+}
+
+.tribeSelect .tribe .selection {
+  margin-bottom: 4px;
+}
+
+.tribeSelect .tribe img.tribeImage {
+  width: 100%;
+  height: 80px;
+  object-fit: contain;
+}
+
+/* Sign select (location) */
+#sign_select td {
+  padding: 4px 8px;
+}
+
+/* Important list */
+ul.important {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+ul.important li {
+  font-size: 11px;
+  color: #DE0000;
+  font-weight: bold;
+  padding: 2px 0;
+}
+
+/* Checks (terms) */
+.checks {
+  margin-bottom: 12px;
+  padding: 8px;
+  background: #F5F5F5;
+  border: 1px solid #CCC;
+}
+
+.checks label {
+  font-size: 11px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Title in header */
+.titleInHeader {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #252525;
+}
+
+/* Button container */
+.btn {
+  text-align: center;
+  margin-top: 12px;
+}
+
+/* Tribe info text */
+.tribeInfo {
+  font-size: 11px;
+  margin-bottom: 12px;
+  color: #252525;
+  line-height: 16px;
+}
+
+/* Show password forgotten */
+.showPasswordForgotten {
+  margin-left: 45px;
+  margin-top: 10px;
+}
+
+.showPasswordForgotten .content {
+  margin-bottom: 15px;
+}
+
+/* Password forgotten link */
+.passwordForgottenLink {
+  margin: 0 15px;
+}
+
+.passwordForgottenLink a.showPWForgottenLink {
+  display: inline;
+  height: 22px;
+  line-height: 25px;
+  font-weight: bold;
+  color: #393939;
+}
+
+/* Forgot password description */
+.forgotPasswordDescription {
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+
+/* Password forgotten table */
+.pwForgottenTable {
+  position: relative;
+  left: -9px;
+  margin-top: 10px;
+}
+
+.pwForgottenTable th {
+  width: 70px;
+}
+
+.pwForgottenTable tr.mail th,
+.pwForgottenTable tr.mail td {
+  padding-bottom: 15px;
+}
+
+/* Building contract table */
+div.village1 table#building_contract {
+  width: 100%;
+  clear: both;
+  margin: 0 25px;
+}
+
+/* ===== Village Center (dorf2) - PHP matching styles ===== */
+div.village2 {
+  width: 100%;
+  padding: 0;
+}
+
+div.village2 #village_map {
+  width: 540px;
+  height: 448px;
+  position: relative;
+  margin: 0;
+}
+
+div.village2 #village_map img {
+  position: absolute;
+}
+
+div.village2 #village_map img.ww {
+  z-index: 20;
+  left: 155px;
+}
+
+/* Level toggle switch */
+div.village2 img#lswitch {
+  width: 18px;
+  height: 17px;
+  position: absolute;
+  top: 443px;
+  right: 500px;
+  cursor: pointer;
+  z-index: 500;
+}
+
+/* Building positions (PHP CSS coordinates) */
+div.village2 #village_map .dx1 { z-index: 5; left: 316px; top: 161px; }
+div.village2 #village_map .d1 { z-index: 6; left: 115px; top: 52px; }
+div.village2 #village_map .d2 { z-index: 9; left: 198px; top: 27px; }
+div.village2 #village_map .d3 { z-index: 8; left: 258px; top: 17px; }
+div.village2 #village_map .d4 { z-index: 9; left: 332px; top: 32px; }
+div.village2 #village_map .d5 { z-index: 10; left: 388px; top: 81px; }
+div.village2 #village_map .d6 { z-index: 11; left: 80px; top: 91px; }
+div.village2 #village_map .d7 { z-index: 12; left: 161px; top: 98px; }
+div.village2 #village_map .d8 { z-index: 13; left: 247px; top: 81px; }
+div.village2 #village_map .d9 { z-index: 14; left: 395px; top: 122px; }
+div.village2 #village_map .d10 { z-index: 15; left: 66px; top: 161px; }
+div.village2 #village_map .d11 { z-index: 16; left: 192px; top: 126px; }
+div.village2 #village_map .d12 { z-index: 17; left: 155px; top: 152px; }
+div.village2 #village_map .d13 { z-index: 18; left: 402px; top: 180px; }
+div.village2 #village_map .d14 { z-index: 19; left: 84px; top: 200px; }
+div.village2 #village_map .d15 { z-index: 20; left: 227px; top: 196px; }
+div.village2 #village_map .d16 { z-index: 21; left: 354px; top: 213px; }
+div.village2 #village_map .d17 { z-index: 22; left: 158px; top: 236px; }
+div.village2 #village_map .d18 { z-index: 23; left: 286px; top: 247px; }
+div.village2 #village_map .d19 { z-index: 24; left: 144px; top: 267px; }
+div.village2 #village_map .d20 { z-index: 25; left: 262px; top: 276px; }
+
+/* Level badges container */
+div.village2 #village_map div#levels {
+  width: 494px;
+  height: 370px;
+  position: absolute;
+  top: 40px;
+  left: 23px;
+  z-index: 97;
+  visibility: hidden;
+}
+
+div.village2 #village_map div#levels div {
+  width: 17px;
+  height: 17px;
+  position: absolute;
+  text-align: center;
+  line-height: 17px;
+  visibility: hidden;
+}
+
+div.village2 #village_map div#levels.on {
+  visibility: visible;
+}
+
+div.village2 #village_map div#levels.on div {
+  visibility: visible;
+}
+
+/* Level badge positions */
+div.village2 #village_map div#levels div {
+  font-family: Arial, Helvetica;
+  font-size: 9px;
+  background: url('/assets/buildings/glvl.gif');
+}
+
+/* Building contract table (below village map) */
+div.village2 table#building_contract {
+  position: relative;
+  z-index: 150;
+  margin: -40px 19px 0;
+  line-height: 19px;
+  width: 502px;
+  background: none;
+}
+
+div.village2 table#building_contract thead th {
+  background: none;
+  text-align: right;
+}
+
+div.village2 table#building_contract tbody td {
+  background: none;
+  padding: 1px 2px;
+}
+
+div.village2 table#building_contract td.ico {
+  width: 18px;
+  padding-right: 4px;
+}
+
+/* ===== Map page (karte) - PHP matching styles ===== */
+div.map {
+  padding: 12px 14px 0;
+}
+
+#mapContainer {
+  position: relative;
+  width: 543px;
+  height: 401px;
+  overflow: hidden;
+}
+
+#mapContainer img {
+  border: 0;
+}
+
+/* Map tile cells */
+#mapContainer > div > div {
+  transition: background-color 0.2s;
+}
+
+#mapContainer > div > div:hover {
+  filter: brightness(1.1);
+}
+
+/* Map navigation buttons */
+.map .btn-ghost {
+  display: inline-block;
+  background: #E5E5E5;
+  color: #252525;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 4px 12px;
+  border: 1px solid #C9C9C9;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.map .btn-ghost:hover {
+  background: #D5D5D5;
 }

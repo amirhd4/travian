@@ -1,20 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import LoadingState from '../components/LoadingState';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 
 const RADIUS = 2;
-
-const CELL_STYLES = {
-    mine:      'bg-gradient-to-b from-blue-200 to-blue-300 border-blue-500 text-blue-900 font-bold',
-    ww:        'bg-gradient-to-b from-purple-300 to-purple-400 border-purple-600 text-purple-900 font-bold cursor-pointer animate-pulse',
-    planGuard: 'bg-gradient-to-b from-orange-300 to-orange-400 border-orange-600 text-orange-900 font-bold cursor-pointer',
-    artifactSite: 'bg-gradient-to-b from-cyan-300 to-cyan-400 border-cyan-600 text-cyan-900 font-bold cursor-pointer animate-pulse',
-    natar:     'bg-gradient-to-b from-rose-300 to-rose-400 border-rose-600 text-rose-900 font-bold cursor-pointer',
-    village:   'bg-gradient-to-b from-brand-200 to-brand-300 border-brand-500 text-brand-900 hover:brightness-105 cursor-pointer',
-    empty:     'bg-gradient-to-b from-parchment-50 to-parchment-100 border-parchment-300 text-ink-400',
-};
 
 export default function WorldMap() {
     const navigate = useNavigate();
@@ -23,21 +12,19 @@ export default function WorldMap() {
 
     const [center, setCenter] = useState({ x: 0, y: 0 });
     const [mapVillages, setMapVillages] = useState([]);
-
     const [oases, setOases] = useState([]);
     const [selectedOasis, setSelectedOasis] = useState(null);
     const [oasisTroops, setOasisTroops] = useState({});
     const [availableTroops, setAvailableTroops] = useState([]);
     const [attackingOasis, setAttackingOasis] = useState(false);
     const [oasisAlert, setOasisAlert] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!activeVillageId) return;
         api.get('combat/village-troops/', { params: { village_id: activeVillageId } })
             .then(({ data }) => setAvailableTroops(data)).catch(() => {});
     }, [activeVillageId]);
-
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const activeVillage = villages.find((v) => v.id === activeVillageId);
@@ -81,18 +68,6 @@ export default function WorldMap() {
         }
     }
 
-    const cellStyleFor = (cell) => {
-        if (cell.oasis) return cell.oasis.is_free ? 'bg-gradient-to-b from-lime-200 to-lime-300 border-lime-600 text-lime-900 font-bold cursor-pointer' : 'bg-gradient-to-b from-emerald-300 to-emerald-400 border-emerald-700 text-emerald-900 font-bold';
-
-        if (cell.isMine) return CELL_STYLES.mine;
-        if (cell.isWwSite) return CELL_STYLES.ww;
-        if (cell.isArtifactSite) return CELL_STYLES.artifactSite;
-        if (cell.isPlanGuard) return CELL_STYLES.planGuard;
-        if (cell.isNatar) return CELL_STYLES.natar;
-        if (cell.hasVillage) return CELL_STYLES.village;
-        return CELL_STYLES.empty;
-    };
-
     const handleCellClick = (cell) => {
         if (cell.oasis) { setSelectedOasis(cell.oasis); return; }
         if (cell.hasVillage && !cell.isMine) {
@@ -118,96 +93,118 @@ export default function WorldMap() {
         }
     };
 
+    // Get tile image based on cell type (matching PHP map tiles)
+    const getTileStyle = (cell) => {
+        if (cell.oasis) {
+            return cell.oasis.is_free
+                ? { background: 'url(/assets/map/oasis-1.gif) center/cover', border: '1px solid #5a8a3a' }
+                : { background: 'url(/assets/map/oasis-2.gif) center/cover', border: '1px solid #3a6a2a' };
+        }
+        if (cell.isMine) return { background: 'url(/assets/map/tribe-1.gif) center/contain no-repeat, #e8e0d0', border: '2px solid #d4a017' };
+        if (cell.hasVillage) return { background: 'url(/assets/map/tribe-2.gif) center/contain no-repeat, #e8e0d0', border: '1px solid #8b7355' };
+        if (cell.isNatar) return { background: 'url(/assets/map/tribe-5.gif) center/contain no-repeat, #e8e0d0', border: '1px solid #cc3333' };
+        if (cell.isWwSite) return { background: '#f0e8ff', border: '1px solid #9966cc' };
+        if (cell.isArtifactSite) return { background: '#e8f8ff', border: '1px solid #6699cc' };
+        return { background: '#f5f0e8', border: '1px solid #d4c8b0' };
+    };
+
     return (
-        <div
-            className="w-full flex flex-col items-center"
-            style={{
-                backgroundImage: "linear-gradient(180deg, rgba(15,35,20,.55), rgba(15,35,20,.75)), url('/assets/bgs/bg0.jpg')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundColor: '#12321c',
-            }}
-        >
-            <div className="panel !bg-parchment-50/95 backdrop-blur p-6 max-w-2xl w-full mx-4 mt-2">
-                <h2 className="text-lg font-extrabold text-ink-800 mb-4 text-center">
-                    🗺️ نقشه منطقه‌ای سرور <span className="text-ink-400 font-normal text-sm">(اطراف {center.x}|{center.y})</span>
-                </h2>
-
+        <div className="map">
+            <div id="mapContainer" style={{ position: 'relative', width: '543px', height: '401px', margin: '0 auto', border: '1px solid #636363', background: '#C3EDAE' }}>
                 {loading ? (
-                    <LoadingState label="در حال بارگذاری نقشه..." />
+                    <p style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold' }}>در حال بارگذاری نقشه...</p>
                 ) : (
-                    <div className="grid grid-cols-5 gap-1.5 bg-ink-900/5 p-3 rounded-xl border border-parchment-300">
-                        {grid.map((cell, index) => (
-                            <div
-                                key={index}
-                                onClick={() => handleCellClick(cell)}
-                                className={`h-20 flex flex-col items-center justify-center border-2 rounded-lg text-xs p-1 transition select-none ${cellStyleFor(cell)}`}
-                            >
-                                {cell.oasis ? (
-                                    <>
-                                        <img src="/assets/map/oasis-1.gif" alt="oasis" className="w-6 h-6 mb-0.5" />
-                                        <span className="text-[9px] font-bold opacity-70">[{cell.x}|{cell.y}]</span>
-                                    </>
-                                ) : cell.hasVillage ? (
-                                    <>
-                                        <span className="text-lg">{cell.isMine ? '👑' : cell.isNatar ? '🏛️' : '🏘️'}</span>
-                                        <span className="text-[10px] font-bold truncate w-full text-center">{cell.name}</span>
-                                        {cell.owner && !cell.isNatar && !cell.isMine && (
-                                            <span className="text-[9px] opacity-70 truncate w-full text-center">{cell.owner}</span>
-                                        )}
-                                    </>
-                                ) : cell.isWwSite ? (
-                                    <>
-                                        <span className="text-lg">🏛️</span>
-                                        <span className="text-[9px] font-bold opacity-70">[{cell.x}|{cell.y}]</span>
-                                    </>
-                                ) : cell.isArtifactSite ? (
-                                    <>
-                                        <span className="text-lg">🏺</span>
-                                        <span className="text-[9px] font-bold opacity-70">[{cell.x}|{cell.y}]</span>
-                                    </>
-                                ) : (
-                                    <span className="text-[10px] opacity-50 font-mono">[{cell.x}|{cell.y}]</span>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
+                    <>
+                        {/* Map grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0', width: '100%', height: '100%' }}>
+                            {grid.map((cell, index) => (
+                                <div
+                                    key={index}
+                                    onClick={() => handleCellClick(cell)}
+                                    style={{
+                                        ...getTileStyle(cell),
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: cell.hasVillage || cell.oasis ? 'pointer' : 'default',
+                                        position: 'relative',
+                                        padding: '2px',
+                                    }}
+                                >
+                                    {cell.oasis ? (
+                                        <>
+                                            <img src="/assets/map/oasis-1.gif" alt="oasis" style={{ width: '24px', height: '24px' }} />
+                                            <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#333' }}>[{cell.x}|{cell.y}]</span>
+                                        </>
+                                    ) : cell.hasVillage ? (
+                                        <>
+                                            <span style={{ fontSize: '10px', fontWeight: 'bold', color: cell.isMine ? '#006600' : '#333', textAlign: 'center' }}>
+                                                {cell.name}
+                                            </span>
+                                            {cell.owner && !cell.isNatar && !cell.isMine && (
+                                                <span style={{ fontSize: '8px', color: '#666' }}>{cell.owner}</span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span style={{ fontSize: '8px', color: '#999' }}>[{cell.x}|{cell.y}]</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
 
-                <div className="flex flex-wrap gap-3 justify-center mt-4 text-[10px] font-bold text-ink-600">
-                    <span className="flex items-center gap-1"><span className="text-blue-600">👑</span> دهکده من</span>
-                    <span className="flex items-center gap-1"><span className="text-green-600">🏘️</span> بازیکن دیگر</span>
-                    <span className="flex items-center gap-1"><span className="text-rose-600">🏛️</span> ناتار</span>
-                    <span className="flex items-center gap-1"><span className="text-purple-600">🏛️</span> محل شگفتی جهان</span>
-                    <span className="flex items-center gap-1"><span className="text-orange-600">🏕️</span> نگهبان نقشه</span>
-                    <span className="flex items-center gap-1"><span className="text-cyan-600">🏺</span> محل کتیبه</span>
-                    <span className="flex items-center gap-1"><span className="text-emerald-600">🌿</span> اوسیس</span>
-                </div>
-                <p className="text-xs text-ink-500 mt-3 text-center">برای اعزام نیرو به هر دهکده، روی آن کلیک کنید.</p>
+                        {/* Coordinate ruler */}
+                        <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '18px', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+                            <span style={{ color: '#FFF', fontSize: '10px', fontWeight: 'bold' }}>
+                                {center.x - RADIUS}|{center.y + RADIUS} تا {center.x + RADIUS}|{center.y - RADIUS}
+                            </span>
+                        </div>
+                    </>
+                )}
             </div>
 
+            {/* Navigation controls */}
+            <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                <button onClick={() => setCenter(c => ({ ...c, y: c.y + 1 }))} className="btn-ghost" style={{ margin: '2px' }}>▲</button>
+                <div style={{ display: 'inline-flex', gap: '2px' }}>
+                    <button onClick={() => setCenter(c => ({ ...c, x: c.x - 1 }))} className="btn-ghost" style={{ margin: '2px' }}>◄</button>
+                    <button onClick={() => setCenter(c => ({ ...c, x: c.x + 1 }))} className="btn-ghost" style={{ margin: '2px' }}>►</button>
+                </div>
+                <button onClick={() => setCenter(c => ({ ...c, y: c.y - 1 }))} className="btn-ghost" style={{ margin: '2px' }}>▼</button>
+            </div>
+
+            {/* Legend */}
+            <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px', color: '#252525' }}>
+                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#006600' }}>دهکده من</span></span>
+                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#8b7355' }}>بازیکن دیگر</span></span>
+                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#cc3333' }}>ناتار</span></span>
+                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#9966cc' }}>شگفتی جهان</span></span>
+                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#5a8a3a' }}>اوسیس</span></span>
+            </div>
+
+            {/* Oasis attack modal */}
             {selectedOasis && (
-                <div className="fixed inset-0 bg-ink-900/70 flex items-center justify-center z-[300] p-4" onClick={() => setSelectedOasis(null)}>
-                    <div className="panel max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="font-bold text-lg mb-2">🌿 اوسیس ({selectedOasis.x_coord}|{selectedOasis.y_coord})</h3>
-                        <p className="text-xs text-ink-600 mb-3">
-                            بونوس: {selectedOasis.bonus_percent}٪ {selectedOasis.bonus_resource} · قدرت دفاعی تخمینی: {selectedOasis.defense_strength}
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: '#FFF', border: '2px solid #C9C9C9', maxWidth: '400px', width: '100%', padding: '16px' }}>
+                        <h3 style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>اوسیس ({selectedOasis.x_coord}|{selectedOasis.y_coord})</h3>
+                        <p style={{ fontSize: '11px', color: '#666', marginBottom: '8px' }}>
+                            بونوس: {selectedOasis.bonus_percent}٪ {selectedOasis.bonus_resource} · قدرت دفاعی: {selectedOasis.defense_strength}
                         </p>
-                        {oasisAlert && <p className="text-xs font-bold text-brand-700 mb-3">{oasisAlert}</p>}
-                        <div className="space-y-2 mb-3 max-h-48 overflow-y-auto">
+                        {oasisAlert && <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#228B22', marginBottom: '8px' }}>{oasisAlert}</p>}
+                        <div style={{ maxHeight: '200px', overflow: 'auto', marginBottom: '8px' }}>
                             {availableTroops.map((t) => (
-                                <div key={t.troop_type_id} className="flex justify-between items-center text-xs">
+                                <div key={t.troop_type_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '4px 0', borderBottom: '1px solid #EEE' }}>
                                     <span>{t.name} (موجود: {t.count})</span>
-                                    <input type="number" min="0" max={t.count} className="field w-20 text-center"
+                                    <input type="number" min="0" max={t.count} className="text" style={{ width: '60px', textAlign: 'center' }}
                                         value={oasisTroops[t.troop_type_id] || ''}
                                         onChange={(e) => setOasisTroops((p) => ({ ...p, [t.troop_type_id]: Math.max(0, Math.min(t.count, parseInt(e.target.value) || 0)) }))} />
                                 </div>
                             ))}
                         </div>
-                        <button onClick={handleOasisAttack} disabled={attackingOasis} className="btn-danger w-full">
-                            {attackingOasis ? '...' : '⚔️ حمله به اوسیس (فوری)'}
+                        <button onClick={handleOasisAttack} disabled={attackingOasis} className="btn-danger" style={{ width: '100%', marginBottom: '8px' }}>
+                            {attackingOasis ? '...' : 'حمله به اوسیس (فوری)'}
                         </button>
-                        <button onClick={() => setSelectedOasis(null)} className="btn-ghost w-full mt-2">بستن</button>
+                        <button onClick={() => setSelectedOasis(null)} className="btn-ghost" style={{ width: '100%' }}>بستن</button>
                     </div>
                 </div>
             )}
