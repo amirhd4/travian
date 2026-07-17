@@ -290,6 +290,18 @@ class Command(BaseCommand):
             status = "ساخته شد" if created else "از قبل وجود داشت"
             self.stdout.write(self.style.SUCCESS(f"[TroopType] {obj.id} - {obj.name}: {status}"))
 
+        ACADEMY_REQUIREMENTS = {
+            "محافظ نیزه‌دار": 1, "شمشیرزن گلی": 1, "نیزه‌دار توتونی": 1,
+            "کاراگاه": 1, "ردیاب گلی": 1, "کاراگاه توتونی": 1,
+            "شوالیه سوار": 3, "سوار زوبین‌انداز": 3, "سوار پالادین": 3,
+            "قوچ آهنین": 5, "قوچ گلی": 5, "قوچ توتونی": 5,
+            "منجنیق": 10, "بالیستا گلی": 10, "کاتاپولت توتونی": 10,
+        }
+        for troop_name, req_level in ACADEMY_REQUIREMENTS.items():
+            updated = TroopType.objects.filter(name=troop_name).update(required_academy_level=req_level)
+            if updated:
+                self.stdout.write(self.style.SUCCESS(f"[TroopType] {troop_name}: نیازمند آکادمی سطح {req_level}"))
+
         animal_defaults_list = [
             {"name": "گراز وحشی", "defense_infantry": 20, "defense_cavalry": 10, "gold_price": 5},
             {"name": "خرس", "defense_infantry": 50, "defense_cavalry": 30, "gold_price": 15},

@@ -73,6 +73,7 @@ export default function VillageCenter() {
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [upgrading, setUpgrading] = useState(false);
     const [alertMsg, setAlertMsg] = useState(null);
+    const [movingCapital, setMovingCapital] = useState(false);
 
     const pixiContainerRef = useRef(null);
     const pixiAppRef = useRef(null);
@@ -203,6 +204,22 @@ export default function VillageCenter() {
         }
     };
 
+    // ✅ جدید: انتقال پایتخت - فقط از دهکده‌ای که «قصر» ساخته‌شده در آن دارد
+    const handleMoveCapital = async () => {
+        if (!activeVillageId) return;
+        setMovingCapital(true);
+        try {
+            const { data } = await api.post('game/villages/move-capital/', { village_id: activeVillageId });
+            setAlertMsg({ tone: 'success', text: data.message });
+            setSelectedSlot(null);
+            fetchBuildings();
+        } catch (error) {
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || "خطا در انتقال پایتخت" });
+        } finally {
+            setMovingCapital(false);
+        }
+    };
+
     const canAfford = (building) => {
         if (!villageInfo || !building.next_level_cost) return false;
         const r = villageInfo.resources, c = building.next_level_cost;
@@ -269,6 +286,16 @@ export default function VillageCenter() {
                             style={{ width: '100%', padding: '8px 20px' }}>
                             {upgrading ? "صبر کنید..." : `ارتقا به سطح ${selectedSlot.level + 1}`}
                         </button>
+
+                        {/* ✅ جدید: دکمه انتقال پایتخت، فقط وقتی قصر ساخته شده و این دهکده پایتخت فعلی نیست */}
+                        {selectedSlot.name === 'قصر' && selectedSlot.level > 0 && villageInfo && !villageInfo.is_capital && (
+                            <button onClick={handleMoveCapital}
+                                disabled={movingCapital}
+                                className="btn-gold"
+                                style={{ width: '100%', padding: '8px 20px', marginTop: '8px' }}>
+                                {movingCapital ? "در حال انتقال..." : "👑 انتقال پایتخت به این دهکده"}
+                            </button>
+                        )}
                     </>
                 )}
             </Modal>

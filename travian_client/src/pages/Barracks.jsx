@@ -142,6 +142,9 @@ export default function Barracks() {
                                             حمله {unit.attack_power} · دفاع پیاده {unit.defense_infantry} · دفاع سواره {unit.defense_cavalry} · هر واحد {formatDuration(unit.base_train_time)}
                                         </p>
                                         <span className="badge-gold mt-1">🏗️ نیازمند: {unit.required_building}</span>
+                                        {unit.required_academy_level > 0 && (
+                                            <span className="badge-gold mt-1">🎓 نیازمند آکادمی سطح {unit.required_academy_level}</span>
+                                        )}
                                         <div className="flex gap-3 mt-2 text-[11px] font-bold text-ink-600">
                                             <span>🪵 {unit.costs.wood}</span>
                                             <span>🧱 {unit.costs.clay}</span>

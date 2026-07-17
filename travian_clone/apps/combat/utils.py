@@ -19,7 +19,7 @@ def calculate_travel_seconds(source_village, target_village, slowest_speed_tiles
     if troop_speed_multiplier <= 0:
         troop_speed_multiplier = 1
 
-    effective_speed = max(1, slowest_speed_tiles_per_hour) * troop_speed_multiplier * artifact_speed_multiplier  # ✅
+    effective_speed = max(1, slowest_speed_tiles_per_hour) * troop_speed_multiplier * artifact_speed_multiplier
 
     hours = distance / effective_speed
     seconds = hours * 3600
@@ -27,11 +27,25 @@ def calculate_travel_seconds(source_village, target_village, slowest_speed_tiles
     return max(10, seconds)
 
 
-def get_required_training_building(troop_type):
+# ✅ FIX: قبلا مهاجر (is_settler) هیچ شرط اختصاصی نداشت و به مسیر پیش‌فرض
+# تابع («پادگان») می‌افتاد - یعنی می‌شد مهاجر را در پادگان آموزش داد که
+# کاملا اشتباه است. در تراوین اصلی، مهاجر و چیف/سناتور فقط در اقامتگاه یا
+# قصر آموزش داده می‌شوند.
+RESIDENCE_BUILDING_NAMES = ("اقامتگاه", "قصر")
+
+
+def get_required_training_buildings(troop_type):
+    """نام (یا نام‌های) ساختمانی که حداقل یکی از آن‌ها باید در دهکده وجود
+    داشته باشد تا این نوع نیرو قابل آموزش باشد. همیشه یک تاپل برمی‌گرداند."""
+    if troop_type.is_settler or troop_type.is_chief:
+        return RESIDENCE_BUILDING_NAMES
     if troop_type.is_siege_weapon:
-        return "کارگاه"
-    if troop_type.is_chief:
-        return "اقامتگاه"
+        return ("کارگاه",)
     if troop_type.is_cavalry:
-        return "اصطبل"
-    return "پادگان"
+        return ("اصطبل",)
+    return ("پادگان",)
+
+
+def get_required_training_building(troop_type):
+    """نگه‌داشته‌شده برای سازگاری با کدهای قدیمی‌تر؛ فقط اولین گزینه را برمی‌گرداند."""
+    return get_required_training_buildings(troop_type)[0]

@@ -13,7 +13,7 @@ from .views import (
     GoldBankDepositView, GoldBankWithdrawView, MyGoldBankDepositsView,
     ResourceBonusView, BuyFullWarehouseView, BuyProtectionView, ExitProtectionView, InstantRallyPointView,
     BuyGoldClubView, CropperSearchView, StandardNpcTradeView, GoldToSilverExchangeView, SupportMessageView,
-    InstantConstructionView, GoldTroopShopView, AllianceListView,
+    InstantConstructionView, GoldTroopShopView, AllianceListView, MoveCapitalView,
 )
 from apps.combat.views import HeroAuctionListView, HeroAuctionBidView
 
@@ -21,7 +21,8 @@ urlpatterns = [
     path('villages/', VillageListView.as_view(), name='village_list'),
     path('villages/<int:village_id>/', VillageDetailView.as_view(), name='village_detail'),
     path('villages/<int:village_id>/buildings/', VillageBuildingsView.as_view(), name='village_buildings'),
-    path('villages/rename/', VillageRenameView.as_view(), name='village_rename'),  # ✅ جدید
+    path('villages/rename/', VillageRenameView.as_view(), name='village_rename'),
+    path('villages/move-capital/', MoveCapitalView.as_view(), name='move_capital'),
     path('villages/<int:village_id>/abandon/', AbandonVillageView.as_view(), name='abandon_village'),
     path('world-map/', WorldMapView.as_view(), name='world_map'),
     path('oases/', OasisMapView.as_view(), name='oasis_map'),  # ✅ جدید

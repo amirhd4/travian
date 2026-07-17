@@ -18,7 +18,8 @@ from apps.game_engine.engine import schedule_game_event
 from .hero_utils import sync_hero_health, calculate_travel_seconds_to_point, DIFFICULTY_SETTINGS
 from apps.game_engine.models import Village, GameLog, VillageBuilding, ServerSetting
 
-from .utils import get_required_training_building
+from .utils import get_required_training_buildings
+
 
 
 class SendTroopsView(APIView):
@@ -80,15 +81,27 @@ class BarracksTrainView(APIView):
             with transaction.atomic():
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
 
-                required_building_name = get_required_training_building(troop_info)
+                required_buildings = get_required_training_buildings(troop_info)
                 if not VillageBuilding.objects.filter(
-                        village=village, building_type__name=required_building_name, level__gt=0
+                        village=village, building_type__name__in=required_buildings, level__gt=0
                 ).exists():
+                    names_display = " یا ".join(required_buildings)
                     return Response(
-                        {
-                            "error": f"برای آموزش {troop_info.name} ابتدا باید یک «{required_building_name}» در این دهکده بسازید."},
+                        {"error": f"برای آموزش {troop_info.name} ابتدا باید یک «{names_display}» در این دهکده بسازید."},
                         status=400
                     )
+
+                # ✅ جدید: نیازمندی آکادمی برای نیروهای رده‌بالاتر (قبلا آکادمی هیچ اثری نداشت)
+                if troop_info.required_academy_level > 0:
+                    academy_level = VillageBuilding.objects.filter(
+                        village=village, building_type__name="آکادمی"
+                    ).values_list('level', flat=True).first() or 0
+                    if academy_level < troop_info.required_academy_level:
+                        return Response(
+                            {
+                                "error": f"برای آموزش {troop_info.name} به آکادمی سطح {troop_info.required_academy_level} یا بالاتر نیاز دارید (سطح فعلی آکادمی: {academy_level})."},
+                            status=400
+                        )
 
                 # بررسی دقیق موجودی
                 if (village.wood < total_cost['wood'] or
@@ -183,7 +196,8 @@ class TroopTypeCatalogView(APIView):
                 "crop_upkeep": t.crop_upkeep,
                 "base_train_time": t.base_train_time,
                 "is_cavalry": t.is_cavalry,
-                "required_building": get_required_training_building(t),
+                "required_building": " یا ".join(get_required_training_buildings(t)),
+                "required_academy_level": t.required_academy_level,
             }
             for t in troop_types
         ])

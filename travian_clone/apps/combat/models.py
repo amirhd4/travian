@@ -42,6 +42,10 @@ class TroopType(models.Model):
     is_chief = models.BooleanField(default=False)
     is_cavalry = models.BooleanField(default=False)
 
+    # ✅ جدید: حداقل سطح آکادمی لازم برای اینکه این نیرو اصلا قابل آموزش باشد
+    # (قبلا آکادمی هیچ اثر واقعی‌ای در بازی نداشت و صرفا یک ساختمان تزئینی بود)
+    required_academy_level = models.PositiveIntegerField(default=0)
+
     def __str__(self):
         return f"{self.name} ({self.tribe})"
 

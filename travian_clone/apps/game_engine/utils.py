@@ -131,6 +131,15 @@ def _get_oasis_bonus_multipliers(village):
     return multipliers
 
 
+MILL_BONUS_PERCENT_PER_LEVEL = 3  # ✅ جدید: هر سطح آسیاب، تولید گندم را ۳٪ افزایش می‌دهد
+
+
+def _get_mill_multiplier(village):
+    mill = VillageBuilding.objects.filter(village=village, building_type__name="آسیاب").first()
+    level = mill.level if mill else 0
+    return 1 + (level * MILL_BONUS_PERCENT_PER_LEVEL / 100)
+
+
 def update_village_resources(village):
     """محاسبه منابع بر اساس زمان سپری‌شده از آخرین آپدیت + بررسی قحطی گندم."""
     now = timezone.now()
@@ -142,8 +151,9 @@ def update_village_resources(village):
     speed = settings.server_speed if settings else 1
 
     oasis_mult = _get_oasis_bonus_multipliers(village)
+    mill_mult = _get_mill_multiplier(village)  # ✅ جدید
 
-    net_crop_rate = (village.prod_crop * oasis_mult['crop']) - calculate_crop_upkeep(village)
+    net_crop_rate = (village.prod_crop * oasis_mult['crop'] * mill_mult) - calculate_crop_upkeep(village)
 
     if village.loyalty < 100:
         residence_exists = VillageBuilding.objects.filter(
@@ -199,7 +209,12 @@ def calculate_building_culture_points(building_type, level):
         building_type.base_iron_cost + building_type.base_crop_cost
     )
     total_cost = sum(base_total_cost * (1.5 ** lvl) for lvl in range(level))
-    return total_cost / CULTURE_POINT_DIVISOR
+    points = total_cost / CULTURE_POINT_DIVISOR
+
+    if building_type.name == "قصر":
+        points *= 1.5
+
+    return points
 
 
 def calculate_player_culture_points_per_hour(player):
@@ -280,6 +295,7 @@ def get_effective_production_rates(village):
 
     oasis_mult = _get_oasis_bonus_multipliers(village)
     gold_mult = _get_gold_resource_bonus_multipliers(village)
+    mill_mult = _get_mill_multiplier(village)
     hero_resource_type, hero_rate_per_hour = _get_hero_resource_bonus(village)
 
     def hero_bonus(key):
@@ -289,7 +305,7 @@ def get_effective_production_rates(village):
         'wood': speed * (village.prod_wood * oasis_mult['wood'] * gold_mult['wood'] + hero_bonus('wood')),
         'clay': speed * (village.prod_clay * oasis_mult['clay'] * gold_mult['clay'] + hero_bonus('clay')),
         'iron': speed * (village.prod_iron * oasis_mult['iron'] * gold_mult['iron'] + hero_bonus('iron')),
-        'crop': speed * (village.prod_crop * oasis_mult['crop'] * gold_mult['crop'] - calculate_crop_upkeep(village) + hero_bonus('crop')),
+        'crop': speed * (village.prod_crop * oasis_mult['crop'] * gold_mult['crop'] * mill_mult - calculate_crop_upkeep(village) + hero_bonus('crop')),
     }
 
 

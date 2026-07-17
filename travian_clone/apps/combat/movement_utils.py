@@ -3,7 +3,7 @@ from django.utils import timezone
 from django.db import transaction
 
 from .models import TroopMovement, VillageTroop, TroopType, Hero
-from apps.game_engine.models import GameLog, ServerSetting
+from apps.game_engine.models import GameLog, ServerSetting, VillageBuilding
 from .utils import calculate_travel_seconds
 from .tasks import resolve_combat_movement
 
@@ -45,6 +45,12 @@ def dispatch_troop_movement(
 
     if not troops_payload or not any(int(v or 0) > 0 for v in troops_payload.values()):
         return False, "هیچ نیرویی برای ارسال انتخاب نشده است."
+
+    has_rally_point = VillageBuilding.objects.filter(
+        village=source_village, building_type__name="محل گردهمایی", level__gt=0
+    ).exists()
+    if not has_rally_point:
+        return False, "برای اعزام هرگونه نیرو، ابتدا باید «محل گردهمایی» را در این دهکده بسازید."
 
     if movement_type == 'ATTACK' and source_village.id == target_village.id:
         return False, "نمی‌توانید به دهکده خودتان حمله کنید."

@@ -327,6 +327,19 @@ class UpgradeBuildingView(APIView):
                     status=400
                 )
 
+                # ✅ جدید: طبق قوانین تراوین اصلی، هر بازیکن در کل حساب خود فقط می‌تواند
+                # یک «قصر» ساخته‌شده (سطح ۱ به بالا) داشته باشد؛ اقامتگاه چنین محدودیتی ندارد.
+            if building.building_type.name == "قصر" and building.level == 0:
+                other_palace_exists = VillageBuilding.objects.filter(
+                    village__player=request.user, building_type__name="قصر", level__gt=0
+                ).exclude(village=village).exists()
+                if other_palace_exists:
+                    return Response(
+                        {
+                            "error": "شما در حال حاضر یک «قصر» ساخته‌شده در دهکده‌ی دیگری دارید. هر بازیکن فقط می‌تواند یک قصر داشته باشد."},
+                        status=400
+                    )
+
             next_level = building.level + 1
             multiplier = 1.5 ** building.level
             req_wood = int(building.building_type.base_wood_cost * multiplier)
@@ -1082,6 +1095,52 @@ class VillageRenameView(APIView):
         return Response({"message": "نام دهکده با موفقیت تغییر کرد.", "name": village.name})
 
 
+class MoveCapitalView(APIView):
+    """
+    ✅ جدید: انتقال پایتخت - تنها ویژگی واقعا اختصاصی «قصر» که آن را از
+    «اقامتگاه» متمایز می‌کند. طبق قوانین تراوین اصلی این کار فقط از یک
+    دهکده‌ای ممکن است که در آن یک «قصر» (نه صرفا اقامتگاه) ساخته شده باشد.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        village_id = request.data.get('village_id')
+
+        with transaction.atomic():
+            try:
+                new_capital = Village.objects.select_for_update().get(id=village_id, player=request.user)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+            if new_capital.is_capital:
+                return Response({"error": "این دهکده از قبل پایتخت شماست."}, status=400)
+
+            has_palace = VillageBuilding.objects.filter(
+                village=new_capital, building_type__name="قصر", level__gt=0
+            ).exists()
+            if not has_palace:
+                return Response(
+                    {
+                        "error": "برای انتقال پایتخت، ابتدا باید یک «قصر» در این دهکده بسازید (اقامتگاه برای این کار کافی نیست)."},
+                    status=400
+                )
+
+            old_capital = Village.objects.select_for_update().filter(player=request.user, is_capital=True).first()
+            if old_capital:
+                old_capital.is_capital = False
+                old_capital.save(update_fields=['is_capital'])
+
+            new_capital.is_capital = True
+            new_capital.save(update_fields=['is_capital'])
+
+            GameLog.objects.create(
+                village=new_capital, log_type='SYSTEM',
+                description="پایتخت با موفقیت به این دهکده منتقل شد."
+            )
+
+        return Response({"message": f"پایتخت با موفقیت به «{new_capital.name}» منتقل شد."})
+
+
 NPC_TRADE_COOLDOWN_SECONDS = 3600
 NPC_GOLD_COST_PER_1000 = 3
 
@@ -1467,8 +1526,7 @@ class InstantConstructionView(APIView):
         except Village.DoesNotExist:
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
-        # ساختمان‌های در حال ارتقا (به جز قصر و اقامتگاه)
-        EXCLUDED_BUILDINGS = ("اقامتگاه", "تالار شهر", "شگفتی جهان")
+        EXCLUDED_BUILDINGS = ("اقامتگاه", "قصر", "تالار شهر", "شگفتی جهان")
         upgrading_buildings = VillageBuilding.objects.filter(
             village=village, is_upgrading=True
         ).exclude(
