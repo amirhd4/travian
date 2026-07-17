@@ -93,6 +93,9 @@ export default function Embassy() {
                                     اتحاد: {embassyData.alliance_data.name} [{embassyData.alliance_data.tag}]
                                 </h3>
                                 <p className="text-sm font-bold text-blue-700 mt-2">مقام شما: {embassyData.alliance_data.role}</p>
+                                <p className="text-xs text-blue-600 mt-1">
+                                    ظرفیت اتحاد: {embassyData.alliance_data.members.length} از {embassyData.alliance_data.capacity} نفر (بر اساس سطح سفارت‌خانه‌ی اعضا)
+                                </p>
                             </div>
 
                             <h4 className="field-label mb-2">لیست اعضا</h4>

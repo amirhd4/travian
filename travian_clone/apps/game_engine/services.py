@@ -77,7 +77,7 @@ _CITY_BUILDING_DEFS = (
     ("اقامتگاه", 0, 'INFRASTRUCTURE'),
     ("قصر", 0, 'INFRASTRUCTURE'),
     ("تالار شهر", 0, 'INFRASTRUCTURE'),
-    ("مخفیگاه", 0, 'INFRASTRUCTURE'),
+
     ("مخفیگاه", 0, 'INFRASTRUCTURE'),
     ("آسیاب", 0, 'INFRASTRUCTURE'),
     ("کارگاه سنگ‌تراشی", 0, 'INFRASTRUCTURE'),
@@ -167,7 +167,12 @@ def _create_default_buildings(village, distribution_key='NORMAL'):
 
     position = 19
     for type_name, level, category in _CITY_BUILDING_DEFS:
-        building_type = _get_or_create_building_type(type_name, category=category)
+        # ✅ FIX: طبق تراوین اصلی، مخفی‌گاه حداکثر سطح ۱۰ دارد (نه ۲۰).
+        max_level_override = 10 if type_name == "مخفیگاه" else 20
+        building_type = _get_or_create_building_type(type_name, category=category, max_level=max_level_override)
+        if building_type.max_level != max_level_override:
+            building_type.max_level = max_level_override
+            building_type.save(update_fields=['max_level'])
         VillageBuilding.objects.create(
             village=village, building_type=building_type, position=position, level=level,
         )

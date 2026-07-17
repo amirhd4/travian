@@ -17,6 +17,7 @@ from .engine import schedule_game_event
 from .utils import (
     update_village_resources, calculate_crop_upkeep, calculate_building_population,
     calculate_village_population, is_server_finished, get_effective_production_rates, get_effective_max_level,
+    get_main_building_speed_multiplier, get_player_best_embassy_level, get_alliance_capacity,
 )
 from .services import found_new_village, abandon_village
 from .serializers import GameLogSerializer
@@ -144,7 +145,7 @@ class VillageBuildingsView(APIView):
                     "crop": int(b.building_type.base_crop_cost * multiplier),
                 },
                 "next_level_time_seconds": None if is_max_level else int(
-                    b.building_type.base_build_time * time_multiplier),
+                    b.building_type.base_build_time * time_multiplier * get_main_building_speed_multiplier(village)),
             })
 
         return Response({
@@ -357,6 +358,7 @@ class UpgradeBuildingView(APIView):
             village.save()
 
             base_time = building.building_type.base_build_time * (1.2 ** building.level)
+            base_time *= get_main_building_speed_multiplier(village)
             building.is_upgrading = True
             building.upgrade_end_time = timezone.now() + datetime.timedelta(seconds=base_time)
             building.save()
@@ -740,7 +742,8 @@ class EmbassyView(APIView):
                     "tag": alliance.tag,
                     "role": membership.role,
                     "founder_id": alliance.founder_id,
-                    "members": list(members)
+                    "members": list(members),
+                    "capacity": get_alliance_capacity(alliance),
                 }
             })
         except AllianceMember.DoesNotExist:
@@ -767,6 +770,12 @@ class EmbassyView(APIView):
                 if Alliance.objects.filter(tag=tag).exists():
                     return Response({"error": "این تگ قبلا استفاده شده است."}, status=400)
 
+                if get_player_best_embassy_level(request.user) < 1:
+                    return Response(
+                        {"error": "برای تاسیس اتحاد ابتدا باید یک سفارت‌خانه در یکی از دهکده‌های خود بسازید."},
+                        status=400
+                    )
+
                 with transaction.atomic():
                     alliance = Alliance.objects.create(name=name, tag=tag, founder=request.user)
                     AllianceMember.objects.create(alliance=alliance, player=request.user, role='Leader')
@@ -775,10 +784,20 @@ class EmbassyView(APIView):
             alliance_id = request.data.get('alliance_id')
             try:
                 alliance = Alliance.objects.get(id=alliance_id)
-                AllianceMember.objects.create(alliance=alliance, player=request.user, role='Member')
-                return Response({"message": f"شما با موفقیت به اتحاد {alliance.tag} پیوستید."})
             except Alliance.DoesNotExist:
                 return Response({"error": "اتحاد مورد نظر یافت نشد."}, status=404)
+
+            current_count = AllianceMember.objects.filter(alliance=alliance).count()
+            capacity = get_alliance_capacity(alliance)
+            if current_count >= capacity:
+                return Response(
+                    {
+                        "error": f"این اتحاد پر است (ظرفیت فعلی: {capacity} نفر بر اساس سطح سفارت‌خانه‌ی اعضا). اعضای اتحاد باید سفارت‌خانه‌ی خود را ارتقا دهند."},
+                    status=400
+                )
+
+            AllianceMember.objects.create(alliance=alliance, player=request.user, role='Member')
+            return Response({"message": f"شما با موفقیت به اتحاد {alliance.tag} پیوستید."})
 
         try:
             membership = AllianceMember.objects.select_related('alliance').get(player=request.user)
@@ -1565,6 +1584,132 @@ class InstantConstructionView(APIView):
             "completed": completed_buildings,
             "gold_coins": player.gold_coins,
         })
+
+
+TOWN_HALL_BUILDING_NAME = "تالار شهر"
+
+CELEBRATION_SETTINGS = {
+    'SMALL': {
+        "min_town_hall_level": 1,
+        "duration_hours": 24,
+        "culture_points": 500,
+        "cost": {"wood": 3600, "clay": 3600, "iron": 1800, "crop": 1200},
+    },
+    'GREAT': {
+        "min_town_hall_level": 10,
+        "duration_hours": 72,
+        "culture_points": 2000,
+        "cost": {"wood": 12800, "clay": 11200, "iron": 10240, "crop": 8000},
+    },
+}
+
+
+class TownHallCelebrationView(APIView):
+    """✅ جدید: وضعیت و برگزاری جشن کوچک/بزرگ در تالار شهر برای کسب امتیاز فرهنگی فوری."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .models import TownHallCelebration
+
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        town_hall = VillageBuilding.objects.filter(
+            village=village, building_type__name=TOWN_HALL_BUILDING_NAME
+        ).first()
+        town_hall_level = town_hall.level if town_hall else 0
+
+        active = TownHallCelebration.objects.filter(village=village, is_completed=False).first()
+        now = timezone.now()
+
+        options = []
+        for key, cfg in CELEBRATION_SETTINGS.items():
+            options.append({
+                "type": key,
+                "label": dict(TownHallCelebration.CELEBRATION_TYPES)[key],
+                "min_town_hall_level": cfg["min_town_hall_level"],
+                "duration_hours": cfg["duration_hours"],
+                "culture_points": cfg["culture_points"],
+                "cost": cfg["cost"],
+                "is_unlocked": town_hall_level >= cfg["min_town_hall_level"],
+            })
+
+        return Response({
+            "town_hall_level": town_hall_level,
+            "active_celebration": None if not active else {
+                "id": active.id,
+                "celebration_type": active.celebration_type,
+                "celebration_type_display": active.get_celebration_type_display(),
+                "remaining_seconds": max(0, int((active.ends_at - now).total_seconds())),
+            },
+            "options": options,
+        })
+
+    def post(self, request):
+        from .models import TownHallCelebration
+        from .tasks.game_tasks import complete_celebration
+
+        village_id = request.data.get('village_id')
+        celebration_type = request.data.get('celebration_type')
+
+        if celebration_type not in CELEBRATION_SETTINGS:
+            return Response({"error": "نوع جشن نامعتبر است."}, status=400)
+
+        cfg = CELEBRATION_SETTINGS[celebration_type]
+
+        with transaction.atomic():
+            try:
+                village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+            update_village_resources(village)
+
+            town_hall = VillageBuilding.objects.filter(
+                village=village, building_type__name=TOWN_HALL_BUILDING_NAME, level__gt=0
+            ).first()
+            town_hall_level = town_hall.level if town_hall else 0
+            if town_hall_level < cfg["min_town_hall_level"]:
+                return Response(
+                    {"error": f"برای این جشن به تالار شهر سطح {cfg['min_town_hall_level']} یا بالاتر نیاز دارید."},
+                    status=400
+                )
+
+            if TownHallCelebration.objects.filter(village=village, is_completed=False).exists():
+                return Response({"error": "تالار شهر این دهکده هم‌اکنون مشغول برگزاری یک جشن است."}, status=400)
+
+            cost = cfg["cost"]
+            if (village.wood < cost['wood'] or village.clay < cost['clay'] or
+                    village.iron < cost['iron'] or village.crop < cost['crop']):
+                return Response({"error": "منابع کافی برای این جشن نیست."}, status=400)
+
+            village.wood -= cost['wood']
+            village.clay -= cost['clay']
+            village.iron -= cost['iron']
+            village.crop -= cost['crop']
+            village.save()
+
+            server_settings = ServerSetting.objects.filter(is_active=True).first()
+            speed = (server_settings.server_speed if server_settings else 1) or 1
+            duration_seconds = max(1, (cfg["duration_hours"] * 3600) / speed)
+            ends_at = timezone.now() + datetime.timedelta(seconds=duration_seconds)
+
+            celebration = TownHallCelebration.objects.create(
+                village=village, celebration_type=celebration_type,
+                culture_points_reward=cfg["culture_points"], ends_at=ends_at,
+            )
+
+            GameLog.objects.create(
+                village=village, log_type='SYSTEM',
+                description=f"{celebration.get_celebration_type_display()} در تالار شهر آغاز شد."
+            )
+
+            transaction.on_commit(lambda: complete_celebration.apply_async(args=[celebration.id], eta=ends_at))
+
+        return Response({"message": f"{celebration.get_celebration_type_display()} با موفقیت آغاز شد."})
 
 
 GOLD_CLUB_COST = 500

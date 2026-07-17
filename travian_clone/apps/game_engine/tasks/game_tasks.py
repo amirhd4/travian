@@ -283,3 +283,43 @@ def _award_daily_top_10(rows, delta_key, category, day_number):
     ranked = [r for r in ranked if r[delta_key] > 0][:10]
     for rank, row in enumerate(ranked, start=1):
         DailyMedal.objects.create(player=row["player"], category=category, day_number=day_number, rank=rank)
+
+
+@app.task
+def complete_celebration(celebration_id):
+    """✅ جدید: تکمیل جشن تالار شهر و اعطای امتیاز فرهنگی به بازیکن."""
+    from apps.game_engine.models import TownHallCelebration
+
+    try:
+        celebration = TownHallCelebration.objects.select_related('village__player').get(
+            id=celebration_id, is_completed=False
+        )
+    except TownHallCelebration.DoesNotExist:
+        return "این جشن قبلا تکمیل شده یا یافت نشد."
+
+    celebration.is_completed = True
+    celebration.save(update_fields=['is_completed'])
+
+    player = celebration.village.player
+    player.culture_points += celebration.culture_points_reward
+    player.save(update_fields=['culture_points'])
+
+    GameLog.objects.create(
+        village=celebration.village, log_type='SYSTEM',
+        description=f"{celebration.get_celebration_type_display()} به پایان رسید و {int(celebration.culture_points_reward)} امتیاز فرهنگی به حساب شما اضافه شد."
+    )
+
+    channel_layer = get_channel_layer()
+    if channel_layer:
+        async_to_sync(channel_layer.group_send)(
+            f"player_{player.id}",
+            {
+                "type": "send_game_update",
+                "update_type": "CELEBRATION_COMPLETED",
+                "payload": {
+                    "message": f"🎉 {celebration.get_celebration_type_display()} در {celebration.village.name} به پایان رسید (+{int(celebration.culture_points_reward)} امتیاز فرهنگی).",
+                    "village_id": celebration.village_id,
+                },
+            }
+        )
+    return f"جشن #{celebration.id} تکمیل شد."

@@ -56,24 +56,35 @@ def calculate_demolition_by_defender_casualties(defender_loss_percent, target_cu
     return max(0, new_level)
 
 
+WALL_BONUS_PERCENT_PER_LEVEL = 3
+STONEMASON_BONUS_PERCENT_PER_LEVEL = 2
+
+
 def calculate_combat(
         attacker_troops,
         defender_troops,
         wall_level=0,
+        stonemason_level=0,
 ):
     """
     محاسبه‌ی نتیجه‌ی خام نبرد (برنده + درصد تلفات هر طرف).
 
-    ⚠️ توجه: محاسبه‌ی آسیب به دیوار (توسط قوچ) و آسیب به ساختمان‌های دیگر
+    توجه: محاسبه‌ی آسیب به دیوار (توسط قوچ) و آسیب به ساختمان‌های دیگر
     (توسط منجنیق) دیگر داخل این تابع انجام نمی‌شود - چون منجنیق باید
     بتواند یک ساختمان مشخص یا تصادفی را هدف بگیرد که این انتخاب باید در
     سطح بالاتر (apps/combat/tasks.py) مدیریت شود. اینجا فقط نتیجه‌ی خالص
     نبرد (برد/باخت و درصد تلفات) محاسبه می‌شود.
+
+    کارگاه سنگ‌تراشی (Stonemason) دیوار را قوی‌تر می‌کند - هر سطح
+    آن، درصد بونوس دفاعیِ هر سطح دیوار را ۲٪ (به‌صورت ضربی) افزایش می‌دهد.
+    این بونوس فقط قدرت دفاعیِ دیوار در نبرد را زیاد می‌کند و ربطی به تخریب
+    دیوار ندارد - تخریب دیوار همیشه فقط با وجود قوچ در نیروی مهاجم ممکن
+    است (چه سنگ‌تراشی ساخته شده باشد چه نشده باشد).
     """
-    wall_bonus = 1 + (wall_level * 0.03)
+    stonemason_multiplier = 1 + (stonemason_level * STONEMASON_BONUS_PERCENT_PER_LEVEL / 100)
+    wall_bonus = 1 + (wall_level * (WALL_BONUS_PERCENT_PER_LEVEL / 100) * stonemason_multiplier)
 
     total_attack = attacker_troops["points_attack"]
-
     total_defense = (
         defender_troops["points_def_infantry"] +
         defender_troops["points_def_cavalry"]

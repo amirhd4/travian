@@ -74,6 +74,8 @@ export default function VillageCenter() {
     const [upgrading, setUpgrading] = useState(false);
     const [alertMsg, setAlertMsg] = useState(null);
     const [movingCapital, setMovingCapital] = useState(false);
+    const [townHallStatus, setTownHallStatus] = useState(null);
+    const [celebrating, setCelebrating] = useState(null);
 
     const pixiContainerRef = useRef(null);
     const pixiAppRef = useRef(null);
@@ -204,7 +206,6 @@ export default function VillageCenter() {
         }
     };
 
-    // ✅ جدید: انتقال پایتخت - فقط از دهکده‌ای که «قصر» ساخته‌شده در آن دارد
     const handleMoveCapital = async () => {
         if (!activeVillageId) return;
         setMovingCapital(true);
@@ -217,6 +218,33 @@ export default function VillageCenter() {
             setAlertMsg({ tone: 'error', text: error.response?.data?.error || "خطا در انتقال پایتخت" });
         } finally {
             setMovingCapital(false);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedSlot?.name === 'تالار شهر' && activeVillageId) {
+            api.get('game/town-hall/celebrate/', { params: { village_id: activeVillageId } })
+                .then(({ data }) => setTownHallStatus(data))
+                .catch(() => setTownHallStatus(null));
+        } else {
+            setTownHallStatus(null);
+        }
+    }, [selectedSlot, activeVillageId]);
+
+    const handleCelebrate = async (celebrationType) => {
+        if (!activeVillageId) return;
+        setCelebrating(celebrationType);
+        try {
+            const { data } = await api.post('game/town-hall/celebrate/', {
+                village_id: activeVillageId, celebration_type: celebrationType,
+            });
+            setAlertMsg({ tone: 'success', text: data.message });
+            const refreshed = await api.get('game/town-hall/celebrate/', { params: { village_id: activeVillageId } });
+            setTownHallStatus(refreshed.data);
+        } catch (error) {
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || "خطا در برگزاری جشن" });
+        } finally {
+            setCelebrating(null);
         }
     };
 
@@ -295,6 +323,38 @@ export default function VillageCenter() {
                                 style={{ width: '100%', padding: '8px 20px', marginTop: '8px' }}>
                                 {movingCapital ? "در حال انتقال..." : "👑 انتقال پایتخت به این دهکده"}
                             </button>
+                        )}
+
+                        {/* ✅ جدید: پنل جشن‌های تالار شهر */}
+                        {selectedSlot.name === 'تالار شهر' && selectedSlot.level > 0 && townHallStatus && (
+                            <div style={{ marginTop: '12px', padding: '12px', background: '#F5F5F5', border: '1px solid #C9C9C9' }}>
+                                <p style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '8px', color: '#252525' }}>🎉 جشن‌های تالار شهر</p>
+                                {townHallStatus.active_celebration ? (
+                                    <p style={{ fontSize: '12px', color: '#b3721f', fontWeight: 'bold' }}>
+                                        {townHallStatus.active_celebration.celebration_type_display} در حال برگزاری است —{' '}
+                                        {formatDuration(townHallStatus.active_celebration.remaining_seconds)} باقی مانده
+                                    </p>
+                                ) : (
+                                    townHallStatus.options.map((opt) => (
+                                        <div key={opt.type} style={{ marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid #E5E5E5' }}>
+                                            <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#252525' }}>
+                                                {opt.label} {!opt.is_unlocked && `(نیازمند تالار شهر سطح ${opt.min_town_hall_level})`}
+                                            </p>
+                                            <p style={{ fontSize: '11px', color: '#777' }}>
+                                                🪵{opt.cost.wood} 🧱{opt.cost.clay} ⚒️{opt.cost.iron} 🌾{opt.cost.crop} — {opt.culture_points} امتیاز فرهنگی — {opt.duration_hours} ساعت
+                                            </p>
+                                            <button
+                                                onClick={() => handleCelebrate(opt.type)}
+                                                disabled={!opt.is_unlocked || celebrating === opt.type}
+                                                className="btn-gold"
+                                                style={{ width: '100%', padding: '5px 20px', marginTop: '4px' }}
+                                            >
+                                                {celebrating === opt.type ? "در حال برگزاری..." : `برگزاری ${opt.label}`}
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         )}
                     </>
                 )}

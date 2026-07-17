@@ -97,8 +97,31 @@ class Village(models.Model):
         unique_together = ('x_coord', 'y_coord')
         indexes = [models.Index(fields=['x_coord', 'y_coord'])]
 
+        def __str__(self):
+            return f"{self.amount} گلد -> {self.email} (پین: {self.pin_code})"
+
+
+class TownHallCelebration(models.Model):
+    """
+    ✅ جدید: جشن تالار شهر (کوچک/بزرگ) - قبلا «تالار شهر» صرفا یک اسلات
+    بدون هیچ کارکردی بود. طبق تراوین اصلی، تالار شهر امکان برگزاری جشن را
+    می‌دهد که مقدار قابل‌توجهی امتیاز فرهنگی فوری در ازای منابع می‌دهد؛
+    هر دهکده در هر لحظه فقط می‌تواند یک جشن فعال داشته باشد.
+    """
+    CELEBRATION_TYPES = [
+        ('SMALL', 'جشن کوچک'),
+        ('GREAT', 'جشن بزرگ'),
+    ]
+
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='celebrations')
+    celebration_type = models.CharField(max_length=10, choices=CELEBRATION_TYPES)
+    culture_points_reward = models.FloatField(default=0)
+    started_at = models.DateTimeField(auto_now_add=True)
+    ends_at = models.DateTimeField()
+    is_completed = models.BooleanField(default=False)
+
     def __str__(self):
-        return f"{self.name} ({self.x_coord}|{self.y_coord}) - {self.player}"
+        return f"{self.get_celebration_type_display()} - {self.village.name}"
 
 
 class BuildingType(models.Model):

@@ -563,7 +563,15 @@ def _resolve_attack_or_raid(movement):
     ).first()
     wall_level = wall_building.level if wall_building else 0
 
-    combat_result = calculate_combat(attacker_data, defender_data, wall_level=wall_level)
+    # ✅ جدید: کارگاه سنگ‌تراشی دیوار مدافع را قوی‌تر می‌کند
+    stonemason_building = VillageBuilding.objects.filter(
+        village=target, building_type__name="کارگاه سنگ‌تراشی"
+    ).first()
+    stonemason_level = stonemason_building.level if stonemason_building else 0
+
+    combat_result = calculate_combat(
+        attacker_data, defender_data, wall_level=wall_level, stonemason_level=stonemason_level
+    )
 
     attacker_loss_ratio = combat_result["attacker_loss_percent"] / 100
     defender_loss_ratio = combat_result["defender_loss_percent"] / 100

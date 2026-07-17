@@ -322,3 +322,44 @@ def get_effective_max_level(village, building_type):
     if building_type.category == 'RESOURCE' and not village.is_capital:
         return min(building_type.max_level, RESOURCE_FIELD_MAX_LEVEL_NON_CAPITAL)
     return building_type.max_level
+
+
+MAIN_BUILDING_SPEED_BONUS_PERCENT_PER_LEVEL = 5
+MAIN_BUILDING_MAX_SPEED_BONUS_PERCENT = 70
+
+
+def get_main_building_speed_multiplier(village):
+    main_building = VillageBuilding.objects.filter(
+        village=village, building_type__name="ساختمان اصلی"
+    ).first()
+    level = main_building.level if main_building else 0
+    reduction_percent = min(
+        MAIN_BUILDING_MAX_SPEED_BONUS_PERCENT,
+        level * MAIN_BUILDING_SPEED_BONUS_PERCENT_PER_LEVEL,
+    )
+    return 1 - (reduction_percent / 100)
+
+
+EMBASSY_BASE_ALLIANCE_CAPACITY = 3  # ✅ جدید: حداقل ظرفیت پایه به‌ازای هر عضو، حتی بدون سفارت‌خانه
+EMBASSY_CAPACITY_PER_LEVEL = 3      # هر سطح سفارت‌خانه‌ی هر عضو، ظرفیت اتحاد را به این میزان افزایش می‌دهد
+
+
+def get_player_best_embassy_level(player):
+    """✅ جدید: بالاترین سطح سفارت‌خانه‌ی این بازیکن در بین همه‌ی دهکده‌هایش."""
+    return VillageBuilding.objects.filter(
+        village__player=player, building_type__name="سفارتخانه"
+    ).order_by('-level').values_list('level', flat=True).first() or 0
+
+
+def get_alliance_capacity(alliance):
+    """
+    ✅ جدید: ظرفیت کل اتحاد بر اساس مجموع سطح سفارت‌خانه‌ی همه‌ی اعضای فعلی.
+    قبلا سفارت‌خانه هیچ اثری روی ظرفیت اتحاد نداشت و هر تعداد عضو بدون
+    محدودیت می‌توانستند بپیوندند.
+    """
+    from .models import AllianceMember
+    members = AllianceMember.objects.filter(alliance=alliance).select_related('player')
+    total = 0
+    for m in members:
+        total += EMBASSY_BASE_ALLIANCE_CAPACITY + (get_player_best_embassy_level(m.player) * EMBASSY_CAPACITY_PER_LEVEL)
+    return total
