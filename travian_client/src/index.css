@@ -34,10 +34,10 @@ body {
 
 /* Main content area container */
 #mid {
-  margin: 9px auto 0;
-  min-height: 500px;
-  width: 990px;
   position: relative;
+  width: 990px;
+  margin: 0 auto;
+  min-height: 600px;
 }
 
 /* ===== Static overlay elements ===== */
@@ -354,8 +354,8 @@ button .button-contents {
 /* ===== Content area (RTL) ===== */
 #contentOuterContainer {
   position: absolute;
-  right: 189px;
-  left: 0;
+  left: 189px;
+  right: 0;
   top: 0;
 }
 #contentOuterContainer .contentTitle {
@@ -371,6 +371,38 @@ button .button-contents {
 #contentOuterContainer .contentFooter {
   height: 26px;
   background: url('/assets/layout/contentFooter.png') no-repeat;
+}
+
+/* Village center (dorf2) */
+div.village2 {
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+div.village2 #village_map {
+  width: 540px;
+  height: 448px;
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+}
+
+/* Village resources (dorf1) */
+div.village1 {
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+div.village1 #village_map {
+  width: 500px;
+  height: 370px;
+  position: relative;
+  margin: 0 0 15px 0;
+  background-color: #C3EDAE;
+  background-position: center bottom;
+  overflow: hidden;
 }
 
 /* ===== Footer (RTL) ===== */
@@ -699,7 +731,7 @@ button .button-contents {
 /* ===== Side navigation (RTL) ===== */
 #side_navi {
   position: absolute;
-  right: 14px;
+  left: 14px;
   top: 129px;
   width: 160px;
   z-index: 10;

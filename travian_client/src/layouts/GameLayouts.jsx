@@ -6,14 +6,13 @@ import SideInfoBoards from "../components/SideInfoBoards";
 import { useEffect } from "react";
 
 export default function GameLayout() {
-    // Clear body class for in-game pages
     useEffect(() => {
         document.body.className = "";
         return () => { document.body.className = ""; };
     }, []);
 
     return (
-        <div style={{ direction: 'rtl' }}>
+        <div>
             <div id="wrapper">
                 <img id="staticElements" src="/assets/layout/bgIngameStaticElements-rtl.png" alt="" />
                 <div id="logoutContainer">
@@ -23,14 +22,12 @@ export default function GameLayout() {
                     <div id="header">
                         <div id="mtop">
                             <a id="logo" href="/" title="Travian"></a>
-                            <ResourceBar />
-                            <Navbar />
+                            {<ResourceBar />}
+                            {<Navbar />}
                             <div className="clear"></div>
                         </div>
                     </div>
                     <div id="mid">
-                        <div className="clear"></div>
-
                         <div id="contentOuterContainer">
                             <div className="contentTitle">&nbsp;</div>
                             <div className="contentContainer">
@@ -41,13 +38,12 @@ export default function GameLayout() {
                             <div className="contentFooter">&nbsp;</div>
                         </div>
 
+                        {<SideInfoBoards />}
+
+                        {<Footer />}
+
                         <div className="clear"></div>
                     </div>
-
-                    <SideInfoBoards />
-                    <Footer />
-
-                    <div className="clear"></div>
                 </div>
 
                 <div id="ce"></div>
