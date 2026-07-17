@@ -85,7 +85,7 @@ h4.round, div.round {
   left: -5px;
 }
 
-/* ===== Tables (exact reference) ===== */
+/* ===== Tables (RTL) ===== */
 table {
   border-collapse: separate;
   background-color: #C9C9C9;
@@ -96,7 +96,7 @@ table {
 }
 table td, table th {
   vertical-align: middle;
-  text-align: left;
+  text-align: right;
   padding: 0;
   font-weight: normal;
   font-size: 13px;
@@ -113,13 +113,14 @@ table tbody th, table tbody td {
 table tr.hl th, table tr.hl td { background-color: #e7f0ca; }
 table tbody tr.hover:hover th, table tbody tr.hover:hover td { background-color: #fce6c4; }
 
-/* ===== Form elements ===== */
+/* ===== Form elements (RTL) ===== */
 input.text, select {
   border: 1px solid #CCC;
   padding: 1px 2px;
   margin: 0;
   font-size: 11px;
   font-family: Arial, Helvetica, Verdana, sans-serif;
+  direction: rtl;
 }
 textarea {
   border: 1px solid #CCC;
@@ -128,6 +129,7 @@ textarea {
   line-height: 16px;
   font-size: 13px;
   font-family: Arial, Helvetica, Verdana, sans-serif;
+  direction: rtl;
 }
 label { white-space: nowrap; }
 
@@ -218,8 +220,8 @@ button .button-contents {
 /* ===== Content area (RTL) ===== */
 #contentOuterContainer {
   position: absolute;
-  right: 0;
-  left: 189px;
+  right: 189px;
+  left: 0;
   top: 0;
 }
 #contentOuterContainer .contentTitle {
@@ -229,8 +231,8 @@ button .button-contents {
 }
 #contentOuterContainer .contentContainer {
   min-height: 400px;
-  background: url('/assets/layout/contentContainer.png') repeat-y;
-  padding: 0 4px 0;
+  background: #FFF;
+  padding: 0;
 }
 #contentOuterContainer .contentFooter {
   height: 26px;
@@ -507,7 +509,7 @@ button .button-contents {
 }
 .outerLoginBox .innerLoginBox {
   width: 551px;
-  height: 235px;
+  min-height: 235px;
   background: url('/assets/layout/bgLogin-rtl.png') no-repeat;
   margin-bottom: 10px;
 }
@@ -518,8 +520,14 @@ button .button-contents {
   top: 10px;
   margin-right: 6px;
 }
+.outerLoginBox table.loginTable td {
+  text-align: right;
+  padding: 2px 6px;
+  font-size: 11px;
+}
 .outerLoginBox table.loginTable td.accountNameOrEmailAddress {
   width: 115px;
+  font-weight: bold;
 }
 .outerLoginBox input.text {
   background-color: #F8F8F8;
@@ -571,13 +579,14 @@ button .button-contents {
   margin: 1px 0;
   padding: 0;
   width: 151px;
-  line-height: 23px;
   height: 25px;
+  line-height: 25px;
   font-size: 14px;
-  background: url('/assets/layout/outsideMenu-rtl.png') no-repeat;
+  background: #E5E5E5;
+  border-bottom: 1px solid #C9C9C9;
 }
 #side_navi ul li.active {
-  background-position: 0 -25px;
+  background: #498843;
 }
 #side_navi ul li a {
   display: block;
