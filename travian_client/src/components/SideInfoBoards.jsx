@@ -69,29 +69,10 @@ export default function SideInfoBoards() {
     const heroXpPercent = heroXpForNext > 0 ? Math.min(100, (heroXpCurrent / heroXpForNext) * 100) : 0;
 
     return (
-        <div style={{
-            position: 'absolute',
-            right: '0',
-            top: '0',
-            width: '180px',
-            zIndex: 10,
-        }}>
+        <div id="side_info">
             {/* Hero section */}
-            <div style={{
-                display: 'block',
-                height: '136px',
-                position: 'relative',
-                width: '145px',
-                margin: '0 auto',
-            }}>
-                <div style={{
-                    width: '145px',
-                    height: '136px',
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    background: "url('/assets/layout/sign_heroBorder-rtl.png') no-repeat",
-                }}>
+            <div className="sideInfoHero">
+                <div className="heroImageBorder">
                     <div style={{
                         width: '106px',
                         height: '106px',
@@ -106,32 +87,15 @@ export default function SideInfoBoards() {
                         🦸
                     </div>
                 </div>
-                <a href="/hero" style={{ position: 'absolute', left: '15px', top: '30px', width: '93px', height: '95px' }} title="پروفایل قهرمان" />
+                <a href="/hero" className="heroProfile" title="پروفایل قهرمان" />
                 <a href="/hero?tab=adventures" style={{ position: 'absolute', left: '112px', top: '36px', width: '30px', height: '30px' }} title="ماجراجویی‌ها" />
                 <a href="/hero?tab=auction" style={{ position: 'absolute', left: '115px', top: '68px', width: '30px', height: '30px' }} title="حراجی" />
             </div>
 
             {/* Player name */}
-            <div style={{
-                height: '51px',
-                position: 'relative',
-                width: '182px',
-                margin: '-13px auto 0',
-            }}>
-                <a href="/profile" style={{
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    position: 'absolute',
-                    width: '128px',
-                    height: '22px',
-                    paddingTop: '10px',
-                    paddingRight: '35px',
-                    top: '8px',
-                    right: '7px',
-                    color: '#252525',
-                    textDecoration: 'none',
-                }}>
-                    <span style={{ display: 'block', height: '22px', width: '128px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+            <div className="sideInfoPlayer">
+                <a href="/profile" className="signLink">
+                    <span className="wrap" style={{ display: 'block', height: '22px', width: '128px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                         {user.username}
                     </span>
                 </a>
@@ -139,27 +103,9 @@ export default function SideInfoBoards() {
 
             {/* Alliance */}
             {user.alliance && (
-                <div style={{
-                    background: "url('/assets/layout/sign_ally-rtl.png') no-repeat",
-                    height: '48px',
-                    width: '178px',
-                    position: 'relative',
-                    margin: '0 auto',
-                }}>
-                    <a href="/embassy" style={{
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                        position: 'absolute',
-                        width: '114px',
-                        height: '21px',
-                        paddingTop: '9px',
-                        paddingRight: '44px',
-                        top: '6px',
-                        right: '6px',
-                        color: '#252525',
-                        textDecoration: 'none',
-                    }}>
-                        <span style={{ display: 'block', height: '21px', width: '114px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                <div className="sideInfoAlly">
+                    <a href="/embassy" className="signLink">
+                        <span className="wrap" style={{ display: 'block', height: '21px', width: '114px', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                             {user.alliance_tag || 'بدون اتحاد'}
                         </span>
                     </a>
@@ -167,51 +113,25 @@ export default function SideInfoBoards() {
             )}
 
             {/* Village list */}
-            <div style={{ position: 'relative', right: '9px', marginTop: '-3px', width: '172px' }}>
+            <div id="villageList">
                 {/* Header */}
-                <div style={{
-                    height: '64px',
-                    background: "url('/assets/layout/signVillagesTop-rtl.png') no-repeat",
-                }}>
-                    <a href="/villages" style={{
-                        color: '#252525',
-                        fontSize: '12px',
-                        position: 'absolute',
-                        top: '21px',
-                        right: '18px',
-                        display: 'block',
-                        height: '16px',
-                        paddingRight: '20px',
-                        textDecoration: 'none',
-                    }}>
+                <div className="head">
+                    <a href="/villages">
                         📊 آمار دهکده‌ها
                     </a>
                 </div>
 
                 {/* Village list */}
-                <div style={{
-                    minHeight: '17px',
-                    paddingTop: '1px',
-                    background: "url('/assets/layout/signVillagesMiddle-rtl.png') repeat-y",
-                }}>
-                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: '12px' }}>
+                <div className="list">
+                    <ul>
                         {villages.map((v) => (
-                            <li key={v.id} style={{ height: '14px', lineHeight: '14px', marginRight: '21px', marginBottom: '4px' }}>
+                            <li key={v.id}>
                                 <a
                                     href="#"
+                                    className={v.id === activeVillageId ? 'active' : ''}
                                     onClick={(e) => {
                                         e.preventDefault();
                                         useGameStore.getState().setActiveVillageId(v.id);
-                                    }}
-                                    style={{
-                                        fontWeight: v.id === activeVillageId ? 'bold' : 'normal',
-                                        whiteSpace: 'nowrap',
-                                        display: 'block',
-                                        overflow: 'hidden',
-                                        marginRight: '17px',
-                                        width: '105px',
-                                        color: '#252525',
-                                        textDecoration: 'none',
                                     }}
                                 >
                                     {v.is_capital ? '👑 ' : ''}{v.name}
@@ -222,11 +142,7 @@ export default function SideInfoBoards() {
                 </div>
 
                 {/* Footer */}
-                <div style={{
-                    background: "url('/assets/layout/signVillagesBottom-rtl.png') no-repeat",
-                    width: '172px',
-                    height: '39px',
-                }} />
+                <div className="foot" />
             </div>
 
             {/* Building queue */}

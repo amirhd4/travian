@@ -1,29 +1,47 @@
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import ResourceBar from "../components/ResourceBar";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import SideInfoBoards from "../components/SideInfoBoards";
 import { useEffect } from "react";
+import useGameStore from "../store/useGameStore";
+import api from "../api/axiosConfig";
+
+const BODY_CLASS_MAP = {
+    '/village': 'village1',
+    '/dorf2': 'village2',
+    '/world-map': 'map',
+};
 
 export default function GameLayout() {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const clearUser = useGameStore((state) => state.clearUser);
+
     useEffect(() => {
-        document.body.className = "";
-        return () => { document.body.className = ""; };
-    }, []);
+        document.body.className = BODY_CLASS_MAP[location.pathname] || '';
+        return () => { document.body.className = ''; };
+    }, [location.pathname]);
+
+    const handleLogout = async (e) => {
+        e.preventDefault();
+        try { await api.post('auth/logout/'); } catch { /* ignore */ }
+        finally { clearUser(); navigate('/login'); }
+    };
 
     return (
         <div>
             <div id="wrapper">
                 <img id="staticElements" src="/assets/layout/bgIngameStaticElements-rtl.png" alt="" />
-                <div id="logoutContainer">
-                    <a id="logout" href="/login" title="خروج">&nbsp;</a>
-                </div>
                 <div className="bodyWrapper">
                     <div id="header">
                         <div id="mtop">
+                            <div id="logoutContainer">
+                                <a id="logout" href="/login" title="خروج" onClick={handleLogout}>خروج</a>
+                            </div>
                             <a id="logo" href="/" title="Travian"></a>
-                            {<ResourceBar />}
-                            {<Navbar />}
+                            <ResourceBar />
+                            <Navbar />
                             <div className="clear"></div>
                         </div>
                     </div>
@@ -38,9 +56,9 @@ export default function GameLayout() {
                             <div className="contentFooter">&nbsp;</div>
                         </div>
 
-                        {<SideInfoBoards />}
+                        <SideInfoBoards />
 
-                        {<Footer />}
+                        <Footer />
 
                         <div className="clear"></div>
                     </div>

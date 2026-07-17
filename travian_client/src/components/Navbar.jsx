@@ -131,30 +131,6 @@ export default function Navbar() {
                     );
                 })}
             </ul>
-
-            {/* Logout button (RTL: left side) */}
-            <div style={{
-                position: 'absolute',
-                left: '10px',
-                top: '0',
-                zIndex: 10,
-            }}>
-                <button
-                    onClick={handleLogout}
-                    style={{
-                        background: '#DE0000',
-                        border: '1px solid #aa0000',
-                        color: '#FFF',
-                        padding: '4px 8px',
-                        cursor: 'pointer',
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                    }}
-                    title="خروج"
-                >
-                    🚪 خروج
-                </button>
-            </div>
         </>
     );
 }
