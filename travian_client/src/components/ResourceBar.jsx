@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -94,10 +94,10 @@ export default function ResourceBar() {
             </div>
             <ul id="res">
                 {[
-                    { key: 'wood', img: '/assets/ui/res-1.gif', label: 'Wood', maxKey: 'maxStorage' },
-                    { key: 'clay', img: '/assets/ui/res-2.gif', label: 'Clay', maxKey: 'maxStorage' },
-                    { key: 'iron', img: '/assets/ui/res-3.gif', label: 'Iron', maxKey: 'maxStorage' },
-                    { key: 'crop', img: '/assets/ui/res-4.gif', label: 'Crop', maxKey: 'maxGranary' },
+                    { key: 'wood', img: '/assets/ui/res-1.gif', label: 'چوب', maxKey: 'maxStorage' },
+                    { key: 'clay', img: '/assets/ui/res-2.gif', label: 'خاک رس', maxKey: 'maxStorage' },
+                    { key: 'iron', img: '/assets/ui/res-3.gif', label: 'آهن', maxKey: 'maxStorage' },
+                    { key: 'crop', img: '/assets/ui/res-4.gif', label: 'گندم', maxKey: 'maxGranary' },
                 ].map(({ key, img, label, maxKey }, idx) => {
                     const value = Math.floor(resources[key]);
                     const max = maxKey === 'maxGranary' ? maxGranary : maxStorage;

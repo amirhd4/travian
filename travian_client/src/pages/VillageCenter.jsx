@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+﻿import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as PIXI from 'pixi.js';
 import { Modal } from '../components/Modal';
 import { AlertModal } from '../components/Modal';
@@ -7,16 +7,15 @@ import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
 
-// PHP dorf2.tpl exact coordinates for building positions (from compact.css .d1-.d20, .dx1)
 const DORF2_SLOTS = {
-    19: { x: 310, y: 230 }, // Rally point center
+    19: { x: 310, y: 230 },
     20: { x: 115, y: 52 }, 21: { x: 198, y: 27 }, 22: { x: 258, y: 17 }, 23: { x: 332, y: 32 },
     24: { x: 388, y: 81 }, 25: { x: 80, y: 91 }, 26: { x: 161, y: 98 }, 27: { x: 247, y: 81 },
     28: { x: 395, y: 122 }, 29: { x: 66, y: 161 }, 30: { x: 192, y: 126 }, 31: { x: 155, y: 152 },
     32: { x: 402, y: 180 }, 33: { x: 84, y: 200 }, 34: { x: 227, y: 196 }, 35: { x: 354, y: 213 },
     36: { x: 158, y: 236 }, 37: { x: 286, y: 247 }, 38: { x: 144, y: 267 },
-    39: { x: 262, y: 276 }, // Rally point (position 39)
-    40: { x: 240, y: 350 }, // Wall/hospital
+    39: { x: 262, y: 276 },
+    40: { x: 240, y: 350 },
 };
 
 const BUILDING_META = {
@@ -111,7 +110,6 @@ export default function VillageCenter() {
         async function renderScene(app) {
             app.stage.removeChildren();
 
-            // Background: village center image (matching PHP bg1.jpg)
             try {
                 const bgTexture = await PIXI.Assets.load('/assets/bgs/bg1.jpg');
                 const bgSprite = new PIXI.Sprite(bgTexture);
@@ -135,7 +133,6 @@ export default function VillageCenter() {
                 const meta = BUILDING_META[b.name];
                 const hasLevel = b.level > 0 || b.is_upgrading;
 
-                // Load building image
                 if (meta) {
                     try {
                         const texture = await PIXI.Assets.load(meta.asset);
@@ -150,7 +147,6 @@ export default function VillageCenter() {
                         container.addChild(fallback);
                     }
                 } else {
-                    // Empty slot: construction site
                     try {
                         const texture = await PIXI.Assets.load('/assets/buildings/g1.png');
                         const sprite = new PIXI.Sprite(texture);
@@ -166,16 +162,13 @@ export default function VillageCenter() {
                     }
                 }
 
-                // PHP-style level badge: white circle with number
                 if (hasLevel) {
-                    // White circle background
                     const badge = new PIXI.Graphics();
                     badge.circle(0, 0, 11).fill({ color: 0xFFFFFF });
                     badge.x = 22;
                     badge.y = 22;
                     container.addChild(badge);
 
-                    // Level text
                     const lvlText = new PIXI.Text({
                         text: b.level.toString(),
                         style: { fontFamily: 'Arial, Helvetica, Verdana', fontSize: 11, fill: 0x000000, fontWeight: 'normal' }
@@ -270,10 +263,9 @@ export default function VillageCenter() {
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="مرکز دهکده" />
 
             {loading ? (
-                <p style={{ fontWeight: 'bold', marginTop: '64px', color: '#252525' }}>در حال بارگذاری مرکز دهکده...</p>
+                <p style={{ fontWeight: 'bold', marginTop: '64px', color: '#252525', textAlign: 'center' }}>در حال بارگذاری مرکز دهکده...</p>
             ) : (
                 <div id="village_map">
-                    {/* PixiJS canvas */}
                     <div ref={pixiContainerRef} style={{ width: '540px', height: '448px' }} />
                 </div>
             )}

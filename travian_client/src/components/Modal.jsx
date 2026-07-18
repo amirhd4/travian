@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 
 export function Modal({ open, onClose, title, icon, children, size = 'md' }) {
     useEffect(() => {
@@ -54,12 +54,20 @@ export function Modal({ open, onClose, title, icon, children, size = 'md' }) {
 }
 
 export function ConfirmModal({ open, onConfirm, onCancel, title = 'تایید عملیات', message, danger = false, confirmLabel = 'تایید' }) {
+    const handleConfirm = async () => {
+        try {
+            await onConfirm?.();
+        } catch (err) {
+            console.error('ConfirmModal onConfirm error:', err);
+        }
+    };
+
     return (
         <Modal open={open} onClose={onCancel} title={title} icon={danger ? '⚠️' : '❓'} size="sm">
             <p style={{ fontSize: '13px', color: '#252525', marginBottom: '24px', lineHeight: '20px' }}>{message}</p>
             <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={onCancel} className="btn-ghost" style={{ flex: 1 }}>انصراف</button>
-                <button onClick={onConfirm} className={danger ? 'btn-danger' : 'btn-primary'} style={{ flex: 1 }}>
+                <button onClick={handleConfirm} className={danger ? 'btn-danger' : 'btn-primary'} style={{ flex: 1 }}>
                     {confirmLabel}
                 </button>
             </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -15,6 +15,8 @@ function formatCountdown(seconds) {
     return `${s}s`;
 }
 
+const TRIBE_NAMES = { 1: 'رومی‌ها', 2: 'توتون‌ها', 3: 'گل‌ها' };
+
 export default function SideInfoBoards() {
     const user = useGameStore((state) => state.user);
     const villages = useGameStore((state) => state.villages);
@@ -25,6 +27,7 @@ export default function SideInfoBoards() {
     const [buildingQueue, setBuildingQueue] = useState([]);
     const [hero, setHero] = useState(null);
     const [now, setNow] = useState(Date.now());
+    const [serverConfig, setServerConfig] = useState(null);
 
     useEffect(() => {
         const t = setInterval(() => setNow(Date.now()), 1000);
@@ -47,12 +50,20 @@ export default function SideInfoBoards() {
         } catch { /* silent */ }
     }, []);
 
+    const fetchServerConfig = useCallback(async () => {
+        try {
+            const { data } = await api.get('game/server-status/');
+            setServerConfig(data);
+        } catch { /* silent */ }
+    }, []);
+
     useEffect(() => {
         fetchBuildingQueue();
         fetchHero();
+        fetchServerConfig();
         const interval = setInterval(() => { fetchBuildingQueue(); }, 15000);
         return () => clearInterval(interval);
-    }, [fetchBuildingQueue, fetchHero]);
+    }, [fetchBuildingQueue, fetchHero, fetchServerConfig]);
 
     useEffect(() => {
         if (!lastMessage) return;
@@ -61,26 +72,65 @@ export default function SideInfoBoards() {
 
     if (!user) return null;
 
+    const heroGender = hero?.appearance?.gender || 'FEMALE';
+    const heroHairStyle = hero?.appearance?.hair_style || 1;
+
+    // Calculate server timers (catapult, inscription, WW plan)
+    const nowSec = Math.floor(now / 1000);
+    const cataTime = serverConfig?.catapult_release_time || 0;
+    const katibeTime = serverConfig?.inscription_release_time || 0;
+    const wwPlanTime = serverConfig?.ww_plan_release_time || 0;
+
+    const cataRemaining = cataTime > nowSec ? cataTime - nowSec : 0;
+    const katibeRemaining = katibeTime > nowSec ? katibeTime - nowSec : 0;
+    const wwPlanRemaining = wwPlanTime > nowSec ? wwPlanTime - nowSec : 0;
+
+    // Medal distribution timer (daily at midnight)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const medalRemaining = Math.max(0, Math.floor((tomorrow.getTime() - now) / 1000));
+
     return (
         <div id="side_info">
             {/* Hero section */}
             <div className="sideInfoHero">
-                <a href="/hero" className="heroProfile" title="پروفایل قهرمان">
-                    <div style={{
-                        width: '106px',
-                        height: '106px',
-                        margin: '15px 0 0 8px',
-                        background: '#E5E5E5',
-                        border: '2px solid #C9C9C9',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '32px',
-                    }}>
-                        🦸
-                    </div>
-                </a>
+                <img
+                    id="heroImage"
+                    src={`/assets/hero/hero-portrait.png`}
+                    alt={user.username}
+                    className="heroImage"
+                    style={{
+                        width: '93px',
+                        height: '95px',
+                        objectFit: 'cover',
+                        display: 'block',
+                        position: 'absolute',
+                        left: '15px',
+                        top: '30px',
+                        zIndex: 2,
+                    }}
+                    onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `/assets/hero/preview_${heroGender.toLowerCase()}_${heroHairStyle}.png`;
+                        e.target.onError = (e2) => {
+                            e2.target.onerror = null;
+                            e2.target.style.display = 'none';
+                        };
+                    }}
+                />
                 <div className="heroImageBorder"></div>
+                <a id="heroProfile" href="/hero" className="heroProfile" title="پروفایل قهرمان"></a>
+                <a href="/hero?tab=adventures" className="sideInfoAdventures" title="ماجراجویی‌ها" style={{
+                    position: 'absolute', left: '125px', top: '30px', width: '20px', height: '20px',
+                    background: 'url(/assets/ui/cropfinder.gif) no-repeat', backgroundSize: 'contain',
+                    zIndex: 3, display: 'block',
+                }}></a>
+                <a href="/hero?tab=auction" className="sideInfoAuctions" title="حراجی" style={{
+                    position: 'absolute', left: '125px', top: '55px', width: '20px', height: '20px',
+                    background: 'url(/assets/ui/friends-icon.gif) no-repeat', backgroundSize: 'contain',
+                    zIndex: 3, display: 'block',
+                }}></a>
             </div>
 
             {/* Player name */}
@@ -88,6 +138,15 @@ export default function SideInfoBoards() {
                 <a className="signLink" href="/profile">
                     <span className="wrap">{user.username}</span>
                 </a>
+                {user.tribe && (
+                    <img
+                        className={`nationBig nationBig${user.tribe}`}
+                        title={TRIBE_NAMES[user.tribe] || ''}
+                        src={`/assets/tribes/tribe-${user.tribe}.png`}
+                        style={{ position: 'absolute', left: '5px', top: '8px', width: '20px', height: '20px' }}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                )}
             </div>
 
             {/* Alliance */}
@@ -100,38 +159,86 @@ export default function SideInfoBoards() {
             )}
 
             {/* Village list */}
-            <div id="villageList">
+            <div id="villageList" className="listing">
                 <div className="head">
-                    <a href="/villages">آمار دهکده‌ها</a>
+                    <a href="/villages" title="نمای کلی دهکده‌ها">آمار دهکده‌ها:</a>
                 </div>
                 <div className="list">
                     <ul>
-                        {villages.map((v) => (
-                            <li key={v.id}>
-                                <a
-                                    href="#"
-                                    className={v.id === activeVillageId ? 'active' : ''}
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        useGameStore.getState().setActiveVillageId(v.id);
-                                    }}
-                                >
-                                    {v.is_capital ? '★ ' : ''}{v.name}
-                                </a>
-                            </li>
-                        ))}
+                        {villages.map((v) => {
+                            const isActive = v.id === activeVillageId;
+                            const hasAttacks = v.incoming_attacks > 0;
+                            return (
+                                <li key={v.id} className={`entry ${hasAttacks ? 'attack' : ''} ${isActive ? 'active' : ''}`}>
+                                    <a
+                                        href="#"
+                                        className={isActive ? 'active' : ''}
+                                        title={`${v.name} (${v.y_coord}|${v.x_coord})`}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            useGameStore.getState().setActiveVillageId(v.id);
+                                        }}
+                                    >
+                                        {v.name}
+                                    </a>
+                                </li>
+                            );
+                        })}
                     </ul>
+                </div>
+                <div className="foot"></div>
+            </div>
+
+            {/* Server timers (catapult, inscription, WW plan) */}
+            <div id="villageList" className="listing" style={{ marginTop: '0' }}>
+                <div className="head"></div>
+                <div className="list" style={{ padding: '8px', marginTop: '-40px', textAlign: 'center', fontSize: '11px' }}>
+                    {cataRemaining > 0 ? (
+                        <>
+                            <span>آزاد شدن منجنیق</span>
+                            <br />
+                            <b>{formatCountdown(cataRemaining)}</b>
+                        </>
+                    ) : (
+                        <span>منجنیق آزاد شد</span>
+                    )}
+                    <br />
+                    <span style={{ color: '#999' }}>---------</span>
+                    <br />
+                    {katibeRemaining > 0 ? (
+                        <>
+                            <span>زمان آزاد شدن کتیبه‌ها</span>
+                            <br />
+                            <b>{formatCountdown(katibeRemaining)}</b>
+                        </>
+                    ) : (
+                        <span>کتیبه‌ها آزاد شدند</span>
+                    )}
+                    <br />
+                    <span style={{ color: '#999' }}>---------</span>
+                    <br />
+                    {wwPlanRemaining > 0 ? (
+                        <>
+                            <span>آزادسازی نقشه ساخت شگفتی</span>
+                            <br />
+                            <b>{formatCountdown(wwPlanRemaining)}</b>
+                        </>
+                    ) : (
+                        <span>نقشه‌های ساخت شگفتی آزاد شدند</span>
+                    )}
+                    <br />
+                    <span style={{ color: '#999' }}>---------</span>
                 </div>
                 <div className="foot"></div>
             </div>
 
             {/* Building queue */}
             {buildingQueue.length > 0 && (
-                <div style={{ position: 'relative', right: '9px', marginTop: '8px', width: '172px' }}>
-                    <div style={{ background: '#E5E5E5', borderTop: '1px solid #C9C9C9', borderLeft: '1px solid #C9C9C9', borderRight: '1px solid #C9C9C9', padding: '4px 8px', fontWeight: 'bold', fontSize: '11px' }}>
+                <div className="sideBuildingQueue">
+                    <div className="sideBuildingQueue-header">
                         در حال ساخت
                     </div>
-                    <div style={{ background: '#F5F5F5', borderLeft: '1px solid #C9C9C9', borderRight: '1px solid #C9C9C9', borderBottom: '1px solid #C9C9C9', padding: '4px 8px', fontSize: '11px' }}>
+                    <div className="sideBuildingQueue-body">
                         {buildingQueue.slice(0, 3).map((b, i) => {
                             const endTime = new Date(b.upgrade_end_time).getTime();
                             const remaining = Math.max(0, Math.floor((endTime - now) / 1000));

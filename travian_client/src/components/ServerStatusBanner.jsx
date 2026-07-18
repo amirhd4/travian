@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 
@@ -34,22 +34,12 @@ export default function ServerStatusBanner() {
 
     useEffect(() => {
         if (lastMessage?.type === 'SERVER_FINISHED') {
-            api.get('game/server-status/')
-                .then(({ data }) => setStatus(data))
-                .catch(() => setStatus((prev) => ({ ...prev, is_finished: true, winner_username: lastMessage.data.winner })));
-        }
-    }, [lastMessage]);
-
-    // اعلان زنده برای کاربرانی که همین الان آنلاین هستند (بدون نیاز به رفرش صفحه)
-    useEffect(() => {
-        if (lastMessage?.type === 'SERVER_FINISHED') {
             setStatus((prev) => ({ ...prev, is_finished: true, winner_username: lastMessage.data.winner }));
         }
     }, [lastMessage]);
 
     if (!status) return null;
 
-    // نمایش پایان سرور
     if (status.is_finished) {
         return (
             <div
@@ -71,11 +61,5 @@ export default function ServerStatusBanner() {
         );
     }
 
-    // if (banners.length === 0) return null;
-
-    return (
-        <div className="fixed bottom-0 left-0 w-full z-[999] shadow-lg" dir="rtl">
-            {/*{banners}*/}
-        </div>
-    );
+    return null;
 }

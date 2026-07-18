@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
+﻿import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../api/axiosConfig.js";
 import { AlertModal } from "../components/Modal";
 
@@ -94,17 +94,7 @@ export default function Register() {
     };
 
     return (
-        <div
-            dir="rtl"
-            className="min-h-screen text-slate-800 font-sans flex flex-col"
-            style={{
-                backgroundImage: "url('/assets/bgs/login-rtl.jpg')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                backgroundAttachment: 'fixed'
-            }}
-        >
+        <div id="wrapper">
             <AlertModal
                 open={!!successMsg}
                 tone="success"
@@ -113,261 +103,159 @@ export default function Register() {
                 onClose={() => navigate("/login")}
             />
 
-            {/* نوار ناوبری */}
-            <nav className="bg-white/95 backdrop-blur-md shadow-sm border-b border-slate-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16 items-center">
-                        <div className="flex-shrink-0 flex items-center">
-                            <Link to="/" className="text-2xl font-bold text-emerald-600 tracking-tight">
-                                تراوین <span className="text-slate-700">کلون</span>
-                            </Link>
-                        </div>
-                        <div className="hidden sm:flex space-x-6 space-x-reverse">
-                            <Link to="/" className="text-slate-500 hover:text-emerald-600 font-medium transition-colors">صفحه اصلی</Link>
-                            <Link to="/login" className="text-slate-500 hover:text-emerald-600 font-medium transition-colors">ورود</Link>
-                            <Link to="/register" className="text-emerald-600 font-bold border-b-2 border-emerald-600">ثبت‌نام</Link>
-                            <Link to="#" className="text-slate-500 hover:text-emerald-600 font-medium transition-colors">پشتیبانی</Link>
-                        </div>
+            <div className="bodyWrapper">
+                <div id="header">
+                    <div id="mtop">
+                        <a id="logo" href="/" title="Travian"></a>
+                        <div className="clear"></div>
                     </div>
                 </div>
-            </nav>
+                <div id="mid">
+                    <div className="contentTitle">&nbsp;</div>
+                    <div className="contentContainer" style={{ padding: '20px' }}>
+                        <div id="content">
+                            <div className="outerLoginBox" style={{ width: '600px' }}>
+                                <h2 className="titleInHeader">ثبت‌نام در بازی</h2>
 
-            {/* محتوای اصلی */}
-            <main className="flex-1 flex justify-center items-start p-4 sm:p-8 overflow-y-auto">
-                <div className="w-full max-w-3xl bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-slate-100 mt-4 mb-12">
-
-                    {/* هدر فرم */}
-                    <div className="bg-slate-800 p-6 sm:px-10 text-center">
-                        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">ثبت‌نام در بازی</h1>
-                        <p className="text-slate-400 text-sm">برای ساخت امپراطوری خود، فرم زیر را تکمیل کنید.</p>
-                    </div>
-
-                    <div className="p-6 sm:p-10">
-                        {/* نمایش ارور */}
-                        {error && (
-                            <div className="mb-6 bg-red-50 border-r-4 border-red-500 p-4 rounded-l text-red-700 text-sm font-medium animate-pulse">
-                                {error}
-                            </div>
-                        )}
-
-                        <form onSubmit={handleRegister} className="space-y-8">
-
-                            {/* بخش 1: اطلاعات کاربری */}
-                            <section>
-                                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm">۱</span>
-                                    اطلاعات کاربری
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-1">نام کاربری</label>
-                                        <input
-                                            type="text"
-                                            name="username"
-                                            value={formData.username}
-                                            onChange={handleChange}
-                                            maxLength={15}
-                                            className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-left"
-                                            dir="ltr"
-                                            required
-                                        />
+                                {error && (
+                                    <div style={{ padding: '8px', marginBottom: '12px', background: '#fcd1d1', border: '1px solid #DE0000', color: '#DE0000', fontWeight: 'bold', fontSize: '11px' }}>
+                                        {error}
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-semibold text-slate-700 mb-1">پست الکترونیک</label>
-                                        <input
-                                            type="email"
-                                            name="email"
-                                            value={formData.email}
-                                            onChange={handleChange}
-                                            maxLength={40}
-                                            className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-left"
-                                            dir="ltr"
-                                            required
-                                        />
+                                )}
+
+                                <form onSubmit={handleRegister}>
+                                    <div className="greenbox" style={{ width: '600px', marginBottom: '12px' }}>
+                                        <div className="greenbox-top"></div>
+                                        <div className="greenbox-content" style={{ padding: '12px' }}>
+                                            <h4 style={{ marginBottom: '8px' }}>اطلاعات کاربری</h4>
+                                            <table className="transparent" style={{ width: '100%' }}>
+                                                <tbody>
+                                                    <tr>
+                                                        <td style={{ width: '120px', fontWeight: 'bold', fontSize: '11px' }}>نام کاربری:</td>
+                                                        <td><input type="text" name="username" value={formData.username} onChange={handleChange} maxLength={15} className="text" dir="ltr" required style={{ width: '200px' }} /></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style={{ fontWeight: 'bold', fontSize: '11px' }}>پست الکترونیک:</td>
+                                                        <td><input type="email" name="email" value={formData.email} onChange={handleChange} maxLength={40} className="text" dir="ltr" required style={{ width: '200px' }} /></td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td style={{ fontWeight: 'bold', fontSize: '11px' }}>رمز عبور:</td>
+                                                        <td><input type="password" name="password" value={formData.password} onChange={handleChange} maxLength={20} minLength={8} className="text" dir="ltr" required style={{ width: '200px' }} /></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="greenbox-bottom"></div>
                                     </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-semibold text-slate-700 mb-1">رمز عبور</label>
-                                        <input
-                                            type="password"
-                                            name="password"
-                                            value={formData.password}
-                                            onChange={handleChange}
-                                            maxLength={20}
-                                            minLength={8}
-                                            className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-left font-sans"
-                                            dir="ltr"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </section>
 
-                            <hr className="border-slate-200" />
-
-                            {/* بخش 2: انتخاب نژاد */}
-                            <section>
-                                <h3 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm">۲</span>
-                                    انتخاب نژاد
-                                </h3>
-                                <p className="text-sm text-slate-500 mb-4">
-                                    اگر تازه‌کار هستید، پیشنهاد ما انتخاب نژاد <strong className="text-emerald-600">گل‌ها</strong> است!
-                                </p>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                    {TRIBES.map((t) => (
-                                        <label
-                                            key={t.value}
-                                            className={`relative flex flex-col items-center p-4 rounded-xl cursor-pointer border-2 transition-all duration-200 hover:shadow-md ${
-                                                formData.tribe === t.value 
-                                                    ? 'border-emerald-500 bg-emerald-50/50' 
-                                                    : 'border-slate-200 hover:border-emerald-300 bg-white'
-                                            }`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="tribe"
-                                                value={t.value}
-                                                checked={formData.tribe === t.value}
-                                                onChange={handleChange}
-                                                className="absolute opacity-0 w-0 h-0"
-                                            />
-                                            <div className="h-32 flex items-center justify-center mb-3">
-                                                <img
-                                                    src={t.image}
-                                                    alt={t.label}
-                                                    title={t.label}
-                                                    className="max-h-full drop-shadow-md"
-                                                    onError={(e) => { e.target.src = t.fallback; }}
-                                                />
+                                    <div className="greenbox" style={{ width: '600px', marginBottom: '12px' }}>
+                                        <div className="greenbox-top"></div>
+                                        <div className="greenbox-content" style={{ padding: '12px' }}>
+                                            <h4 style={{ marginBottom: '8px' }}>انتخاب نژاد</h4>
+                                            <div className="tribeSelect">
+                                                {TRIBES.map((t) => (
+                                                    <label key={t.value} className="tribe" style={{
+                                                        border: formData.tribe === t.value ? '2px solid #498843' : '2px solid #C9C9C9',
+                                                        padding: '8px',
+                                                        borderRadius: '4px',
+                                                        background: formData.tribe === t.value ? '#E5EECC' : '#FFF',
+                                                    }}>
+                                                        <input
+                                                            type="radio"
+                                                            name="tribe"
+                                                            value={t.value}
+                                                            checked={formData.tribe === t.value}
+                                                            onChange={handleChange}
+                                                            style={{ display: 'none' }}
+                                                        />
+                                                        <div className="selection">
+                                                            <img src={t.image} alt={t.label} className="tribeImage"
+                                                                onError={(e) => { e.target.src = t.fallback; }} />
+                                                        </div>
+                                                        <p style={{ fontWeight: 'bold', fontSize: '12px' }}>{t.label}</p>
+                                                        <p style={{ fontSize: '10px', color: '#777' }}>{t.desc}</p>
+                                                    </label>
+                                                ))}
                                             </div>
-                                            <div className="text-center">
-                                                <span className={`block font-bold text-lg mb-1 ${formData.tribe === t.value ? 'text-emerald-700' : 'text-slate-700'}`}>
-                                                    {t.label}
-                                                </span>
-                                                <span className="text-xs text-slate-500">{t.desc}</span>
+                                        </div>
+                                        <div className="greenbox-bottom"></div>
+                                    </div>
+
+                                    <div className="greenbox" style={{ width: '600px', marginBottom: '12px' }}>
+                                        <div className="greenbox-top"></div>
+                                        <div className="greenbox-content" style={{ padding: '12px' }}>
+                                            <h4 style={{ marginBottom: '8px' }}>محل شروع</h4>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                                {STARTING_LOCATIONS.map((loc) => (
+                                                    <label key={loc.value} style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                                        padding: '4px 10px', fontSize: '11px', fontWeight: 'bold',
+                                                        border: '1px solid #C9C9C9', borderRadius: '4px', cursor: 'pointer',
+                                                        background: formData.starting_location === loc.value ? '#498843' : '#FFF',
+                                                        color: formData.starting_location === loc.value ? '#FFF' : '#252525',
+                                                    }}>
+                                                        <input type="radio" name="starting_location" value={loc.value}
+                                                            checked={formData.starting_location === loc.value}
+                                                            onChange={handleChange} style={{ display: 'none' }} />
+                                                        {loc.label}
+                                                    </label>
+                                                ))}
                                             </div>
+                                        </div>
+                                        <div className="greenbox-bottom"></div>
+                                    </div>
 
-                                            {/* تیک سبز هنگام انتخاب */}
-                                            {formData.tribe === t.value && (
-                                                <div className="absolute top-3 right-3 bg-emerald-500 text-white rounded-full p-1 shadow-sm">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
-                                                </div>
-                                            )}
+                                    <div style={{ marginBottom: '12px', padding: '8px', background: '#F5F5F5', border: '1px dashed #C0C0C0', fontSize: '11px' }}>
+                                        <ul className="important">
+                                            <li>در صورت مشاهده‌ی هرگونه توهین یا الفاظ نامناسب، اکانت بازیکن خاطی مسدود خواهد شد.</li>
+                                            <li>رمز اکانت خود را هرگز در اختیار هیچ‌کس قرار ندهید.</li>
+                                        </ul>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                            <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
+                                            من قوانین را خوانده‌ام و آن‌ها را می‌پذیرم.
                                         </label>
-                                    ))}
-                                </div>
-                            </section>
+                                    </div>
 
-                            <hr className="border-slate-200" />
-
-                            {/* بخش 3: محل شروع */}
-                            <section>
-                                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-sm">۳</span>
-                                    محل شروع
-                                </h3>
-                                <div className="flex flex-wrap gap-3">
-                                    {STARTING_LOCATIONS.map((loc) => (
-                                        <label
-                                            key={loc.value}
-                                            className={`cursor-pointer px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${
-                                                formData.starting_location === loc.value
-                                                ? 'bg-slate-800 text-white border-slate-800 shadow-sm'
-                                                : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                                            }`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="starting_location"
-                                                value={loc.value}
-                                                checked={formData.starting_location === loc.value}
-                                                onChange={handleChange}
-                                                className="hidden"
-                                            />
-                                            {loc.label}
-                                        </label>
-                                    ))}
-                                </div>
-                            </section>
-
-                            <hr className="border-slate-200" />
-
-                            {/* بخش 4: قوانین و کپچا */}
-                            <section className="space-y-6">
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm text-slate-600">
-                                    <ul className="space-y-2 list-disc list-inside">
-                                        <li>در صورت مشاهده‌ی هرگونه توهین یا الفاظ نامناسب، اکانت بازیکن خاطی مسدود خواهد شد.</li>
-                                        <li>رمز اکانت خود را هرگز در اختیار هیچ‌کس قرار ندهید.</li>
-                                    </ul>
-                                </div>
-
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <input
-                                        type="checkbox"
-                                        checked={acceptTerms}
-                                        onChange={(e) => setAcceptTerms(e.target.checked)}
-                                        className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                    />
-                                    <span className="text-slate-700 font-medium group-hover:text-emerald-700 transition-colors">
-                                        من قوانین را خوانده‌ام و آن‌ها را می‌پذیرم.
-                                    </span>
-                                </label>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">کد امنیتی تصویر</label>
-                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-32 h-14 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden border border-slate-200">
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <label style={{ fontWeight: 'bold', fontSize: '11px' }}>کد امنیتی:</label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                            <div style={{ width: '120px', height: '40px', background: '#F5F5F5', border: '1px solid #CCC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 {captchaLoading ? (
-                                                    <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                                                    <span style={{ color: '#777', fontSize: '10px' }}>...</span>
                                                 ) : (
-                                                    <img src={captcha.image} alt="کپچا" className="w-full h-full object-cover" />
+                                                    <img src={captcha.image} alt="کپچا" style={{ maxWidth: '100%', maxHeight: '100%' }} />
                                                 )}
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={fetchCaptcha}
-                                                disabled={captchaLoading}
-                                                className="p-3 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                                                title="تصویر جدید"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                                            <button type="button" onClick={fetchCaptcha} disabled={captchaLoading} className="refreshCaptcha">
+                                                تغییر تصویر
                                             </button>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={captchaAnswer}
+                                                onChange={(e) => setCaptchaAnswer(e.target.value)}
+                                                placeholder="کد را وارد کنید"
+                                                className="text"
+                                                dir="ltr"
+                                                style={{ width: '100px' }}
+                                            />
                                         </div>
-
-                                        <input
-                                            type="text"
-                                            required
-                                            value={captchaAnswer}
-                                            onChange={(e) => setCaptchaAnswer(e.target.value)}
-                                            placeholder="کد را وارد کنید"
-                                            className="w-full sm:w-48 px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-center tracking-widest font-bold"
-                                            dir="ltr"
-                                        />
                                     </div>
+
+                                    <button type="submit" disabled={loading || !acceptTerms || !captchaAnswer} className="btn-primary" style={{ padding: '6px 30px' }}>
+                                        {loading ? "در حال پردازش..." : "تکمیل ثبت‌نام"}
+                                    </button>
+                                </form>
+
+                                <div style={{ marginTop: '15px', fontSize: '11px' }}>
+                                    <a href="/login" style={{ color: '#99C01A' }}>قبلا ثبت‌نام کرده‌اید؟ وارد شوید</a>
                                 </div>
-                            </section>
-
-                            {/* دکمه ثبت نام */}
-                            <div className="pt-4">
-                                <button
-                                    type="submit"
-                                    disabled={loading || !acceptTerms || !captchaAnswer}
-                                    className="w-full sm:w-auto sm:min-w-[200px] mx-auto block bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-bold py-3 px-8 rounded-xl shadow-lg shadow-emerald-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0"
-                                >
-                                    {loading ? "در حال پردازش..." : "تکمیل ثبت‌نام"}
-                                </button>
                             </div>
-
-                            <p className="text-center text-sm text-slate-500 mt-6">
-                                قبلاً ثبت‌نام کرده‌اید؟ <Link to="/login" className="text-emerald-600 font-bold hover:underline">وارد شوید</Link>
-                            </p>
-
-                        </form>
+                        </div>
                     </div>
+                    <div className="contentFooter">&nbsp;</div>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }

@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 
 const RADIUS = 2;
+const CELL_W = Math.floor(543 / 5);
+const CELL_H = Math.floor(401 / 5);
 
 export default function WorldMap() {
     const navigate = useNavigate();
@@ -93,7 +95,6 @@ export default function WorldMap() {
         }
     };
 
-    // Get tile image based on cell type (matching PHP map tiles)
     const getTileStyle = (cell) => {
         if (cell.oasis) {
             return cell.oasis.is_free
@@ -115,8 +116,7 @@ export default function WorldMap() {
                     <p style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold' }}>در حال بارگذاری نقشه...</p>
                 ) : (
                     <>
-                        {/* Map grid */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0', width: '100%', height: '100%' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: '0', width: '100%', height: '100%' }}>
                             {grid.map((cell, index) => (
                                 <div
                                     key={index}
@@ -130,6 +130,7 @@ export default function WorldMap() {
                                         cursor: cell.hasVillage || cell.oasis ? 'pointer' : 'default',
                                         position: 'relative',
                                         padding: '2px',
+                                        overflow: 'hidden',
                                     }}
                                 >
                                     {cell.oasis ? (
@@ -153,7 +154,6 @@ export default function WorldMap() {
                             ))}
                         </div>
 
-                        {/* Coordinate ruler */}
                         <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '18px', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
                             <span style={{ color: '#FFF', fontSize: '10px', fontWeight: 'bold' }}>
                                 {center.x - RADIUS}|{center.y + RADIUS} تا {center.x + RADIUS}|{center.y - RADIUS}
@@ -163,7 +163,6 @@ export default function WorldMap() {
                 )}
             </div>
 
-            {/* Navigation controls */}
             <div style={{ textAlign: 'center', marginTop: '10px' }}>
                 <button onClick={() => setCenter(c => ({ ...c, y: c.y + 1 }))} className="btn-ghost" style={{ margin: '2px' }}>▲</button>
                 <div style={{ display: 'inline-flex', gap: '2px' }}>
@@ -173,7 +172,6 @@ export default function WorldMap() {
                 <button onClick={() => setCenter(c => ({ ...c, y: c.y - 1 }))} className="btn-ghost" style={{ margin: '2px' }}>▼</button>
             </div>
 
-            {/* Legend */}
             <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px', color: '#252525' }}>
                 <span style={{ margin: '0 8px' }}>● <span style={{ color: '#006600' }}>دهکده من</span></span>
                 <span style={{ margin: '0 8px' }}>● <span style={{ color: '#8b7355' }}>بازیکن دیگر</span></span>
@@ -182,7 +180,6 @@ export default function WorldMap() {
                 <span style={{ margin: '0 8px' }}>● <span style={{ color: '#5a8a3a' }}>اوسیس</span></span>
             </div>
 
-            {/* Oasis attack modal */}
             {selectedOasis && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ background: '#FFF', border: '2px solid #C9C9C9', maxWidth: '400px', width: '100%', padding: '16px' }}>
