@@ -94,46 +94,24 @@ export default function SideInfoBoards() {
     return (
         <div id="side_info">
             {/* Hero section */}
-            <div className="sideInfoHero">
-                <img
-                    id="heroImage"
-                    src={`/assets/hero/hero-portrait.png`}
-                    alt={user.username}
-                    className="heroImage"
-                    style={{
-                        width: '93px',
-                        height: '95px',
-                        objectFit: 'cover',
-                        display: 'block',
-                        position: 'absolute',
-                        left: '15px',
-                        top: '30px',
-                        zIndex: 2,
-                    }}
-                    onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = `/assets/hero/preview_${heroGender.toLowerCase()}_${heroHairStyle}.png`;
-                        e.target.onError = (e2) => {
-                            e2.target.onerror = null;
-                            e2.target.style.display = 'none';
-                        };
-                    }}
-                />
-                <div className="heroImageBorder"></div>
-                <a id="heroProfile" href="/hero" className="heroProfile" title="پروفایل قهرمان"></a>
-                <a href="/hero?tab=adventures" className="sideInfoAdventures" title="ماجراجویی‌ها" style={{
-                    position: 'absolute', left: '125px', top: '30px', width: '20px', height: '20px',
-                    background: 'url(/assets/ui/cropfinder.gif) no-repeat', backgroundSize: 'contain',
-                    zIndex: 3, display: 'block',
-                }}></a>
-                <a href="/hero?tab=auction" className="sideInfoAuctions" title="حراجی" style={{
-                    position: 'absolute', left: '125px', top: '55px', width: '20px', height: '20px',
-                    background: 'url(/assets/ui/friends-icon.gif) no-repeat', backgroundSize: 'contain',
-                    zIndex: 3, display: 'block',
-                }}></a>
-            </div>
 
             {/* Player name */}
+
+
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
+            <br/>
             <div className="sideInfoPlayer" title="پروفایل بازیکن">
                 <a className="signLink" href="/profile">
                     <span className="wrap">{user.username}</span>

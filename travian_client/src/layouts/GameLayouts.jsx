@@ -35,7 +35,7 @@ export default function GameLayout() {
 
     return (
         <div id="wrapper">
-            <img id="staticElements" src="/assets/layout/bgIngameStaticElements-rtl.png" alt="" />
+            <img id="staticElements" alt="" />
             <div id="logoutContainer">
                 <a id="logout" href="/login" title="خروج" onClick={handleLogout}>&nbsp;</a>
             </div>
