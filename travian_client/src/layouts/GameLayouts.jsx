@@ -19,7 +19,7 @@ export default function GameLayout() {
     const clearUser = useGameStore((state) => state.clearUser);
 
     useEffect(() => {
-        document.body.className = BODY_CLASS_MAP[location.pathname] || '';
+        document.body.className = 'v35 ' + (BODY_CLASS_MAP[location.pathname] || '');
         return () => { document.body.className = ''; };
     }, [location.pathname]);
 
@@ -30,42 +30,36 @@ export default function GameLayout() {
     };
 
     return (
-        <div>
-            <div id="wrapper">
-                <img id="staticElements" src="/assets/layout/bgIngameStaticElements-rtl.png" alt="" />
-                <div className="bodyWrapper">
-                    <div id="header">
-                        <div id="mtop">
-                            <div id="logoutContainer">
-                                <a id="logout" href="/login" title="خروج" onClick={handleLogout}>خروج</a>
-                            </div>
-                            <a id="logo" href="/" title="Travian"></a>
-                            <ResourceBar />
-                            <Navbar />
-                            <div className="clear"></div>
-                        </div>
-                    </div>
-                    <div id="mid">
-                        <div id="contentOuterContainer">
-                            <div className="contentTitle">&nbsp;</div>
-                            <div className="contentContainer">
-                                <div id="content">
-                                    <Outlet />
-                                </div>
-                            </div>
-                            <div className="contentFooter">&nbsp;</div>
-                        </div>
-
-                        <SideInfoBoards />
-
-                        <Footer />
-
+        <div id="wrapper">
+            <img id="staticElements" src="/assets/layout/bgIngameStaticElements-rtl.png" alt="" />
+            <div id="logoutContainer">
+                <a id="logout" href="/login" title="خروج" onClick={handleLogout}>&nbsp;</a>
+            </div>
+            <div className="bodyWrapper">
+                <div id="header">
+                    <div id="mtop">
+                        <a id="logo" href="/" title="Travian"></a>
+                        <ResourceBar />
+                        <Navbar />
                         <div className="clear"></div>
                     </div>
                 </div>
-
-                <div id="ce"></div>
+                <div id="mid">
+                    <div className="clear"></div>
+                    <div id="contentOuterContainer">
+                        <div className="contentTitle">&nbsp;</div>
+                        <div className="contentContainer">
+                            <div id="content">
+                                <Outlet />
+                            </div>
+                        </div>
+                        <div className="contentFooter">&nbsp;</div>
+                    </div>
+                    <SideInfoBoards />
+                    <Footer />
+                </div>
             </div>
+            <div id="ce"></div>
         </div>
     );
 }

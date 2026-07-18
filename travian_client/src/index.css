@@ -352,35 +352,33 @@ button .button-contents {
   background-image: url('/assets/layout/btn-green-sprite-hover.png');
 }
 
-/* ===== Logout container ===== */
+/* ===== Logout button ===== */
 #logoutContainer {
   position: absolute;
   right: 10px;
-  top: 5px;
-  z-index: 10;
+  top: 0;
+  z-index: 100;
 }
 #logout {
-  display: inline-block;
-  width: auto;
-  min-width: 32px;
+  display: block;
+  width: 32px;
   height: 26px;
-  line-height: 26px;
-  padding: 0 8px;
-  background: #DE0000;
-  color: #FFF;
-  font-size: 11px;
-  font-weight: bold;
-  text-align: center;
+  position: absolute;
+  right: 10px;
+  top: 0;
+  z-index: 1;
+  background-image: url('/assets/ui/cancel.gif');
+  background-repeat: no-repeat;
+  background-position: center;
   cursor: pointer;
-  border-radius: 2px;
 }
 
 /* ===== Content area (RTL) ===== */
 #contentOuterContainer {
-  position: absolute;
-  left: 189px;
-  right: 0;
-  top: 0;
+  float: left;
+  position: relative;
+  width: 605px;
+  margin-left: 189px;
 }
 #contentOuterContainer .contentTitle {
   height: 39px;
@@ -413,7 +411,7 @@ body.village1 #contentOuterContainer .contentFooter {
 body.village1 #contentOuterContainer {
   width: 702px;
   margin-left: 92px;
-  position: relative;
+  float: left;
 }
 
 /* Village2 (village center) — hide title/footer, constrain width */
@@ -432,7 +430,7 @@ body.village2 #contentOuterContainer .contentFooter {
 body.village2 #contentOuterContainer {
   width: 628px;
   margin-left: 166px;
-  position: relative;
+  float: left;
 }
 
 /* Map page (karte) — hide title/footer, constrain width */
@@ -451,7 +449,7 @@ body.map #contentOuterContainer .contentFooter {
 body.map #contentOuterContainer {
   width: 702px;
   margin-left: 92px;
-  position: relative;
+  float: left;
 }
 
 /* Village center (dorf2) */
@@ -515,13 +513,13 @@ div.village1 #village_map {
   font-size: 10px;
   height: 22px;
   position: absolute;
-  left: 35px;
+  right: 35px;
   top: 0;
 }
 .stime .content {
-  padding: 3px 20px 3px 5px;
-  background-position: right 3px;
-  margin: 0 5px 0 0;
+  padding: 3px 5px 0 20px;
+  background-position: left 3px;
+  margin: 0 0 0 5px;
   height: 22px;
   position: relative;
   white-space: nowrap;
@@ -555,17 +553,24 @@ div.village1 #village_map {
   background-repeat: no-repeat;
 }
 #navigation .resources a { background-position: 0 0; }
-#navigation .resources a:hover, #navigation .resources a.active { background-position: 0 -75px; }
+#navigation .resources a:hover, #navigation .resources a:focus { background-position: 0 -75px; }
+#navigation .resources a:active, #navigation .resources a.active { background-position: 0 -150px; }
 #navigation .village a { background-position: -75px 0; }
-#navigation .village a:hover, #navigation .village a.active { background-position: -75px -75px; }
+#navigation .village a:hover, #navigation .village a:focus { background-position: -75px -75px; }
+#navigation .village a:active, #navigation .village a.active { background-position: -75px -150px; }
 #navigation .map a { background-position: -150px 0; }
-#navigation .map a:hover, #navigation .map a.active { background-position: -150px -150px; }
+#navigation .map a:hover, #navigation .map a:focus { background-position: -150px -75px; }
+#navigation .map a:active, #navigation .map a.active { background-position: -150px -150px; }
 #navigation .stats a { background-position: -225px 0; }
-#navigation .stats a:hover, #navigation .stats a.active { background-position: -225px -150px; }
-#navigation .reports a { background-position: -300px 0; }
-#navigation .reports a:hover, #navigation .reports a.active { background-position: -300px -150px; }
-#navigation .messages a { background-position: -375px 0; }
-#navigation .messages a:hover, #navigation .messages a.active { background-position: -375px -150px; }
+#navigation .stats a:hover, #navigation .stats a:focus { background-position: -225px -75px; }
+#navigation .stats a:active, #navigation .stats a.active { background-position: -225px -150px; }
+#navigation .reports a { position: relative; background-position: -300px 0; }
+#navigation .reports a:hover, #navigation .reports a:focus { background-position: -300px -75px; }
+#navigation .reports a:active, #navigation .reports a.active { background-position: -300px -150px; }
+#navigation .messages a { position: relative; background-position: -375px 0; }
+#navigation .messages a:hover, #navigation .messages a:focus { background-position: -375px -75px; }
+#navigation .messages a:active, #navigation .messages a.active { background-position: -375px -150px; }
+#navigation li .bubble { top: 0; left: 51px; }
 
 /* ===== Speech balloon (unread counts) ===== */
 .bubble {
@@ -613,13 +618,12 @@ div.village1 #village_map {
   top: -3px;
 }
 
-/* ===== Side info (RTL - left sidebar) ===== */
+/* ===== Side info (RTL) ===== */
 #side_info {
   float: left;
   position: relative;
   width: 196px;
   top: -90px;
-  z-index: 10;
 }
 
 /* ===== Hero section (RTL) ===== */
@@ -851,7 +855,7 @@ div.village1 #village_map {
   float: left;
   display: block;
   height: 43px;
-  margin: 24px 7px 0 16px;
+  margin: 24px 16px 0 7px;
   width: 124px;
   background: url('/assets/layout/logoSmall.png') no-repeat;
 }
@@ -909,7 +913,7 @@ body.login #logo, body.signup #logo {
 #plusLink {
   height: 47px;
   position: absolute;
-  left: 212px;
+  right: 212px;
   top: 16px;
   width: 85px;
   text-align: center;

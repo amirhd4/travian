@@ -55,74 +55,79 @@ export default function ResourceBar() {
     }, [tickResources]);
 
     const nightMode = isNightTime();
+    const cropProduction = production.crop || 0;
+    const cropConsumption = useGameStore((s) => s.village?.crop_consumption || 0);
+    const cropNet = cropProduction - cropConsumption;
 
     return (
         <>
-            {/* Server time (RTL: left side) */}
-            <div className="stime">
+            <div id="stime" className="stime">
                 <div className={`content ${nightMode ? 'night' : 'day'}`}>
                     <span style={{ fontWeight: 'bold' }}>{now.toLocaleTimeString('fa-IR')}</span>
-                    <span>&nbsp;{nightMode ? 'شب' : 'روز'}</span>
+                    <span>&nbsp;{nightMode ? 'Night' : 'Day'}</span>
                 </div>
             </div>
-
-            {/* Gold/Silver + Plus (RTL: left side) */}
             <div id="plusLink">
                 <div id="gs">
                     <p className="gold">
-                        <a href="/gold-shop" title="طلا">
+                        <a href="/gold-shop" title="Gold">
                             <img src="/assets/ui/gold-icon.gif" alt="Gold" className="gold" />
                             <br />
                             {(user?.gold_coins ?? 0).toLocaleString()}
                         </a>
                     </p>
                     <p className="silver">
-                        <a href="/hero" title="نقره">
+                        <a href="/hero" title="Silver">
                             <img src="/assets/ui/plus-icon.gif" alt="Silver" className="silver" />
                             <br />
                             {(user?.silver_coins ?? 0).toLocaleString()}
                         </a>
                     </p>
+                    <div className="clear"></div>
                 </div>
-                <div>
-                    <a href="/plus" style={{
-                        display: 'inline-block',
-                        height: '18px',
-                        lineHeight: '18px',
-                        textAlign: 'center',
-                        fontWeight: 'bold',
-                        color: '#ab7900',
-                        fontSize: '11px',
-                        padding: '0 5px',
-                    }}>
-                        Plus
+                <div id="plus">
+                    <a href="/plus" className="plusBtn" title="Plus">
+                        <span className="plusBtn-l"><span className="plus_g">Plus</span></span>
+                        <span className="plusBtn-r">&nbsp;</span>
                     </a>
                 </div>
             </div>
-
-            {/* Resource bar (RTL: right side) */}
             <ul id="res">
                 {[
-                    { key: 'wood', img: '/assets/ui/res-1.gif', label: 'چوب', maxKey: 'maxStorage' },
-                    { key: 'clay', img: '/assets/ui/res-2.gif', label: 'خشت', maxKey: 'maxStorage' },
-                    { key: 'iron', img: '/assets/ui/res-3.gif', label: 'آهن', maxKey: 'maxStorage' },
-                    { key: 'crop', img: '/assets/ui/res-4.gif', label: 'گندم', maxKey: 'maxGranary' },
-                ].map(({ key, img, label, maxKey }) => {
+                    { key: 'wood', img: '/assets/ui/res-1.gif', label: 'Wood', maxKey: 'maxStorage' },
+                    { key: 'clay', img: '/assets/ui/res-2.gif', label: 'Clay', maxKey: 'maxStorage' },
+                    { key: 'iron', img: '/assets/ui/res-3.gif', label: 'Iron', maxKey: 'maxStorage' },
+                    { key: 'crop', img: '/assets/ui/res-4.gif', label: 'Crop', maxKey: 'maxGranary' },
+                ].map(({ key, img, label, maxKey }, idx) => {
                     const value = Math.floor(resources[key]);
                     const max = maxKey === 'maxGranary' ? maxGranary : maxStorage;
                     const percent = Math.min(100, (value / (max || 1)) * 100);
+                    const prod = Math.floor(production[key] || 0);
                     return (
-                        <li key={key}>
+                        <li key={key} className={`r${idx + 1}`}
+                            title={`${label} - Production: ${prod}`}>
                             <p>
                                 <img src={img} alt={label} />
                                 <span className="value">{value.toLocaleString()}</span>
                             </p>
                             <div className="bar-bg">
-                                <div className="bar" style={{ width: `${percent}%` }} />
+                                <div className="bar" style={{ width: `${percent}%` }}></div>
                             </div>
                         </li>
                     );
                 })}
+                <li className="r5" title={`Crop consumption: ${cropConsumption} - Net: ${cropNet}`}>
+                    <p>
+                        <img src="/assets/ui/res-5.gif" alt="Crop consumption" />
+                        <span className="value">{Math.floor(cropConsumption).toLocaleString()}</span>
+                    </p>
+                    <div className="bar-bg">
+                        <div className="bar" style={{
+                            width: `${Math.min(100, cropProduction > 0 ? (cropConsumption / cropProduction) * 100 : 0)}%`,
+                            backgroundColor: cropNet < 0 ? '#F00' : '#FF0'
+                        }}></div>
+                    </div>
+                </li>
             </ul>
         </>
     );
