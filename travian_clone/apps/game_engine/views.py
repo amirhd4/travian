@@ -685,6 +685,14 @@ class MarketplaceView(APIView):
         })
 
 
+class MessageUnreadCountView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        count = Message.objects.filter(receiver=request.user, is_read=False).count()
+        return Response({"unread_count": count})
+
+
 class InboxView(APIView):
     permission_classes = [IsAuthenticated]
 

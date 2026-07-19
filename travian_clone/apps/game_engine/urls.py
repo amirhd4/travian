@@ -2,7 +2,7 @@ from django.urls import path
 
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
-    InboxView, MessageReadView, SentMessagesView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
+    InboxView, MessageReadView, SentMessagesView, MessageUnreadCountView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
     FoundVillageView, AbandonVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
     GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
     FarmVillagesListView,
@@ -39,6 +39,7 @@ urlpatterns = [
     path('leaderboard/', LeaderboardView.as_view(), name='leaderboard'),
     path('alliances/', AllianceListView.as_view(), name='alliance_list'),
     path('marketplace/send/', MarketplaceView.as_view(), name='send_resources'),
+    path('messages/unread-count/', MessageUnreadCountView.as_view(), name='messages_unread_count'),
     path('messages/', InboxView.as_view(), name='inbox'),
     path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),
     path('messages/<int:pk>/read/', MessageReadView.as_view(), name='read_message'),

@@ -248,12 +248,12 @@ export default function ResourceFields() {
                                 <tbody>
                                     {movements.map((m, i) => {
                                         const info = getMovementInfo(m);
-                                        const remaining = m.end_time ? Math.max(0, Math.floor((new Date(m.end_time).getTime() - Date.now()) / 1000)) : 0;
+                                        const remaining = m.remaining_seconds || 0;
                                         return (
                                             <tr key={i}>
                                                 <td className="typ"><span className={info.aclass}>&raquo;</span></td>
                                                 <td>
-                                                    <div className="mov"><span className={info.aclass}>{m.count || 1} {info.label}</span></div>
+                                                    <div className="mov"><span className={info.aclass}>{(m.troops_payload ? Object.values(m.troops_payload).reduce((a,b)=>a+b, 0) : 1)} {info.label}</span></div>
                                                     <div className="dur_r">&nbsp;<span>{formatCountdown(remaining)}</span>&nbsp;ساعت</div>
                                                 </td>
                                             </tr>
@@ -341,12 +341,12 @@ export default function ResourceFields() {
                                 <tbody>
                                     {troops.length > 0 && (
                                     <tr style={{ background: '#E5EECC' }}>
-                                        <td className="ico"><img className="unit uhero" src="/assets/troops/hero-portrait.png" alt="قهرمان" title="قهمان" onError={(e) => { e.target.style.display = 'none'; }} /></td>
+                                        <td className="ico"><img className="unit uhero" src="/assets/troops/hero-portrait.png" alt="قهرمان" title="قهرمان" onError={(e) => { e.target.style.display = 'none'; }} /></td>
                                         <td className="num" style={{ fontWeight: 'bold' }}>{troops.reduce((sum, t) => sum + (t.is_hero ? t.count : 0), 0) || '-'}</td>
                                         <td className="un" style={{ fontWeight: 'bold' }}>قهرمان</td>
                                     </tr>
                                 )}
-                                {troops.filter(t => !t.is_hero).map((t, i) => (
+                                {troops.map((t, i) => (
                                         <tr key={i}>
                                             <td className="ico">
                                                 <img className={`unit u${t.unit_id}`} src={`/assets/troops/unit-${t.unit_id}.gif`} alt={t.name} title={t.name} />
