@@ -258,7 +258,7 @@ class Hero(models.Model):
     # هر عدد فقط «شماره‌ی گزینه» در آن دسته است (بین ۱ تا APPEARANCE_OPTION_COUNT)؛
     # خود تصاویر باید توسط طراح در public/assets/hero/... قرار بگیرند.
     GENDER_CHOICES = [('MALE', 'مرد'), ('FEMALE', 'زن')]
-    APPEARANCE_OPTION_COUNT = 6
+    APPEARANCE_OPTION_COUNT = 10
 
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, default='MALE')
     head_style = models.PositiveSmallIntegerField(default=1)

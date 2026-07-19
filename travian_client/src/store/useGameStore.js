@@ -15,6 +15,7 @@ const useGameStore = create((set) => ({
     // هاردکد کرده بودند؛ به همین دلیل سیستم چند دهکده‌ای عملا کار نمی‌کرد.
     villages: [],
     activeVillageId: null,
+    heroImageVersion: 0,
 
     setCapacities: (storage, granary) => set({ maxStorage: storage, maxGranary: granary }),
 
@@ -30,6 +31,8 @@ const useGameStore = create((set) => ({
     setVillages: (villages) => set({ villages }),
 
     setActiveVillageId: (villageId) => set({ activeVillageId: villageId }),
+
+    refreshHeroImage: () => set((state) => ({ heroImageVersion: state.heroImageVersion + 1 })),
 
     // قبلا این استیت هیچ‌وقت از سرور آپدیت نمی‌شد؛ ResourceBar فقط مقادیر
     // پیش‌فرض هاردکد را هر ثانیه در کلاینت تیک می‌زد.

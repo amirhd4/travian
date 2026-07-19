@@ -47,56 +47,132 @@ const difficultyStyle = (d) => ({
 const RESOURCE_LABELS = { wood: '🪵 چوب', clay: '🧱 خشت', iron: '⚒️ آهن', crop: '🌾 گندم' };
 
 function AppearanceTab({ hero, onSave }) {
-    const [gender, setGender] = useState(hero.appearance?.gender || 'FEMALE');
+    const [gender, setGender] = useState(hero.appearance?.gender || 'MALE');
     const [hairStyle, setHairStyle] = useState(hero.appearance?.hair_style || 1);
-    const [hairColor, setHairColor] = useState(hero.appearance?.hair_color || HAIR_COLORS[0]);
+    const [hairColor, setHairColor] = useState(hero.appearance?.hair_color || 1);
+    const [eyeStyle, setEyeStyle] = useState(hero.appearance?.eye_style || 1);
+    const [eyebrowStyle, setEyebrowStyle] = useState(hero.appearance?.eyebrow_style || 1);
+    const [noseStyle, setNoseStyle] = useState(hero.appearance?.nose_style || 1);
+    const [earStyle, setEarStyle] = useState(hero.appearance?.ear_style || 1);
+    const [mouthStyle, setMouthStyle] = useState(hero.appearance?.mouth_style || 1);
+    const [headStyle, setHeadStyle] = useState(hero.appearance?.head_style || 1);
     const [saving, setSaving] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState(null);
 
-    const [hairColorIndex, setHairColorIndex] = useState(hero.appearance?.hair_color || 1);
+    const gdir = gender === 'MALE' ? 'male' : 'female';
+    const basePath = '/assets/hero/faces/' + gdir + '/119x136';
+
+    const buildPreviewUrl = useCallback(() => {
+        const params = new URLSearchParams({
+            preview: '1', size: 'sideinfo',
+            gender, hair_color: hairColor, hair_style: hairStyle,
+            eye_style: eyeStyle, eyebrow_style: eyebrowStyle,
+            nose_style: noseStyle, ear_style: earStyle,
+            mouth_style: mouthStyle, head_style: headStyle,
+        });
+        return 'combat/hero/image/?' + params.toString();
+    }, [gender, hairColor, hairStyle, eyeStyle, eyebrowStyle, noseStyle, earStyle, mouthStyle, headStyle]);
+
+    useEffect(() => {
+        let revokeUrl = null;
+        const fetchPreview = async () => {
+            try {
+                const response = await api.get(buildPreviewUrl(), { responseType: 'blob' });
+                const url = URL.createObjectURL(response.data);
+                if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+                revokeUrl = url;
+                setPreviewUrl(url);
+            } catch { /* silent */ }
+        };
+        fetchPreview();
+        return () => { if (revokeUrl) URL.revokeObjectURL(revokeUrl); };
+    }, [buildPreviewUrl]);
 
     const handleSave = async () => {
         setSaving(true);
-        try { await onSave({ gender, hair_style: hairStyle, hair_color: hairColorIndex }); }
-        finally { setSaving(false); }
+        try {
+            await onSave({
+                gender, hair_style: hairStyle, hair_color: hairColor,
+                eye_style: eyeStyle, eyebrow_style: eyebrowStyle,
+                nose_style: noseStyle, ear_style: earStyle,
+                mouth_style: mouthStyle, head_style: headStyle,
+            });
+            useGameStore.getState().refreshHeroImage();
+        } finally { setSaving(false); }
     };
+
+    const OptionGrid = ({ label, count, selected, onSelect, basePath, prefix, suffix }) => (
+        <div className="mb-4">
+            <p className="field-label mb-2">{label}:</p>
+            <div className="flex gap-2 flex-wrap">
+                {Array.from({ length: count }, (_, i) => i).map((n) => (
+                    <button key={n} onClick={() => onSelect(n + 1)}
+                        className={'w-14 h-14 rounded-lg border-2 overflow-hidden bg-white transition flex items-center justify-center ' + (selected === n + 1 ? 'border-gold-500 ring-2 ring-gold-300' : 'border-parchment-300 hover:border-parchment-400')}>
+                        <img src={basePath + '/' + prefix + n + suffix} alt={label + ' ' + (n + 1)}
+                            className="max-w-full max-h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+
+    const colorNames = ['black', 'brown', 'darkbrown', 'yellow', 'red'];
+    const colorHex = ['#1a1a1a', '#7a5230', '#4a3728', '#c9a063', '#a83232'];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
                 <div className="flex gap-3 mb-4">
-                    <button onClick={() => setGender('FEMALE')} className={`flex-1 p-2.5 rounded-xl border-2 font-bold transition ${gender === 'FEMALE' ? 'border-gold-500 bg-gold-50' : 'border-parchment-300'}`}>♀ زن</button>
-                    <button onClick={() => setGender('MALE')} className={`flex-1 p-2.5 rounded-xl border-2 font-bold transition ${gender === 'MALE' ? 'border-gold-500 bg-gold-50' : 'border-parchment-300'}`}>♂ مرد</button>
+                    <button onClick={() => setGender('FEMALE')} className={'flex-1 p-2.5 rounded-xl border-2 font-bold transition ' + (gender === 'FEMALE' ? 'border-gold-500 bg-gold-50' : 'border-parchment-300')}>{'♀'} زن</button>
+                    <button onClick={() => setGender('MALE')} className={'flex-1 p-2.5 rounded-xl border-2 font-bold transition ' + (gender === 'MALE' ? 'border-gold-500 bg-gold-50' : 'border-parchment-300')}>{'♂'} مرد</button>
                 </div>
 
-                <p className="field-label mb-2">مدل مو:</p>
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                    {[1, 2, 3, 4, 5, 6].map((n) => (
-                        <button key={n} onClick={() => setHairStyle(n)}
-                            className={`aspect-square rounded-xl border-2 overflow-hidden bg-white transition ${hairStyle === n ? 'border-gold-500' : 'border-parchment-300'}`}>
-                            {/* عکس پیشنهادی: /assets/hero/hair_{gender}_{n}.png */}
-                            <img src={`/assets/hero/hair_${gender.toLowerCase()}_${n}.png`} alt={`مدل ${n}`}
-                                className="w-full h-full object-cover" onError={(e) => { e.target.style.visibility = 'hidden'; }} />
-                        </button>
-                    ))}
+                <OptionGrid label="مدل صورت" count={5} selected={headStyle} onSelect={setHeadStyle}
+                    basePath={basePath} prefix="face/face" suffix=".png" />
+
+                <OptionGrid label="مدل مو" count={5} selected={hairStyle} onSelect={setHairStyle}
+                    basePath={basePath} prefix="hair/hair" suffix={'-' + colorNames[hairColor - 1] + '.png'} />
+
+                <div className="mb-4">
+                    <p className="field-label mb-2">رنگ مو:</p>
+                    <div className="flex gap-2 flex-wrap">
+                        {colorHex.map((c, idx) => (
+                            <button key={c} onClick={() => setHairColor(idx + 1)} style={{ backgroundColor: c }}
+                                className={'w-8 h-8 rounded-full border-2 transition ' + (hairColor === idx + 1 ? 'border-gold-600 ring-2 ring-gold-300' : 'border-parchment-300')} title={colorNames[idx]} />
+                        ))}
+                    </div>
                 </div>
 
-                <p className="field-label mb-2">رنگ مو:</p>
-                <div className="flex gap-2 mb-6 flex-wrap">
-                    {HAIR_COLORS.map((c, idx) => (
-                        <button key={c} onClick={() => setHairColorIndex(idx + 1)} style={{ backgroundColor: c }}
-                            className={`w-8 h-8 rounded-full border-2 transition ${hairColorIndex === idx + 1 ? 'border-gold-600 ring-2 ring-gold-300' : 'border-parchment-300'}`} />
-                    ))}
-                </div>
+                <OptionGrid label="چشم" count={5} selected={eyeStyle} onSelect={setEyeStyle}
+                    basePath={basePath} prefix="eye/eye" suffix=".png" />
 
-                <button onClick={handleSave} disabled={saving} className="btn-primary w-full">
-                    {saving ? 'در حال ذخیره...' : '✅ ذخیره ظاهر'}
+                <OptionGrid label="ابرو" count={gender === 'MALE' ? 5 : 10} selected={eyebrowStyle} onSelect={setEyebrowStyle}
+                    basePath={basePath}
+                    prefix="eyebrow/eyebrow"
+                    suffix={gender === 'MALE' ? '-' + colorNames[hairColor - 1] + '.png' : '.png'} />
+
+                <OptionGrid label="بینی" count={5} selected={noseStyle} onSelect={setNoseStyle}
+                    basePath={basePath} prefix="nose/nose" suffix=".png" />
+
+                <OptionGrid label="گوش" count={5} selected={earStyle} onSelect={setEarStyle}
+                    basePath={basePath} prefix="ear/ear" suffix=".png" />
+
+                <OptionGrid label="دهان" count={4} selected={mouthStyle} onSelect={setMouthStyle}
+                    basePath={basePath} prefix="mouth/mouth" suffix=".png" />
+
+                <button onClick={handleSave} disabled={saving} className="btn-primary w-full mt-4">
+                    {saving ? 'در حال ذخیره...' : 'ذخیره ظاهر'}
                 </button>
             </div>
 
-            <div className="flex items-center justify-center bg-parchment-100 rounded-xl border border-parchment-300 min-h-[280px]">
-                {/* عکس پیشنهادی: /assets/hero/preview_{gender}_{hairStyle}.png */}
-                <img src={`/assets/hero/preview_${gender.toLowerCase()}_${hairStyle}.png`} alt="پیش‌نمایش قهرمان"
-                    className="max-h-80 object-contain" onError={(e) => { e.target.style.visibility = 'hidden'; }} />
+            <div className="flex flex-col items-center justify-center bg-parchment-100 rounded-xl border border-parchment-300 min-h-[300px] p-4">
+                <p className="field-label mb-3">پیش‌نمایش زنده</p>
+                {previewUrl ? (
+                    <img src={previewUrl} alt="پیش‌نمایش قهرمان"
+                        className="max-h-80 object-contain" />
+                ) : (
+                    <div className="w-40 h-52 bg-parchment-200 rounded-lg animate-pulse" />
+                )}
             </div>
         </div>
     );
@@ -197,6 +273,8 @@ export default function Hero() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(null);
     const [alertMsg, setAlertMsg] = useState(null);
+    const [heroImageUrl, setHeroImageUrl] = useState(null);
+    const heroImageVersion = useGameStore((state) => state.heroImageVersion);
 
     const [revivalVillageId, setRevivalVillageId] = useState('');
     const [revivalCost, setRevivalCost] = useState(null);
@@ -275,6 +353,36 @@ export default function Hero() {
         finally { setBusy(null); }
     };
 
+    useEffect(() => {
+        let revokeUrl = null;
+        const fetchHeroImage = async () => {
+            try {
+                const response = await api.get('combat/hero/image/?size=sideinfo', { responseType: 'blob' });
+                const url = URL.createObjectURL(response.data);
+                if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+                revokeUrl = url;
+                setHeroImageUrl(url);
+            } catch { /* silent */ }
+        };
+        fetchHeroImage();
+        return () => { if (revokeUrl) URL.revokeObjectURL(revokeUrl); };
+    }, [heroImageVersion]);
+
+    useEffect(() => {
+        let revokeUrl = null;
+        const fetchHeroImage = async () => {
+            try {
+                const response = await api.get('combat/hero/image/?size=sideinfo', { responseType: 'blob' });
+                const url = URL.createObjectURL(response.data);
+                if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+                revokeUrl = url;
+                setHeroImageUrl(url);
+            } catch { /* silent */ }
+        };
+        fetchHeroImage();
+        return () => { if (revokeUrl) URL.revokeObjectURL(revokeUrl); };
+    }, [heroImageVersion]);
+
     const handleSaveAppearance = async (payload) => {
         try {
             const { data } = await api.post('combat/hero/appearance/', payload);
@@ -328,7 +436,7 @@ export default function Hero() {
             <div className="rounded-2xl overflow-hidden shadow-card border border-ink-700">
                 <div className="bg-gradient-to-b from-ink-800 to-ink-900 p-6 text-parchment-100">
                     <div className="flex items-center gap-4 mb-4">
-                        <img src="/assets/hero/hero-portrait.png" alt="قهرمان"
+                        <img src={heroImageUrl || "/assets/hero/hero-portrait.png"} alt="قهرمان"
                             className="w-20 h-20 rounded-full border-4 border-gold-500 object-cover bg-ink-700 flex-shrink-0"
                             onError={(e) => { e.target.style.display='none'; }} />
                         <div>

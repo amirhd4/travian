@@ -38,7 +38,7 @@ export default function GameLayout() {
         <div id="wrapper">
             <img id="staticElements" alt="" />
             <div id="logoutContainer">
-                <a id="logout" href="/login" title="خروج" onClick={handleLogout}>&nbsp;</a>
+                <a id="logout" href="/login" title="\u062e\u0631\u0648\u062c" onClick={handleLogout}>&nbsp;</a>
             </div>
             <div className="bodyWrapper">
                 <div id="header">

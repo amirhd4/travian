@@ -27,6 +27,7 @@ export default function SideInfoBoards() {
     const [buildingQueue, setBuildingQueue] = useState([]);
     const [hero, setHero] = useState(null);
     const [heroImageUrl, setHeroImageUrl] = useState(null);
+    const heroImageVersion = useGameStore((state) => state.heroImageVersion);
     const [now, setNow] = useState(Date.now());
     const [serverConfig, setServerConfig] = useState(null);
 
@@ -71,7 +72,7 @@ export default function SideInfoBoards() {
         };
         fetchHeroImage();
         return () => { if (revokeUrl) URL.revokeObjectURL(revokeUrl); };
-    }, []);
+    }, [heroImageVersion]);
 
     useEffect(() => {
         fetchBuildingQueue();

@@ -15,7 +15,7 @@ from .views import (
     BuyGoldClubView, CropperSearchView, StandardNpcTradeView, GoldToSilverExchangeView, SupportMessageView,
     InstantConstructionView, GoldTroopShopView, AllianceListView, MoveCapitalView, TownHallCelebrationView,
 )
-from apps.combat.views import HeroAuctionListView, HeroAuctionBidView
+from ..combat.views import HeroAuctionListView, HeroAuctionBidView
 
 urlpatterns = [
     path('villages/', VillageListView.as_view(), name='village_list'),
