@@ -197,6 +197,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed !important; }
 .boxes .boxes-contents { padding: 11px; background: #FFF; }
 .boxes .boxes-contents table { width: 100%; background-color: #FFF; }
 .boxes.villageList { width: 100%; }
+div.village1 div.production { width: 207px; }
+div.village1 table#production td.res { width: 30%; }
+div.village1 table#production td.num { width: 25%; text-align: left; font-weight: bold; }
+img.r1Big, img.r2Big, img.r3Big, img.r4Big { width: 18px; height: 16px; }
 div.map { padding: 12px 14px 0; }
 #mapContainer { position: relative; width: 543px; height: 401px; overflow: hidden; }
 #mapContainer img { border: 0; }

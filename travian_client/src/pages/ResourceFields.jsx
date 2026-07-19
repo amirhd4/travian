@@ -260,29 +260,38 @@ export default function ResourceFields() {
 
                 {villageInfo && (
                     <div className="boxes villageList production">
+                        <div className="boxes-tl"></div>
+                        <div className="boxes-tr"></div>
+                        <div className="boxes-tc"></div>
+                        <div className="boxes-ml"></div>
+                        <div className="boxes-mr"></div>
+                        <div className="boxes-mc"></div>
+                        <div className="boxes-bl"></div>
+                        <div className="boxes-br"></div>
+                        <div className="boxes-bc"></div>
                         <div className="boxes-contents">
                             <table id="production" cellPadding="1" cellSpacing="1">
                                 <thead>
-                                    <tr><th colSpan="3">تولید منابع</th></tr>
+                                    <tr><th colSpan="4">تولید منابع</th></tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td className="ico"><img className="r1" src="/assets/ui/res-1.gif" alt="چوب" /></td>
+                                        <td className="ico"><div><img className="r1Big" src="/assets/ui/res-1.gif" alt="چوب" title="چوب" /></div></td>
                                         <td className="res">چوب:</td>
                                         <td className="num">{villageInfo.production?.wood ?? 0}</td>
                                     </tr>
                                     <tr>
-                                        <td className="ico"><img className="r2" src="/assets/ui/res-2.gif" alt="خاک رس" /></td>
+                                        <td className="ico"><div><img className="r2Big" src="/assets/ui/res-2.gif" alt="خاک رس" title="خاک رس" /></div></td>
                                         <td className="res">خاک رس:</td>
                                         <td className="num">{villageInfo.production?.clay ?? 0}</td>
                                     </tr>
                                     <tr>
-                                        <td className="ico"><img className="r3" src="/assets/ui/res-3.gif" alt="آهن" /></td>
+                                        <td className="ico"><div><img className="r3Big" src="/assets/ui/res-3.gif" alt="آهن" title="آهن" /></div></td>
                                         <td className="res">آهن:</td>
                                         <td className="num">{villageInfo.production?.iron ?? 0}</td>
                                     </tr>
                                     <tr>
-                                        <td className="ico"><img className="r4" src="/assets/ui/res-4.gif" alt="گندم" /></td>
+                                        <td className="ico"><div><img className="r4Big" src="/assets/ui/res-4.gif" alt="گندم" title="گندم" /></div></td>
                                         <td className="res">گندم:</td>
                                         <td className="num">{villageInfo.production?.crop ?? 0}</td>
                                     </tr>
