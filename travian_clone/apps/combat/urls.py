@@ -1,4 +1,4 @@
-from django.urls import path
+﻿from django.urls import path
 from .views import (
     SendTroopsView, BarracksTrainView,
     HeroView, HeroEquipItemView,
@@ -6,7 +6,7 @@ from .views import (
     TroopTypeCatalogView, VillageTroopListView, TrainingQueueView,
     VillageMovementsView, AdventureListView, StartAdventureView,
     FarmListView, FarmListEntryDetailView, FarmListRunView, BlacksmithView,
-    HeroAllocatePointsView, HeroSettingsView, HeroReviveView, HeroAppearanceView,
+    HeroAllocatePointsView, HeroSettingsView, HeroReviveView, HeroAppearanceView, HeroImageView,
     CombatReportListView, CombatReportUnreadCountView, CombatReportDetailView,
     TrappedTroopsListView, ReleaseTrappedTroopsView,
     TroopEvasionView, FarmListManageView, ReinforcementReportDetailView, ReinforcementReportListView,
@@ -34,10 +34,11 @@ urlpatterns = [
     path('hero/settings/', HeroSettingsView.as_view(), name='hero_settings'),
     path('hero/revive/', HeroReviveView.as_view(), name='hero_revive'),
     path('hero/appearance/', HeroAppearanceView.as_view(), name='hero_appearance'),
-    path('reports/', CombatReportListView.as_view(), name='combat_reports'),  # ✅ جدید
-    path('reports/unread-count/', CombatReportUnreadCountView.as_view(), name='combat_reports_unread'),  # ✅ جدید
-    path('reports/<int:report_id>/', CombatReportDetailView.as_view(), name='combat_report_detail'),  # ✅ جدید
-    path('trapped-troops/', TrappedTroopsListView.as_view(), name='trapped_troops'),  # ✅ جدید
+    path('hero/image/', HeroImageView.as_view(), name='hero_image'),
+    path('reports/', CombatReportListView.as_view(), name='combat_reports'),  # âœ… Ø¬Ø¯ÛŒØ¯
+    path('reports/unread-count/', CombatReportUnreadCountView.as_view(), name='combat_reports_unread'),  # âœ… Ø¬Ø¯ÛŒØ¯
+    path('reports/<int:report_id>/', CombatReportDetailView.as_view(), name='combat_report_detail'),  # âœ… Ø¬Ø¯ÛŒØ¯
+    path('trapped-troops/', TrappedTroopsListView.as_view(), name='trapped_troops'),  # âœ… Ø¬Ø¯ÛŒØ¯
     path('trapped-troops/<int:entry_id>/release/', ReleaseTrappedTroopsView.as_view(), name='release_trapped_troops'),
     path('troop-evasion/', TroopEvasionView.as_view(), name='troop_evasion'),
     path('reports/reinforcements/', ReinforcementReportListView.as_view(), name='reinforcement_reports'),

@@ -1,4 +1,4 @@
-from rest_framework.views import APIView
+﻿from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
@@ -31,23 +31,23 @@ class SendTroopsView(APIView):
         movement_type = request.data.get('movement_type', 'ATTACK')
         payload = request.data.get('troops_payload', {})
         send_hero = bool(request.data.get('send_hero', False))
-        catapult_target_building = request.data.get('catapult_target_building') or None  # ✅ جدید
+        catapult_target_building = request.data.get('catapult_target_building') or None  # âœ… Ø¬Ø¯ÛŒØ¯
 
         try:
             source_village = Village.objects.get(id=source_id, player=request.user)
             target_village = Village.objects.get(id=target_id)
         except Village.DoesNotExist:
-            return Response({"error": "مبدا یا مقصد یافت نشد."}, status=404)
+            return Response({"error": "Ù…Ø¨Ø¯Ø§ ÛŒØ§ Ù…Ù‚ØµØ¯ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         success, result = dispatch_troop_movement(
             request.user, source_village, target_village, movement_type, payload,
             send_hero=send_hero,
-            catapult_target_building=catapult_target_building,  # ✅ جدید
+            catapult_target_building=catapult_target_building,  # âœ… Ø¬Ø¯ÛŒØ¯
         )
         if not success:
             return Response({"error": result}, status=400)
 
-        return Response({"message": "نیروها با موفقیت اعزام شدند و در زمان مقرر به مقصد می‌رسند."})
+        return Response({"message": "Ù†ÛŒØ±ÙˆÙ‡Ø§ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø§Ø¹Ø²Ø§Ù… Ø´Ø¯Ù†Ø¯ Ùˆ Ø¯Ø± Ø²Ù…Ø§Ù† Ù…Ù‚Ø±Ø± Ø¨Ù‡ Ù…Ù‚ØµØ¯ Ù…ÛŒâ€ŒØ±Ø³Ù†Ø¯."})
 
 
 class BarracksTrainView(APIView):
@@ -56,19 +56,19 @@ class BarracksTrainView(APIView):
     def post(self, request):
         from apps.game_engine.utils import is_server_finished
         if is_server_finished():
-            return Response({"error": "این سرور به پایان رسیده و دیگر امکان آموزش نیرو وجود ندارد."}, status=400)
+            return Response({"error": "Ø§ÛŒÙ† Ø³Ø±ÙˆØ± Ø¨Ù‡ Ù¾Ø§ÛŒØ§Ù† Ø±Ø³ÛŒØ¯Ù‡ Ùˆ Ø¯ÛŒÚ¯Ø± Ø§Ù…Ú©Ø§Ù† Ø¢Ù…ÙˆØ²Ø´ Ù†ÛŒØ±Ùˆ ÙˆØ¬ÙˆØ¯ Ù†Ø¯Ø§Ø±Ø¯."}, status=400)
 
         village_id = request.data.get('village_id')
         troop_type_id = request.data.get('troop_type')
         quantity = int(request.data.get('quantity', 0))
 
         if quantity <= 0:
-            return Response({"error": "تعداد نیرو برای آموزش نامعتبر است."}, status=400)
+            return Response({"error": "ØªØ¹Ø¯Ø§Ø¯ Ù†ÛŒØ±Ùˆ Ø¨Ø±Ø§ÛŒ Ø¢Ù…ÙˆØ²Ø´ Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª."}, status=400)
 
         try:
             troop_info = TroopType.objects.get(id=troop_type_id, tribe=request.user.tribe)
         except TroopType.DoesNotExist:
-            return Response({"error": "این نیرو مختص نژاد شما نیست یا وجود ندارد."}, status=400)
+            return Response({"error": "Ø§ÛŒÙ† Ù†ÛŒØ±Ùˆ Ù…Ø®ØªØµ Ù†Ú˜Ø§Ø¯ Ø´Ù…Ø§ Ù†ÛŒØ³Øª ÛŒØ§ ÙˆØ¬ÙˆØ¯ Ù†Ø¯Ø§Ø±Ø¯."}, status=400)
 
         total_cost = {
             'wood': troop_info.wood_cost * quantity,
@@ -85,32 +85,32 @@ class BarracksTrainView(APIView):
                 if not VillageBuilding.objects.filter(
                         village=village, building_type__name__in=required_buildings, level__gt=0
                 ).exists():
-                    names_display = " یا ".join(required_buildings)
+                    names_display = " ÛŒØ§ ".join(required_buildings)
                     return Response(
-                        {"error": f"برای آموزش {troop_info.name} ابتدا باید یک «{names_display}» در این دهکده بسازید."},
+                        {"error": f"Ø¨Ø±Ø§ÛŒ Ø¢Ù…ÙˆØ²Ø´ {troop_info.name} Ø§Ø¨ØªØ¯Ø§ Ø¨Ø§ÛŒØ¯ ÛŒÚ© Â«{names_display}Â» Ø¯Ø± Ø§ÛŒÙ† Ø¯Ù‡Ú©Ø¯Ù‡ Ø¨Ø³Ø§Ø²ÛŒØ¯."},
                         status=400
                     )
 
-                # ✅ جدید: نیازمندی آکادمی برای نیروهای رده‌بالاتر (قبلا آکادمی هیچ اثری نداشت)
+                # âœ… Ø¬Ø¯ÛŒØ¯: Ù†ÛŒØ§Ø²Ù…Ù†Ø¯ÛŒ Ø¢Ú©Ø§Ø¯Ù…ÛŒ Ø¨Ø±Ø§ÛŒ Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ Ø±Ø¯Ù‡â€ŒØ¨Ø§Ù„Ø§ØªØ± (Ù‚Ø¨Ù„Ø§ Ø¢Ú©Ø§Ø¯Ù…ÛŒ Ù‡ÛŒÚ† Ø§Ø«Ø±ÛŒ Ù†Ø¯Ø§Ø´Øª)
                 if troop_info.required_academy_level > 0:
                     academy_level = VillageBuilding.objects.filter(
-                        village=village, building_type__name="آکادمی"
+                        village=village, building_type__name="Ø¢Ú©Ø§Ø¯Ù…ÛŒ"
                     ).values_list('level', flat=True).first() or 0
                     if academy_level < troop_info.required_academy_level:
                         return Response(
                             {
-                                "error": f"برای آموزش {troop_info.name} به آکادمی سطح {troop_info.required_academy_level} یا بالاتر نیاز دارید (سطح فعلی آکادمی: {academy_level})."},
+                                "error": f"Ø¨Ø±Ø§ÛŒ Ø¢Ù…ÙˆØ²Ø´ {troop_info.name} Ø¨Ù‡ Ø¢Ú©Ø§Ø¯Ù…ÛŒ Ø³Ø·Ø­ {troop_info.required_academy_level} ÛŒØ§ Ø¨Ø§Ù„Ø§ØªØ± Ù†ÛŒØ§Ø² Ø¯Ø§Ø±ÛŒØ¯ (Ø³Ø·Ø­ ÙØ¹Ù„ÛŒ Ø¢Ú©Ø§Ø¯Ù…ÛŒ: {academy_level})."},
                             status=400
                         )
 
-                # بررسی دقیق موجودی
+                # Ø¨Ø±Ø±Ø³ÛŒ Ø¯Ù‚ÛŒÙ‚ Ù…ÙˆØ¬ÙˆØ¯ÛŒ
                 if (village.wood < total_cost['wood'] or
                         village.clay < total_cost['clay'] or
                         village.iron < total_cost['iron'] or
                         village.crop < total_cost['crop']):
-                    return Response({"error": "منابع دهکده برای آموزش این تعداد نیرو کافی نیست."}, status=400)
+                    return Response({"error": "Ù…Ù†Ø§Ø¨Ø¹ Ø¯Ù‡Ú©Ø¯Ù‡ Ø¨Ø±Ø§ÛŒ Ø¢Ù…ÙˆØ²Ø´ Ø§ÛŒÙ† ØªØ¹Ø¯Ø§Ø¯ Ù†ÛŒØ±Ùˆ Ú©Ø§ÙÛŒ Ù†ÛŒØ³Øª."}, status=400)
 
-                # کسر منابع همین الان انجام می‌شود (سرمایه‌گذاری در صف آموزش)
+                # Ú©Ø³Ø± Ù…Ù†Ø§Ø¨Ø¹ Ù‡Ù…ÛŒÙ† Ø§Ù„Ø§Ù† Ø§Ù†Ø¬Ø§Ù… Ù…ÛŒâ€ŒØ´ÙˆØ¯ (Ø³Ø±Ù…Ø§ÛŒÙ‡â€ŒÚ¯Ø°Ø§Ø±ÛŒ Ø¯Ø± ØµÙ Ø¢Ù…ÙˆØ²Ø´)
                 village.wood -= total_cost['wood']
                 village.clay -= total_cost['clay']
                 village.iron -= total_cost['iron']
@@ -118,21 +118,21 @@ class BarracksTrainView(APIView):
                 village.save()
 
                 from apps.game_engine.artifacts import get_training_speed_multiplier
-                from .hero_utils import get_hero_training_speed_bonus_percent  # ✅ جدید
+                from .hero_utils import get_hero_training_speed_bonus_percent  # âœ… Ø¬Ø¯ÛŒØ¯
 
                 raw_duration = troop_info.base_train_time * quantity
                 artifact_multiplier = get_training_speed_multiplier(request.user)
 
-                hero_training_bonus_percent = get_hero_training_speed_bonus_percent(request.user, troop_info)  # ✅ جدید
+                hero_training_bonus_percent = get_hero_training_speed_bonus_percent(request.user, troop_info)  # âœ… Ø¬Ø¯ÛŒØ¯
                 hero_training_multiplier = 1 + (hero_training_bonus_percent / 100)
 
-                duration_after_artifact = raw_duration / artifact_multiplier / hero_training_multiplier  # ✅ به‌روزشده
+                duration_after_artifact = raw_duration / artifact_multiplier / hero_training_multiplier  # âœ… Ø¨Ù‡â€ŒØ±ÙˆØ²Ø´Ø¯Ù‡
 
-                # ✅ FIX همزمان: قبلا finishes_at (شمارش معکوس UI) اصلا سرعت
-                # آموزش سرور (troop_training_speed) را لحاظ نمی‌کرد؛ فقط زمان
-                # واقعیِ تکمیل (از طریق schedule_game_event) این سرعت را
-                # اعمال می‌کرد -> روی سرورهای پرسرعت، عدد نمایش‌داده‌شده به
-                # بازیکن اشتباه (خیلی بیشتر از واقعیت) بود.
+                # âœ… FIX Ù‡Ù…Ø²Ù…Ø§Ù†: Ù‚Ø¨Ù„Ø§ finishes_at (Ø´Ù…Ø§Ø±Ø´ Ù…Ø¹Ú©ÙˆØ³ UI) Ø§ØµÙ„Ø§ Ø³Ø±Ø¹Øª
+                # Ø¢Ù…ÙˆØ²Ø´ Ø³Ø±ÙˆØ± (troop_training_speed) Ø±Ø§ Ù„Ø­Ø§Ø¸ Ù†Ù…ÛŒâ€ŒÚ©Ø±Ø¯Ø› ÙÙ‚Ø· Ø²Ù…Ø§Ù†
+                # ÙˆØ§Ù‚Ø¹ÛŒÙ ØªÚ©Ù…ÛŒÙ„ (Ø§Ø² Ø·Ø±ÛŒÙ‚ schedule_game_event) Ø§ÛŒÙ† Ø³Ø±Ø¹Øª Ø±Ø§
+                # Ø§Ø¹Ù…Ø§Ù„ Ù…ÛŒâ€ŒÚ©Ø±Ø¯ -> Ø±ÙˆÛŒ Ø³Ø±ÙˆØ±Ù‡Ø§ÛŒ Ù¾Ø±Ø³Ø±Ø¹ØªØŒ Ø¹Ø¯Ø¯ Ù†Ù…Ø§ÛŒØ´â€ŒØ¯Ø§Ø¯Ù‡â€ŒØ´Ø¯Ù‡ Ø¨Ù‡
+                # Ø¨Ø§Ø²ÛŒÚ©Ù† Ø§Ø´ØªØ¨Ø§Ù‡ (Ø®ÛŒÙ„ÛŒ Ø¨ÛŒØ´ØªØ± Ø§Ø² ÙˆØ§Ù‚Ø¹ÛŒØª) Ø¨ÙˆØ¯.
                 server_settings = ServerSetting.objects.filter(is_active=True).first()
                 training_speed = (server_settings.troop_training_speed if server_settings else 1) or 1
                 display_duration = duration_after_artifact / training_speed
@@ -148,33 +148,33 @@ class BarracksTrainView(APIView):
                 GameLog.objects.create(
                     village=village,
                     log_type='BUILDING',
-                    description=f"آموزش {quantity} سرباز {troop_info.name} در پادگان آغاز شد."
+                    description=f"Ø¢Ù…ÙˆØ²Ø´ {quantity} Ø³Ø±Ø¨Ø§Ø² {troop_info.name} Ø¯Ø± Ù¾Ø§Ø¯Ú¯Ø§Ù† Ø¢ØºØ§Ø² Ø´Ø¯."
                 )
 
                 transaction.on_commit(lambda: schedule_game_event(
                     village_id=village.id,
                     event_type="TROOP_RECRUITMENT",
                     base_duration_seconds=duration_after_artifact,
-                    # ✅ اثر کتیبه از قبل اعمال شده؛ سرعت سرور داخل خودِ schedule_game_event اعمال می‌شود
+                    # âœ… Ø§Ø«Ø± Ú©ØªÛŒØ¨Ù‡ Ø§Ø² Ù‚Ø¨Ù„ Ø§Ø¹Ù…Ø§Ù„ Ø´Ø¯Ù‡Ø› Ø³Ø±Ø¹Øª Ø³Ø±ÙˆØ± Ø¯Ø§Ø®Ù„ Ø®ÙˆØ¯Ù schedule_game_event Ø§Ø¹Ù…Ø§Ù„ Ù…ÛŒâ€ŒØ´ÙˆØ¯
                     details={"troop_id": troop_info.id, "count": quantity, "queue_id": queue_item.id}
                 ))
 
             return Response({
                 "message": (
-                    f"آموزش {quantity} {troop_info.name} در صف پادگان قرار گرفت "
-                    f"و پس از اتمام، به‌طور خودکار به نیروهای دهکده اضافه می‌شود."
+                    f"Ø¢Ù…ÙˆØ²Ø´ {quantity} {troop_info.name} Ø¯Ø± ØµÙ Ù¾Ø§Ø¯Ú¯Ø§Ù† Ù‚Ø±Ø§Ø± Ú¯Ø±ÙØª "
+                    f"Ùˆ Ù¾Ø³ Ø§Ø² Ø§ØªÙ…Ø§Ù…ØŒ Ø¨Ù‡â€ŒØ·ÙˆØ± Ø®ÙˆØ¯Ú©Ø§Ø± Ø¨Ù‡ Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ Ø¯Ù‡Ú©Ø¯Ù‡ Ø§Ø¶Ø§ÙÙ‡ Ù…ÛŒâ€ŒØ´ÙˆØ¯."
                 )
             })
 
         except Village.DoesNotExist:
-            return Response({"error": "دهکده مورد نظر یافت نشد یا متعلق به شما نیست."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ Ù…ÙˆØ±Ø¯ Ù†Ø¸Ø± ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
 
 class TroopTypeCatalogView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # ✅ فقط نیروهای متعلق به نژاد خود بازیکن (ناتار هرگز نمایش داده نمی‌شود)
+        # âœ… ÙÙ‚Ø· Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ù†Ú˜Ø§Ø¯ Ø®ÙˆØ¯ Ø¨Ø§Ø²ÛŒÚ©Ù† (Ù†Ø§ØªØ§Ø± Ù‡Ø±Ú¯Ø² Ù†Ù…Ø§ÛŒØ´ Ø¯Ø§Ø¯Ù‡ Ù†Ù…ÛŒâ€ŒØ´ÙˆØ¯)
         troop_types = TroopType.objects.filter(tribe=request.user.tribe).order_by('id')
         return Response([
             {
@@ -196,7 +196,7 @@ class TroopTypeCatalogView(APIView):
                 "crop_upkeep": t.crop_upkeep,
                 "base_train_time": t.base_train_time,
                 "is_cavalry": t.is_cavalry,
-                "required_building": " یا ".join(get_required_training_buildings(t)),
+                "required_building": " ÛŒØ§ ".join(get_required_training_buildings(t)),
                 "required_academy_level": t.required_academy_level,
             }
             for t in troop_types
@@ -204,7 +204,7 @@ class TroopTypeCatalogView(APIView):
 
 
 class VillageTroopListView(APIView):
-    """نیروهای واقعی مستقر در یک دهکده مشخص (برای پر کردن فرم‌های اعزام نیرو)."""
+    """Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ ÙˆØ§Ù‚Ø¹ÛŒ Ù…Ø³ØªÙ‚Ø± Ø¯Ø± ÛŒÚ© Ø¯Ù‡Ú©Ø¯Ù‡ Ù…Ø´Ø®Øµ (Ø¨Ø±Ø§ÛŒ Ù¾Ø± Ú©Ø±Ø¯Ù† ÙØ±Ù…â€ŒÙ‡Ø§ÛŒ Ø§Ø¹Ø²Ø§Ù… Ù†ÛŒØ±Ùˆ)."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -212,7 +212,7 @@ class VillageTroopListView(APIView):
         try:
             village = Village.objects.get(id=village_id, player=request.user)
         except (Village.DoesNotExist, ValueError, TypeError):
-            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
         troops = VillageTroop.objects.filter(village=village, count__gt=0).select_related('troop_type')
         return Response([
@@ -228,7 +228,7 @@ class VillageTroopListView(APIView):
 
 
 class TrainingQueueView(APIView):
-    """صف آموزش فعال یک دهکده مشخص، به همراه زمان باقی‌مانده هر بچ."""
+    """ØµÙ Ø¢Ù…ÙˆØ²Ø´ ÙØ¹Ø§Ù„ ÛŒÚ© Ø¯Ù‡Ú©Ø¯Ù‡ Ù…Ø´Ø®ØµØŒ Ø¨Ù‡ Ù‡Ù…Ø±Ø§Ù‡ Ø²Ù…Ø§Ù† Ø¨Ø§Ù‚ÛŒâ€ŒÙ…Ø§Ù†Ø¯Ù‡ Ù‡Ø± Ø¨Ú†."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -236,7 +236,7 @@ class TrainingQueueView(APIView):
         try:
             village = Village.objects.get(id=village_id, player=request.user)
         except (Village.DoesNotExist, ValueError, TypeError):
-            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
         queue = TrainingQueue.objects.filter(village=village, is_completed=False).select_related('troop_type')
         now = timezone.now()
@@ -253,7 +253,7 @@ class TrainingQueueView(APIView):
 
 
 class HeroView(APIView):
-    """اطلاعات قهرمان بازیکن فعلی + کوله‌پشتی او + وضعیت ماجراجویی."""
+    """Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ù‚Ù‡Ø±Ù…Ø§Ù† Ø¨Ø§Ø²ÛŒÚ©Ù† ÙØ¹Ù„ÛŒ + Ú©ÙˆÙ„Ù‡â€ŒÙ¾Ø´ØªÛŒ Ø§Ùˆ + ÙˆØ¶Ø¹ÛŒØª Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒ."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -275,7 +275,7 @@ class HeroView(APIView):
             "home_village_id": hero.home_village_id,
             "is_away": hero.is_away,
 
-            # ✅ جدید: امتیازات قابل تخصیص قهرمان
+            # âœ… Ø¬Ø¯ÛŒØ¯: Ø§Ù…ØªÛŒØ§Ø²Ø§Øª Ù‚Ø§Ø¨Ù„ ØªØ®ØµÛŒØµ Ù‚Ù‡Ø±Ù…Ø§Ù†
             "fighting_strength_points": hero.fighting_strength_points,
             "off_bonus_points": hero.off_bonus_points,
             "def_bonus_points": hero.def_bonus_points,
@@ -305,7 +305,7 @@ class HeroView(APIView):
                     "attack_bonus": inv.item.attack_bonus,
                     "defense_bonus": inv.item.defense_bonus,
                     "speed_bonus": inv.item.speed_bonus,
-                    # ✅ جدید
+                    # âœ… Ø¬Ø¯ÛŒØ¯
                     "experience_bonus_percent": inv.item.experience_bonus_percent,
                     "infantry_training_speed_percent": inv.item.infantry_training_speed_percent,
                     "cavalry_training_speed_percent": inv.item.cavalry_training_speed_percent,
@@ -321,8 +321,8 @@ class HeroView(APIView):
 
 
 class HeroEquipItemView(APIView):
-    """پوشیدن/درآوردن یک آیتم از کوله‌پشتی قهرمان. هر بار فقط یک آیتم از هر نوع
-    (کلاه‌خود/سلاح/اسب) می‌تواند هم‌زمان پوشیده باشد."""
+    """Ù¾ÙˆØ´ÛŒØ¯Ù†/Ø¯Ø±Ø¢ÙˆØ±Ø¯Ù† ÛŒÚ© Ø¢ÛŒØªÙ… Ø§Ø² Ú©ÙˆÙ„Ù‡â€ŒÙ¾Ø´ØªÛŒ Ù‚Ù‡Ø±Ù…Ø§Ù†. Ù‡Ø± Ø¨Ø§Ø± ÙÙ‚Ø· ÛŒÚ© Ø¢ÛŒØªÙ… Ø§Ø² Ù‡Ø± Ù†ÙˆØ¹
+    (Ú©Ù„Ø§Ù‡â€ŒØ®ÙˆØ¯/Ø³Ù„Ø§Ø­/Ø§Ø³Ø¨) Ù…ÛŒâ€ŒØªÙˆØ§Ù†Ø¯ Ù‡Ù…â€ŒØ²Ù…Ø§Ù† Ù¾ÙˆØ´ÛŒØ¯Ù‡ Ø¨Ø§Ø´Ø¯."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -333,7 +333,7 @@ class HeroEquipItemView(APIView):
             hero = Hero.objects.get(player=request.user)
             inv_item = PlayerHeroItem.objects.select_related('item').get(id=inventory_id, hero=hero)
         except (Hero.DoesNotExist, PlayerHeroItem.DoesNotExist):
-            return Response({"error": "آیتم یافت نشد."}, status=404)
+            return Response({"error": "Ø¢ÛŒØªÙ… ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         with transaction.atomic():
             if equip:
@@ -343,11 +343,11 @@ class HeroEquipItemView(APIView):
             inv_item.is_equipped = equip
             inv_item.save()
 
-        return Response({"message": "تجهیزات قهرمان به‌روزرسانی شد."})
+        return Response({"message": "ØªØ¬Ù‡ÛŒØ²Ø§Øª Ù‚Ù‡Ø±Ù…Ø§Ù† Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯."})
 
 
 class AdventureListView(APIView):
-    """فهرست ماجراجویی‌های فعال و در دسترس بازیکن."""
+    """ÙÙ‡Ø±Ø³Øª Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒâ€ŒÙ‡Ø§ÛŒ ÙØ¹Ø§Ù„ Ùˆ Ø¯Ø± Ø¯Ø³ØªØ±Ø³ Ø¨Ø§Ø²ÛŒÚ©Ù†."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -370,7 +370,7 @@ class AdventureListView(APIView):
 
 
 class StartAdventureView(APIView):
-    """اعزام قهرمان به یک نقطه ماجراجویی مشخص."""
+    """Ø§Ø¹Ø²Ø§Ù… Ù‚Ù‡Ø±Ù…Ø§Ù† Ø¨Ù‡ ÛŒÚ© Ù†Ù‚Ø·Ù‡ Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒ Ù…Ø´Ø®Øµ."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -379,34 +379,34 @@ class StartAdventureView(APIView):
         try:
             hero = Hero.objects.get(player=request.user)
         except Hero.DoesNotExist:
-            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+            return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù†ÛŒ Ø¨Ø±Ø§ÛŒ Ø´Ù…Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         if not hero.is_alive:
-            return Response({"error": "قهرمان شما از پای درآمده و قادر به ماجراجویی نیست."}, status=400)
+            return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù† Ø´Ù…Ø§ Ø§Ø² Ù¾Ø§ÛŒ Ø¯Ø±Ø¢Ù…Ø¯Ù‡ Ùˆ Ù‚Ø§Ø¯Ø± Ø¨Ù‡ Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒ Ù†ÛŒØ³Øª."}, status=400)
         if hero.is_on_adventure:
             if hero.is_away:
-                return Response({"error": "قهرمان شما در یک ماموریت نظامی است و نمی‌تواند به ماجراجویی برود."},
+                return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù† Ø´Ù…Ø§ Ø¯Ø± ÛŒÚ© Ù…Ø§Ù…ÙˆØ±ÛŒØª Ù†Ø¸Ø§Ù…ÛŒ Ø§Ø³Øª Ùˆ Ù†Ù…ÛŒâ€ŒØªÙˆØ§Ù†Ø¯ Ø¨Ù‡ Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒ Ø¨Ø±ÙˆØ¯."},
                                 status=400)
-            return Response({"error": "قهرمان شما هم‌اکنون در حال ماجراجویی است."}, status=400)
+            return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù† Ø´Ù…Ø§ Ù‡Ù…â€ŒØ§Ú©Ù†ÙˆÙ† Ø¯Ø± Ø­Ø§Ù„ Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒ Ø§Ø³Øª."}, status=400)
         if hero.health < 20:
-            return Response({"error": "سلامتی قهرمان برای این ماجراجویی کافی نیست؛ صبر کنید تا ترمیم شود."}, status=400)
+            return Response({"error": "Ø³Ù„Ø§Ù…ØªÛŒ Ù‚Ù‡Ø±Ù…Ø§Ù† Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒ Ú©Ø§ÙÛŒ Ù†ÛŒØ³ØªØ› ØµØ¨Ø± Ú©Ù†ÛŒØ¯ ØªØ§ ØªØ±Ù…ÛŒÙ… Ø´ÙˆØ¯."}, status=400)
         if not hero.home_village:
-            return Response({"error": "قهرمان شما دهکده خانگی مشخصی ندارد."}, status=400)
+            return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù† Ø´Ù…Ø§ Ø¯Ù‡Ú©Ø¯Ù‡ Ø®Ø§Ù†Ú¯ÛŒ Ù…Ø´Ø®ØµÛŒ Ù†Ø¯Ø§Ø±Ø¯."}, status=400)
 
         try:
             adventure = Adventure.objects.get(id=adventure_id, player=request.user, is_completed=False)
         except Adventure.DoesNotExist:
-            return Response({"error": "این ماجراجویی یافت نشد یا قبلا انجام شده است."}, status=404)
+            return Response({"error": "Ø§ÛŒÙ† Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù‚Ø¨Ù„Ø§ Ø§Ù†Ø¬Ø§Ù… Ø´Ø¯Ù‡ Ø§Ø³Øª."}, status=404)
 
         settings_ = DIFFICULTY_SETTINGS[adventure.difficulty]
         if hero.level < settings_["min_hero_level"]:
             return Response(
-                {"error": f"سطح قهرمان شما کافی نیست (حداقل سطح {settings_['min_hero_level']} لازم است)."},
+                {"error": f"Ø³Ø·Ø­ Ù‚Ù‡Ø±Ù…Ø§Ù† Ø´Ù…Ø§ Ú©Ø§ÙÛŒ Ù†ÛŒØ³Øª (Ø­Ø¯Ø§Ù‚Ù„ Ø³Ø·Ø­ {settings_['min_hero_level']} Ù„Ø§Ø²Ù… Ø§Ø³Øª)."},
                 status=400
             )
 
         travel_seconds = calculate_travel_seconds_to_point(hero.home_village, adventure.x_coord, adventure.y_coord)
-        round_trip_seconds = travel_seconds * 2 + 60  # رفت + برگشت + کمی زمان نبرد
+        round_trip_seconds = travel_seconds * 2 + 60  # Ø±ÙØª + Ø¨Ø±Ú¯Ø´Øª + Ú©Ù…ÛŒ Ø²Ù…Ø§Ù† Ù†Ø¨Ø±Ø¯
         returns_at = timezone.now() + datetime.timedelta(seconds=round_trip_seconds)
 
         hero.is_on_adventure = True
@@ -416,13 +416,13 @@ class StartAdventureView(APIView):
         resolve_hero_adventure.apply_async(args=[hero.id, adventure.id], eta=returns_at)
 
         return Response({
-            "message": f"قهرمان به سمت ماجراجویی اعزام شد و در {round(round_trip_seconds/60)} دقیقه بازمی‌گردد.",
+            "message": f"Ù‚Ù‡Ø±Ù…Ø§Ù† Ø¨Ù‡ Ø³Ù…Øª Ù…Ø§Ø¬Ø±Ø§Ø¬ÙˆÛŒÛŒ Ø§Ø¹Ø²Ø§Ù… Ø´Ø¯ Ùˆ Ø¯Ø± {round(round_trip_seconds/60)} Ø¯Ù‚ÛŒÙ‚Ù‡ Ø¨Ø§Ø²Ù…ÛŒâ€ŒÚ¯Ø±Ø¯Ø¯.",
             "returns_at": returns_at,
         })
 
 
 class AnimalCatalogView(APIView):
-    """فهرست حیوانات نگهبانی که با طلا قابل خرید هستند."""
+    """ÙÙ‡Ø±Ø³Øª Ø­ÛŒÙˆØ§Ù†Ø§Øª Ù†Ú¯Ù‡Ø¨Ø§Ù†ÛŒ Ú©Ù‡ Ø¨Ø§ Ø·Ù„Ø§ Ù‚Ø§Ø¨Ù„ Ø®Ø±ÛŒØ¯ Ù‡Ø³ØªÙ†Ø¯."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -440,7 +440,7 @@ class AnimalCatalogView(APIView):
 
 
 class VillageAnimalBuyView(APIView):
-    """خرید حیوان نگهبان با سکه طلا برای تقویت دفاع یک دهکده مشخص."""
+    """Ø®Ø±ÛŒØ¯ Ø­ÛŒÙˆØ§Ù† Ù†Ú¯Ù‡Ø¨Ø§Ù† Ø¨Ø§ Ø³Ú©Ù‡ Ø·Ù„Ø§ Ø¨Ø±Ø§ÛŒ ØªÙ‚ÙˆÛŒØª Ø¯ÙØ§Ø¹ ÛŒÚ© Ø¯Ù‡Ú©Ø¯Ù‡ Ù…Ø´Ø®Øµ."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -449,12 +449,12 @@ class VillageAnimalBuyView(APIView):
         quantity = int(request.data.get('quantity', 0))
 
         if quantity <= 0:
-            return Response({"error": "تعداد نامعتبر است."}, status=400)
+            return Response({"error": "ØªØ¹Ø¯Ø§Ø¯ Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª."}, status=400)
 
         try:
             animal = Animal.objects.get(id=animal_id)
         except Animal.DoesNotExist:
-            return Response({"error": "این حیوان در فروشگاه موجود نیست."}, status=404)
+            return Response({"error": "Ø§ÛŒÙ† Ø­ÛŒÙˆØ§Ù† Ø¯Ø± ÙØ±ÙˆØ´Ú¯Ø§Ù‡ Ù…ÙˆØ¬ÙˆØ¯ Ù†ÛŒØ³Øª."}, status=404)
 
         total_cost = animal.gold_price * quantity
 
@@ -462,11 +462,11 @@ class VillageAnimalBuyView(APIView):
             try:
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
             except Village.DoesNotExist:
-                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+                return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
             player = request.user
             if player.gold_coins < total_cost:
-                return Response({"error": "سکه طلای کافی ندارید."}, status=400)
+                return Response({"error": "Ø³Ú©Ù‡ Ø·Ù„Ø§ÛŒ Ú©Ø§ÙÛŒ Ù†Ø¯Ø§Ø±ÛŒØ¯."}, status=400)
 
             player.gold_coins -= total_cost
             player.save()
@@ -477,21 +477,21 @@ class VillageAnimalBuyView(APIView):
             village_animal.count += quantity
             village_animal.save()
 
-        return Response({"message": f"{quantity} عدد {animal.name} برای دفاع از {village.name} خریداری شد."})
+        return Response({"message": f"{quantity} Ø¹Ø¯Ø¯ {animal.name} Ø¨Ø±Ø§ÛŒ Ø¯ÙØ§Ø¹ Ø§Ø² {village.name} Ø®Ø±ÛŒØ¯Ø§Ø±ÛŒ Ø´Ø¯."})
 
 
 class VillageMovementsView(APIView):
     """
-    نمایش نیروهای در حال حرکت (اعزامی و ورودی) برای یک دهکده مشخص.
+    Ù†Ù…Ø§ÛŒØ´ Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ Ø¯Ø± Ø­Ø§Ù„ Ø­Ø±Ú©Øª (Ø§Ø¹Ø²Ø§Ù…ÛŒ Ùˆ ÙˆØ±ÙˆØ¯ÛŒ) Ø¨Ø±Ø§ÛŒ ÛŒÚ© Ø¯Ù‡Ú©Ø¯Ù‡ Ù…Ø´Ø®Øµ.
 
-    قبل از این ویو، هیچ راهی برای بازیکن وجود نداشت که ببیند چه حمله‌ای
-    در راه دهکده‌اش است یا نیروهای اعزامی‌اش کِی می‌رسند - این یکی از
-    حیاتی‌ترین بخش‌های گیم‌پلی تراوین (Rally Point) بود که کاملا غایب بود.
+    Ù‚Ø¨Ù„ Ø§Ø² Ø§ÛŒÙ† ÙˆÛŒÙˆØŒ Ù‡ÛŒÚ† Ø±Ø§Ù‡ÛŒ Ø¨Ø±Ø§ÛŒ Ø¨Ø§Ø²ÛŒÚ©Ù† ÙˆØ¬ÙˆØ¯ Ù†Ø¯Ø§Ø´Øª Ú©Ù‡ Ø¨Ø¨ÛŒÙ†Ø¯ Ú†Ù‡ Ø­Ù…Ù„Ù‡â€ŒØ§ÛŒ
+    Ø¯Ø± Ø±Ø§Ù‡ Ø¯Ù‡Ú©Ø¯Ù‡â€ŒØ§Ø´ Ø§Ø³Øª ÛŒØ§ Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ Ø§Ø¹Ø²Ø§Ù…ÛŒâ€ŒØ§Ø´ Ú©ÙÛŒ Ù…ÛŒâ€ŒØ±Ø³Ù†Ø¯ - Ø§ÛŒÙ† ÛŒÚ©ÛŒ Ø§Ø²
+    Ø­ÛŒØ§ØªÛŒâ€ŒØªØ±ÛŒÙ† Ø¨Ø®Ø´â€ŒÙ‡Ø§ÛŒ Ú¯ÛŒÙ…â€ŒÙ¾Ù„ÛŒ ØªØ±Ø§ÙˆÛŒÙ† (Rally Point) Ø¨ÙˆØ¯ Ú©Ù‡ Ú©Ø§Ù…Ù„Ø§ ØºØ§ÛŒØ¨ Ø¨ÙˆØ¯.
 
-    نکته امنیتی/گیم‌پلی: طبق قوانین اصلی تراوین، مدافع فقط از «حمله‌ای در
-    راه است» و زمان رسیدن خبردار می‌شود، نه از ترکیب دقیق نیروهای مهاجم؛
-    فقط پشتیبانی نظامی (REINFORCEMENT) و بازگشت نیروهای خودی (RETURN) با
-    جزئیات کامل نمایش داده می‌شوند.
+    Ù†Ú©ØªÙ‡ Ø§Ù…Ù†ÛŒØªÛŒ/Ú¯ÛŒÙ…â€ŒÙ¾Ù„ÛŒ: Ø·Ø¨Ù‚ Ù‚ÙˆØ§Ù†ÛŒÙ† Ø§ØµÙ„ÛŒ ØªØ±Ø§ÙˆÛŒÙ†ØŒ Ù…Ø¯Ø§ÙØ¹ ÙÙ‚Ø· Ø§Ø² Â«Ø­Ù…Ù„Ù‡â€ŒØ§ÛŒ Ø¯Ø±
+    Ø±Ø§Ù‡ Ø§Ø³ØªÂ» Ùˆ Ø²Ù…Ø§Ù† Ø±Ø³ÛŒØ¯Ù† Ø®Ø¨Ø±Ø¯Ø§Ø± Ù…ÛŒâ€ŒØ´ÙˆØ¯ØŒ Ù†Ù‡ Ø§Ø² ØªØ±Ú©ÛŒØ¨ Ø¯Ù‚ÛŒÙ‚ Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ Ù…Ù‡Ø§Ø¬Ù…Ø›
+    ÙÙ‚Ø· Ù¾Ø´ØªÛŒØ¨Ø§Ù†ÛŒ Ù†Ø¸Ø§Ù…ÛŒ (REINFORCEMENT) Ùˆ Ø¨Ø§Ø²Ú¯Ø´Øª Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ Ø®ÙˆØ¯ÛŒ (RETURN) Ø¨Ø§
+    Ø¬Ø²Ø¦ÛŒØ§Øª Ú©Ø§Ù…Ù„ Ù†Ù…Ø§ÛŒØ´ Ø¯Ø§Ø¯Ù‡ Ù…ÛŒâ€ŒØ´ÙˆÙ†Ø¯.
     """
     permission_classes = [IsAuthenticated]
 
@@ -500,7 +500,7 @@ class VillageMovementsView(APIView):
         try:
             village = Village.objects.get(id=village_id, player=request.user)
         except (Village.DoesNotExist, ValueError, TypeError):
-            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
         now = timezone.now()
 
@@ -539,8 +539,8 @@ class VillageMovementsView(APIView):
                 data["troops_payload"] = m.troops_payload
                 data["is_hostile"] = False
             else:
-                # حمله/غارت/شناسایی: ترکیب نیرو و نام دقیق مبدا مخفی می‌ماند
-                data["movement_type_display"] = "⚔️ حمله در راه است"
+                # Ø­Ù…Ù„Ù‡/ØºØ§Ø±Øª/Ø´Ù†Ø§Ø³Ø§ÛŒÛŒ: ØªØ±Ú©ÛŒØ¨ Ù†ÛŒØ±Ùˆ Ùˆ Ù†Ø§Ù… Ø¯Ù‚ÛŒÙ‚ Ù…Ø¨Ø¯Ø§ Ù…Ø®ÙÛŒ Ù…ÛŒâ€ŒÙ…Ø§Ù†Ø¯
+                data["movement_type_display"] = "âš”ï¸ Ø­Ù…Ù„Ù‡ Ø¯Ø± Ø±Ø§Ù‡ Ø§Ø³Øª"
                 data["source_name"] = None
                 data["troops_payload"] = None
                 data["is_hostile"] = True
@@ -553,12 +553,12 @@ class VillageMovementsView(APIView):
 
 
 class FarmListView(APIView):
-    """فهرست کامل و ایجاد ردیف جدید در یک فارم‌لیست مشخص."""
+    """ÙÙ‡Ø±Ø³Øª Ú©Ø§Ù…Ù„ Ùˆ Ø§ÛŒØ¬Ø§Ø¯ Ø±Ø¯ÛŒÙ Ø¬Ø¯ÛŒØ¯ Ø¯Ø± ÛŒÚ© ÙØ§Ø±Ù…â€ŒÙ„ÛŒØ³Øª Ù…Ø´Ø®Øµ."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         if not request.user.has_gold_club:
-            return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
+            return Response({"error": "Ø¨Ø±Ø§ÛŒ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² Ù„ÛŒØ³Øª Ù…Ø²Ø±Ø¹Ù‡ Ø¨Ù‡ Ú©Ù„ÙˆÙ¾ Ø·Ù„Ø§ÛŒÛŒ Ù†ÛŒØ§Ø² Ø¯Ø§Ø±ÛŒØ¯."}, status=403)
 
         farm_list_id = request.query_params.get('farm_list_id')
         entries = FarmListEntry.objects.filter(player=request.user).select_related('source_village', 'target_village')
@@ -584,7 +584,7 @@ class FarmListView(APIView):
 
     def post(self, request):
         if not request.user.has_gold_club:
-            return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
+            return Response({"error": "Ø¨Ø±Ø§ÛŒ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² Ù„ÛŒØ³Øª Ù…Ø²Ø±Ø¹Ù‡ Ø¨Ù‡ Ú©Ù„ÙˆÙ¾ Ø·Ù„Ø§ÛŒÛŒ Ù†ÛŒØ§Ø² Ø¯Ø§Ø±ÛŒØ¯."}, status=403)
 
         farm_list_id = request.data.get('farm_list_id')
         source_id = request.data.get('source_village_id')
@@ -592,32 +592,32 @@ class FarmListView(APIView):
         troops_payload = request.data.get('troops_payload', {})
 
         if not troops_payload or not any(int(v or 0) > 0 for v in troops_payload.values()):
-            return Response({"error": "حداقل یک نوع نیرو برای این ردیف مشخص کنید."}, status=400)
+            return Response({"error": "Ø­Ø¯Ø§Ù‚Ù„ ÛŒÚ© Ù†ÙˆØ¹ Ù†ÛŒØ±Ùˆ Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† Ø±Ø¯ÛŒÙ Ù…Ø´Ø®Øµ Ú©Ù†ÛŒØ¯."}, status=400)
 
         farm_list = None
         if farm_list_id:
             try:
                 farm_list = FarmList.objects.get(id=farm_list_id, player=request.user)
             except FarmList.DoesNotExist:
-                return Response({"error": "فارم‌لیست انتخابی یافت نشد."}, status=404)
+                return Response({"error": "ÙØ§Ø±Ù…â€ŒÙ„ÛŒØ³Øª Ø§Ù†ØªØ®Ø§Ø¨ÛŒ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
         else:
-            # ✅ سازگاری: اگر فارم‌لیستی انتخاب نشده بود، یک لیست پیش‌فرض ساخته/استفاده می‌شود
+            # âœ… Ø³Ø§Ø²Ú¯Ø§Ø±ÛŒ: Ø§Ú¯Ø± ÙØ§Ø±Ù…â€ŒÙ„ÛŒØ³ØªÛŒ Ø§Ù†ØªØ®Ø§Ø¨ Ù†Ø´Ø¯Ù‡ Ø¨ÙˆØ¯ØŒ ÛŒÚ© Ù„ÛŒØ³Øª Ù¾ÛŒØ´â€ŒÙØ±Ø¶ Ø³Ø§Ø®ØªÙ‡/Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒØ´ÙˆØ¯
             farm_list, _ = FarmList.objects.get_or_create(
-                player=request.user, name='لیست مزرعه', defaults={}
+                player=request.user, name='Ù„ÛŒØ³Øª Ù…Ø²Ø±Ø¹Ù‡', defaults={}
             )
 
         try:
             source_village = Village.objects.get(id=source_id, player=request.user)
         except (Village.DoesNotExist, ValueError, TypeError):
-            return Response({"error": "دهکده مبدا یافت نشد یا متعلق به شما نیست."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ Ù…Ø¨Ø¯Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
         try:
             target_village = Village.objects.get(id=target_id)
         except (Village.DoesNotExist, ValueError, TypeError):
-            return Response({"error": "دهکده مقصد یافت نشد."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ Ù…Ù‚ØµØ¯ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         if source_village.id == target_village.id:
-            return Response({"error": "نمی‌توانید دهکده خودتان را هدف مزرعه قرار دهید."}, status=400)
+            return Response({"error": "Ù†Ù…ÛŒâ€ŒØªÙˆØ§Ù†ÛŒØ¯ Ø¯Ù‡Ú©Ø¯Ù‡ Ø®ÙˆØ¯ØªØ§Ù† Ø±Ø§ Ù‡Ø¯Ù Ù…Ø²Ø±Ø¹Ù‡ Ù‚Ø±Ø§Ø± Ø¯Ù‡ÛŒØ¯."}, status=400)
 
         entry = FarmListEntry.objects.create(
             player=request.user,
@@ -626,22 +626,22 @@ class FarmListView(APIView):
             target_village=target_village,
             troops_payload=troops_payload,
         )
-        return Response({"message": "ردیف جدید به لیست مزرعه اضافه شد.", "id": entry.id}, status=201)
+        return Response({"message": "Ø±Ø¯ÛŒÙ Ø¬Ø¯ÛŒØ¯ Ø¨Ù‡ Ù„ÛŒØ³Øª Ù…Ø²Ø±Ø¹Ù‡ Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯.", "id": entry.id}, status=201)
 
 
 class FarmListEntryDetailView(APIView):
-    """حذف یک ردیف از لیست مزرعه."""
+    """Ø­Ø°Ù ÛŒÚ© Ø±Ø¯ÛŒÙ Ø§Ø² Ù„ÛŒØ³Øª Ù…Ø²Ø±Ø¹Ù‡."""
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, entry_id):
         deleted, _ = FarmListEntry.objects.filter(id=entry_id, player=request.user).delete()
         if not deleted:
-            return Response({"error": "ردیف مورد نظر یافت نشد."}, status=404)
-        return Response({"message": "ردیف از لیست مزرعه حذف شد."})
+            return Response({"error": "Ø±Ø¯ÛŒÙ Ù…ÙˆØ±Ø¯ Ù†Ø¸Ø± ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
+        return Response({"message": "Ø±Ø¯ÛŒÙ Ø§Ø² Ù„ÛŒØ³Øª Ù…Ø²Ø±Ø¹Ù‡ Ø­Ø°Ù Ø´Ø¯."})
 
 
 class FarmListRunView(APIView):
-    """اجرای یک ردیف (entry_id)، یک لیست کامل (farm_list_id)، یا کل ردیف‌های بازیکن (run_all)."""
+    """Ø§Ø¬Ø±Ø§ÛŒ ÛŒÚ© Ø±Ø¯ÛŒÙ (entry_id)ØŒ ÛŒÚ© Ù„ÛŒØ³Øª Ú©Ø§Ù…Ù„ (farm_list_id)ØŒ ÛŒØ§ Ú©Ù„ Ø±Ø¯ÛŒÙâ€ŒÙ‡Ø§ÛŒ Ø¨Ø§Ø²ÛŒÚ©Ù† (run_all)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -650,7 +650,7 @@ class FarmListRunView(APIView):
         run_all = request.data.get('run_all', False)
 
         if not entry_id and not farm_list_id and not run_all:
-            return Response({"error": "باید entry_id، farm_list_id یا run_all مشخص شود."}, status=400)
+            return Response({"error": "Ø¨Ø§ÛŒØ¯ entry_idØŒ farm_list_id ÛŒØ§ run_all Ù…Ø´Ø®Øµ Ø´ÙˆØ¯."}, status=400)
 
         entries_qs = FarmListEntry.objects.filter(player=request.user).select_related('source_village', 'target_village')
         if entry_id:
@@ -673,18 +673,18 @@ class FarmListRunView(APIView):
                 "entry_id": entry.id,
                 "target_name": entry.target_village.name,
                 "success": success,
-                "message": "اعزام شد" if success else result,
+                "message": "Ø§Ø¹Ø²Ø§Ù… Ø´Ø¯" if success else result,
             })
 
         dispatched_count = sum(1 for r in results if r["success"])
         return Response({
-            "message": f"{dispatched_count} از {len(results)} ردیف با موفقیت اعزام شد.",
+            "message": f"{dispatched_count} Ø§Ø² {len(results)} Ø±Ø¯ÛŒÙ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø§Ø¹Ø²Ø§Ù… Ø´Ø¯.",
             "results": results,
         })
 
 
 class TroopEvasionView(APIView):
-    """فعال/غیرفعال کردن فرار نیروها - فقط برای اعضای کلوپ طلایی."""
+    """ÙØ¹Ø§Ù„/ØºÛŒØ±ÙØ¹Ø§Ù„ Ú©Ø±Ø¯Ù† ÙØ±Ø§Ø± Ù†ÛŒØ±ÙˆÙ‡Ø§ - ÙÙ‚Ø· Ø¨Ø±Ø§ÛŒ Ø§Ø¹Ø¶Ø§ÛŒ Ú©Ù„ÙˆÙ¾ Ø·Ù„Ø§ÛŒÛŒ."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -692,12 +692,12 @@ class TroopEvasionView(APIView):
         player = request.user
 
         if not player.has_gold_club:
-            return Response({"error": "برای استفاده از این قابلیت به کلوپ طلایی نیاز دارید."}, status=403)
+            return Response({"error": "Ø¨Ø±Ø§ÛŒ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² Ø§ÛŒÙ† Ù‚Ø§Ø¨Ù„ÛŒØª Ø¨Ù‡ Ú©Ù„ÙˆÙ¾ Ø·Ù„Ø§ÛŒÛŒ Ù†ÛŒØ§Ø² Ø¯Ø§Ø±ÛŒØ¯."}, status=403)
 
         try:
             village = Village.objects.get(id=village_id, player=player)
         except Village.DoesNotExist:
-            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
         evasion, _ = TroopEvasionSetting.objects.get_or_create(village=village)
         return Response({
@@ -711,26 +711,26 @@ class TroopEvasionView(APIView):
         player = request.user
 
         if not player.has_gold_club:
-            return Response({"error": "برای استفاده از این قابلیت به کلوپ طلایی نیاز دارید."}, status=403)
+            return Response({"error": "Ø¨Ø±Ø§ÛŒ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² Ø§ÛŒÙ† Ù‚Ø§Ø¨Ù„ÛŒØª Ø¨Ù‡ Ú©Ù„ÙˆÙ¾ Ø·Ù„Ø§ÛŒÛŒ Ù†ÛŒØ§Ø² Ø¯Ø§Ø±ÛŒØ¯."}, status=403)
 
         try:
             village = Village.objects.get(id=village_id, player=player)
         except Village.DoesNotExist:
-            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
         evasion, _ = TroopEvasionSetting.objects.get_or_create(village=village)
         evasion.is_enabled = bool(is_enabled)
         evasion.save()
 
-        status_text = "فعال" if evasion.is_enabled else "غیرفعال"
+        status_text = "ÙØ¹Ø§Ù„" if evasion.is_enabled else "ØºÛŒØ±ÙØ¹Ø§Ù„"
         return Response({
-            "message": f"فرار نیروها {status_text} شد.",
+            "message": f"ÙØ±Ø§Ø± Ù†ÛŒØ±ÙˆÙ‡Ø§ {status_text} Ø´Ø¯.",
             "is_evasion_enabled": evasion.is_enabled,
         })
 
 
 class BlacksmithView(APIView):
-    """وضعیت و شروع ارتقای نیرو در آهنگری یک دهکده مشخص."""
+    """ÙˆØ¶Ø¹ÛŒØª Ùˆ Ø´Ø±ÙˆØ¹ Ø§Ø±ØªÙ‚Ø§ÛŒ Ù†ÛŒØ±Ùˆ Ø¯Ø± Ø¢Ù‡Ù†Ú¯Ø±ÛŒ ÛŒÚ© Ø¯Ù‡Ú©Ø¯Ù‡ Ù…Ø´Ø®Øµ."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -738,11 +738,11 @@ class BlacksmithView(APIView):
         try:
             village = Village.objects.get(id=village_id, player=request.user)
         except (Village.DoesNotExist, ValueError, TypeError):
-            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+            return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
-        blacksmith = VillageBuilding.objects.filter(village=village, building_type__name="آهنگری").first()
+        blacksmith = VillageBuilding.objects.filter(village=village, building_type__name="Ø¢Ù‡Ù†Ú¯Ø±ÛŒ").first()
         if not blacksmith or blacksmith.level <= 0:
-            return Response({"error": "ابتدا باید آهنگری بسازید.", "has_blacksmith": False}, status=400)
+            return Response({"error": "Ø§Ø¨ØªØ¯Ø§ Ø¨Ø§ÛŒØ¯ Ø¢Ù‡Ù†Ú¯Ø±ÛŒ Ø¨Ø³Ø§Ø²ÛŒØ¯.", "has_blacksmith": False}, status=400)
 
         troop_types = TroopType.objects.filter(tribe=request.user.tribe)
         upgrades = {u.troop_type_id: u for u in TroopUpgrade.objects.filter(village=village)}
@@ -777,24 +777,24 @@ class BlacksmithView(APIView):
             try:
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
             except Village.DoesNotExist:
-                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+                return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
-            blacksmith = VillageBuilding.objects.filter(village=village, building_type__name="آهنگری").first()
+            blacksmith = VillageBuilding.objects.filter(village=village, building_type__name="Ø¢Ù‡Ù†Ú¯Ø±ÛŒ").first()
             if not blacksmith or blacksmith.level <= 0:
-                return Response({"error": "ابتدا باید آهنگری بسازید."}, status=400)
+                return Response({"error": "Ø§Ø¨ØªØ¯Ø§ Ø¨Ø§ÛŒØ¯ Ø¢Ù‡Ù†Ú¯Ø±ÛŒ Ø¨Ø³Ø§Ø²ÛŒØ¯."}, status=400)
 
             try:
                 troop_type = TroopType.objects.get(id=troop_type_id, tribe=request.user.tribe)
             except TroopType.DoesNotExist:
-                return Response({"error": "این نیرو مختص نژاد شما نیست."}, status=400)
+                return Response({"error": "Ø§ÛŒÙ† Ù†ÛŒØ±Ùˆ Ù…Ø®ØªØµ Ù†Ú˜Ø§Ø¯ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=400)
 
             upgrade, _ = TroopUpgrade.objects.select_for_update().get_or_create(
                 village=village, troop_type=troop_type
             )
             if upgrade.is_upgrading:
-                return Response({"error": "این نیرو در حال حاضر در حال ارتقا است."}, status=400)
+                return Response({"error": "Ø§ÛŒÙ† Ù†ÛŒØ±Ùˆ Ø¯Ø± Ø­Ø§Ù„ Ø­Ø§Ø¶Ø± Ø¯Ø± Ø­Ø§Ù„ Ø§Ø±ØªÙ‚Ø§ Ø§Ø³Øª."}, status=400)
             if upgrade.level >= TroopUpgrade.MAX_LEVEL:
-                return Response({"error": f"این نیرو به حداکثر لول ({TroopUpgrade.MAX_LEVEL}) رسیده."}, status=400)
+                return Response({"error": f"Ø§ÛŒÙ† Ù†ÛŒØ±Ùˆ Ø¨Ù‡ Ø­Ø¯Ø§Ú©Ø«Ø± Ù„ÙˆÙ„ ({TroopUpgrade.MAX_LEVEL}) Ø±Ø³ÛŒØ¯Ù‡."}, status=400)
 
             next_level = upgrade.level + 1
             req_wood = int(troop_type.wood_cost * 1.6 * next_level)
@@ -803,13 +803,13 @@ class BlacksmithView(APIView):
             req_crop = int(troop_type.crop_cost * 1.6 * next_level)
 
             if village.wood < req_wood or village.clay < req_clay or village.iron < req_iron or village.crop < req_crop:
-                return Response({"error": "منابع کافی نیست."}, status=400)
+                return Response({"error": "Ù…Ù†Ø§Ø¨Ø¹ Ú©Ø§ÙÛŒ Ù†ÛŒØ³Øª."}, status=400)
 
             village.wood -= req_wood; village.clay -= req_clay
             village.iron -= req_iron; village.crop -= req_crop
             village.save()
 
-            duration = 1800 * next_level  # هر لول ۳۰ دقیقه پایه (تحت تاثیر سرعت سرور نیست، ولی می‌توان مشابه بالا اضافه کرد)
+            duration = 1800 * next_level  # Ù‡Ø± Ù„ÙˆÙ„ Û³Û° Ø¯Ù‚ÛŒÙ‚Ù‡ Ù¾Ø§ÛŒÙ‡ (ØªØ­Øª ØªØ§Ø«ÛŒØ± Ø³Ø±Ø¹Øª Ø³Ø±ÙˆØ± Ù†ÛŒØ³ØªØŒ ÙˆÙ„ÛŒ Ù…ÛŒâ€ŒØªÙˆØ§Ù† Ù…Ø´Ø§Ø¨Ù‡ Ø¨Ø§Ù„Ø§ Ø§Ø¶Ø§ÙÙ‡ Ú©Ø±Ø¯)
             upgrade.is_upgrading = True
             upgrade.upgrade_ends_at = timezone.now() + datetime.timedelta(seconds=duration)
             upgrade.save()
@@ -819,11 +819,11 @@ class BlacksmithView(APIView):
                 args=[upgrade.id], eta=upgrade.upgrade_ends_at
             ))
 
-        return Response({"message": f"ارتقای {troop_type.name} به لول {next_level} آغاز شد."})
+        return Response({"message": f"Ø§Ø±ØªÙ‚Ø§ÛŒ {troop_type.name} Ø¨Ù‡ Ù„ÙˆÙ„ {next_level} Ø¢ØºØ§Ø² Ø´Ø¯."})
 
 
 class HeroAllocatePointsView(APIView):
-    """تخصیص امتیازهای قابل توزیع قهرمان (قدرت مبارزه/تهاجمی/دفاعی/منابع)."""
+    """ØªØ®ØµÛŒØµ Ø§Ù…ØªÛŒØ§Ø²Ù‡Ø§ÛŒ Ù‚Ø§Ø¨Ù„ ØªÙˆØ²ÛŒØ¹ Ù‚Ù‡Ø±Ù…Ø§Ù† (Ù‚Ø¯Ø±Øª Ù…Ø¨Ø§Ø±Ø²Ù‡/ØªÙ‡Ø§Ø¬Ù…ÛŒ/Ø¯ÙØ§Ø¹ÛŒ/Ù…Ù†Ø§Ø¨Ø¹)."""
     permission_classes = [IsAuthenticated]
 
     ATTRIBUTE_FIELDS = {
@@ -842,47 +842,47 @@ class HeroAllocatePointsView(APIView):
 
         field_name = self.ATTRIBUTE_FIELDS.get(attribute)
         if not field_name or amount <= 0:
-            return Response({"error": "خصیصه یا مقدار نامعتبر است."}, status=400)
+            return Response({"error": "Ø®ØµÛŒØµÙ‡ ÛŒØ§ Ù…Ù‚Ø¯Ø§Ø± Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª."}, status=400)
 
         try:
             hero = Hero.objects.get(player=request.user)
         except Hero.DoesNotExist:
-            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+            return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù†ÛŒ Ø¨Ø±Ø§ÛŒ Ø´Ù…Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         if amount > hero.available_attribute_points:
-            return Response({"error": "امتیاز کافی برای این تخصیص ندارید."}, status=400)
+            return Response({"error": "Ø§Ù…ØªÛŒØ§Ø² Ú©Ø§ÙÛŒ Ø¨Ø±Ø§ÛŒ Ø§ÛŒÙ† ØªØ®ØµÛŒØµ Ù†Ø¯Ø§Ø±ÛŒØ¯."}, status=400)
 
         setattr(hero, field_name, getattr(hero, field_name) + amount)
         hero.save()
 
         return Response({
-            "message": "امتیاز با موفقیت تخصیص یافت.",
+            "message": "Ø§Ù…ØªÛŒØ§Ø² Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª ØªØ®ØµÛŒØµ ÛŒØ§ÙØª.",
             "available_attribute_points": hero.available_attribute_points,
         })
 
 
 class HeroSettingsView(APIView):
-    """تنظیم نوع منبع تولیدی قهرمان و مشارکت در دفاع دهکده خانگی."""
+    """ØªÙ†Ø¸ÛŒÙ… Ù†ÙˆØ¹ Ù…Ù†Ø¨Ø¹ ØªÙˆÙ„ÛŒØ¯ÛŒ Ù‚Ù‡Ø±Ù…Ø§Ù† Ùˆ Ù…Ø´Ø§Ø±Ú©Øª Ø¯Ø± Ø¯ÙØ§Ø¹ Ø¯Ù‡Ú©Ø¯Ù‡ Ø®Ø§Ù†Ú¯ÛŒ."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
             hero = Hero.objects.get(player=request.user)
         except Hero.DoesNotExist:
-            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+            return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù†ÛŒ Ø¨Ø±Ø§ÛŒ Ø´Ù…Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         resource_type = request.data.get('resource_production_type')
         if resource_type:
             valid_types = dict(Hero.RESOURCE_CHOICES)
             if resource_type not in valid_types:
-                return Response({"error": "نوع منبع نامعتبر است."}, status=400)
+                return Response({"error": "Ù†ÙˆØ¹ Ù…Ù†Ø¨Ø¹ Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª."}, status=400)
             hero.resource_production_type = resource_type
 
         if 'participates_in_defense' in request.data:
             hero.participates_in_defense = bool(request.data.get('participates_in_defense'))
 
         hero.save()
-        return Response({"message": "تنظیمات قهرمان به‌روزرسانی شد."})
+        return Response({"message": "ØªÙ†Ø¸ÛŒÙ…Ø§Øª Ù‚Ù‡Ø±Ù…Ø§Ù† Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯."})
 
 
 class HeroReviveView(APIView):
@@ -898,34 +898,34 @@ class HeroReviveView(APIView):
         try:
             hero = Hero.objects.get(player=request.user)
         except Hero.DoesNotExist:
-            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+            return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù†ÛŒ Ø¨Ø±Ø§ÛŒ Ø´Ù…Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
         return Response({"is_alive": hero.is_alive, "cost": self._calculate_cost(hero)})
 
     def post(self, request):
         village_id = request.data.get('village_id')
 
-        # ✅ FIX: select_for_update حالا داخل transaction.atomic() است.
-        # قبلا خارج از هر تراکنشی بود و روی Postgres با
-        # TransactionManagementError کرش می‌کرد.
+        # âœ… FIX: select_for_update Ø­Ø§Ù„Ø§ Ø¯Ø§Ø®Ù„ transaction.atomic() Ø§Ø³Øª.
+        # Ù‚Ø¨Ù„Ø§ Ø®Ø§Ø±Ø¬ Ø§Ø² Ù‡Ø± ØªØ±Ø§Ú©Ù†Ø´ÛŒ Ø¨ÙˆØ¯ Ùˆ Ø±ÙˆÛŒ Postgres Ø¨Ø§
+        # TransactionManagementError Ú©Ø±Ø´ Ù…ÛŒâ€ŒÚ©Ø±Ø¯.
         with transaction.atomic():
             try:
                 hero = Hero.objects.select_for_update().get(player=request.user)
             except Hero.DoesNotExist:
-                return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+                return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù†ÛŒ Ø¨Ø±Ø§ÛŒ Ø´Ù…Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
             if hero.is_alive:
-                return Response({"error": "قهرمان شما در حال حاضر زنده است."}, status=400)
+                return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù† Ø´Ù…Ø§ Ø¯Ø± Ø­Ø§Ù„ Ø­Ø§Ø¶Ø± Ø²Ù†Ø¯Ù‡ Ø§Ø³Øª."}, status=400)
 
             cost = self._calculate_cost(hero)
 
             try:
                 village = Village.objects.select_for_update().get(id=village_id, player=request.user)
             except Village.DoesNotExist:
-                return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+                return Response({"error": "Ø¯Ù‡Ú©Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ Ø´Ù…Ø§ Ù†ÛŒØ³Øª."}, status=404)
 
             if (village.wood < cost['wood'] or village.clay < cost['clay'] or
                     village.iron < cost['iron'] or village.crop < cost['crop']):
-                return Response({"error": "منابع این دهکده برای احیای قهرمان کافی نیست."}, status=400)
+                return Response({"error": "Ù…Ù†Ø§Ø¨Ø¹ Ø§ÛŒÙ† Ø¯Ù‡Ú©Ø¯Ù‡ Ø¨Ø±Ø§ÛŒ Ø§Ø­ÛŒØ§ÛŒ Ù‚Ù‡Ø±Ù…Ø§Ù† Ú©Ø§ÙÛŒ Ù†ÛŒØ³Øª."}, status=400)
 
             village.wood -= cost['wood']
             village.clay -= cost['clay']
@@ -939,11 +939,11 @@ class HeroReviveView(APIView):
             hero.last_health_update = timezone.now()
             hero.save()
 
-        return Response({"message": "قهرمان شما با موفقیت احیا شد و در حال استراحت است."})
+        return Response({"message": "Ù‚Ù‡Ø±Ù…Ø§Ù† Ø´Ù…Ø§ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø§Ø­ÛŒØ§ Ø´Ø¯ Ùˆ Ø¯Ø± Ø­Ø§Ù„ Ø§Ø³ØªØ±Ø§Ø­Øª Ø§Ø³Øª."})
 
 
 class HeroAppearanceView(APIView):
-    """ذخیره‌ی ظاهر سفارشی قهرمان (بخش «ظاهر» مشابه تراوین اصلی)."""
+    """Ø°Ø®ÛŒØ±Ù‡â€ŒÛŒ Ø¸Ø§Ù‡Ø± Ø³ÙØ§Ø±Ø´ÛŒ Ù‚Ù‡Ø±Ù…Ø§Ù† (Ø¨Ø®Ø´ Â«Ø¸Ø§Ù‡Ø±Â» Ù…Ø´Ø§Ø¨Ù‡ ØªØ±Ø§ÙˆÛŒÙ† Ø§ØµÙ„ÛŒ)."""
     permission_classes = [IsAuthenticated]
 
     APPEARANCE_FIELDS = [
@@ -955,12 +955,12 @@ class HeroAppearanceView(APIView):
         try:
             hero = Hero.objects.get(player=request.user)
         except Hero.DoesNotExist:
-            return Response({"error": "قهرمانی برای شما یافت نشد."}, status=404)
+            return Response({"error": "Ù‚Ù‡Ø±Ù…Ø§Ù†ÛŒ Ø¨Ø±Ø§ÛŒ Ø´Ù…Ø§ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         gender = request.data.get('gender')
         if gender:
             if gender not in dict(Hero.GENDER_CHOICES):
-                return Response({"error": "جنسیت نامعتبر است."}, status=400)
+                return Response({"error": "Ø¬Ù†Ø³ÛŒØª Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª."}, status=400)
             hero.gender = gender
 
         for field in self.APPEARANCE_FIELDS:
@@ -968,14 +968,100 @@ class HeroAppearanceView(APIView):
                 try:
                     value = int(request.data[field])
                 except (TypeError, ValueError):
-                    return Response({"error": f"مقدار {field} نامعتبر است."}, status=400)
+                    return Response({"error": f"Ù…Ù‚Ø¯Ø§Ø± {field} Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª."}, status=400)
                 if not (1 <= value <= Hero.APPEARANCE_OPTION_COUNT):
-                    return Response({"error": f"مقدار {field} خارج از محدوده مجاز است."}, status=400)
+                    return Response({"error": f"Ù…Ù‚Ø¯Ø§Ø± {field} Ø®Ø§Ø±Ø¬ Ø§Ø² Ù…Ø­Ø¯ÙˆØ¯Ù‡ Ù…Ø¬Ø§Ø² Ø§Ø³Øª."}, status=400)
                 setattr(hero, field, value)
 
         hero.save()
-        return Response({"message": "ظاهر قهرمان با موفقیت ذخیره شد."})
+        return Response({"message": "Ø¸Ø§Ù‡Ø± Ù‚Ù‡Ø±Ù…Ø§Ù† Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯."})
 
+
+
+
+class HeroImageView(APIView):
+    """تولید پویای تصویر قهرمان با ترکیب لایه‌های PNG (دقیقا مثل hero_image.php تراوین اصلی)."""
+    permission_classes = [IsAuthenticated]
+
+    COLOR_MAP = {1: 'black', 2: 'brown', 3: 'darkbrown', 4: 'yellow', 5: 'red'}
+    SIZE_MAP = {'sideinfo': '119x136', 'profile': '31x40', 'inventory': '64x82', 'full': '254x330'}
+
+    def get(self, request):
+        from PIL import Image
+        from django.http import HttpResponse
+        from django.conf import settings as django_settings
+        import os
+
+        hero, _ = Hero.objects.get_or_create(player=request.user)
+        size_key = request.query_params.get('size', 'sideinfo')
+        size = self.SIZE_MAP.get(size_key, '119x136')
+
+        gdir = 'male' if hero.gender == 'MALE' else 'female'
+        color = self.COLOR_MAP.get(hero.hair_color, 'black')
+        base_path = os.path.join(django_settings.STATICFILES_DIRS[0], 'hero', 'faces', gdir, size)
+
+        def load(path):
+            try:
+                return Image.open(path).convert('RGBA')
+            except Exception:
+                return None
+
+        body = load(os.path.join(base_path, 'face0.png'))
+        if body is None:
+            return HttpResponse(status=404)
+
+        eye_idx = (hero.eye_style - 1) % 5
+        eye = load(os.path.join(base_path, 'eye', f'eye{eye_idx}.png'))
+        if eye:
+            body.paste(eye, (0, 0), eye)
+
+        eyebrow_idx = (hero.eyebrow_style - 1) % 5
+        if hero.gender == 'MALE':
+            eyebrow = load(os.path.join(base_path, 'eyebrow', f'eyebrow{eyebrow_idx}-{color}.png'))
+        else:
+            eyebrow = load(os.path.join(base_path, 'eyebrow', f'eyebrow{eyebrow_idx}.png'))
+        if eyebrow:
+            body.paste(eyebrow, (0, 0), eyebrow)
+
+        hair_idx = (hero.hair_style - 1) % 5
+        hair = load(os.path.join(base_path, 'hair', f'hair{hair_idx}-{color}.png'))
+        if hair:
+            body.paste(hair, (0, 0), hair)
+
+        ear_idx = (hero.ear_style - 1) % 5
+        ear = load(os.path.join(base_path, 'ear', f'ear{ear_idx}.png'))
+        if ear:
+            body.paste(ear, (0, 0), ear)
+
+        mouth_idx = (hero.mouth_style - 1) % 4
+        mouth = load(os.path.join(base_path, 'mouth', f'mouth{mouth_idx}.png'))
+        if mouth:
+            body.paste(mouth, (0, 0), mouth)
+
+        nose_idx = (hero.nose_style - 1) % 5
+        nose = load(os.path.join(base_path, 'nose', f'nose{nose_idx}.png'))
+        if nose:
+            body.paste(nose, (0, 0), nose)
+
+        face_idx = (hero.head_style - 1) % 5
+        face = load(os.path.join(base_path, 'face', f'face{face_idx}.png'))
+        if face:
+            body.paste(face, (0, 0), face)
+
+        if hero.gender == 'MALE':
+            beard_idx = (hero.head_style - 1) % 5
+            beard = load(os.path.join(base_path, 'beard', f'beard{beard_idx}-{color}.png'))
+            if beard:
+                body.paste(beard, (0, 0), beard)
+
+        from io import BytesIO
+        buf = BytesIO()
+        body.save(buf, format='PNG', optimize=True)
+        buf.seek(0)
+
+        response = HttpResponse(buf.getvalue(), content_type='image/png')
+        response['Cache-Control'] = 'private, max-age=60'
+        return response
 
 class CombatReportListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1041,7 +1127,7 @@ class CombatReportDetailView(APIView):
                 Q(id=report_id) & (Q(attacker_player=request.user) | Q(defender_player=request.user))
             )
         except CombatReport.DoesNotExist:
-            return Response({"error": "گزارش یافت نشد."}, status=404)
+            return Response({"error": "Ú¯Ø²Ø§Ø±Ø´ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         is_attacker = r.attacker_player_id == request.user.id
         if is_attacker and not r.is_read_by_attacker:
@@ -1081,14 +1167,14 @@ class CombatReportDetailView(APIView):
                 Q(id=report_id) & (Q(attacker_player=request.user) | Q(defender_player=request.user))
             )
         except CombatReport.DoesNotExist:
-            return Response({"error": "گزارش یافت نشد."}, status=404)
+            return Response({"error": "Ú¯Ø²Ø§Ø±Ø´ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         if r.attacker_player_id == request.user.id:
             r.hidden_from_attacker = True
         else:
             r.hidden_from_defender = True
         r.save()
-        return Response({"message": "گزارش حذف شد."})
+        return Response({"message": "Ú¯Ø²Ø§Ø±Ø´ Ø­Ø°Ù Ø´Ø¯."})
 
 
 class TrappedTroopsListView(APIView):
@@ -1112,7 +1198,7 @@ class TrappedTroopsListView(APIView):
 
 
 class ReleaseTrappedTroopsView(APIView):
-    """صاحب تله می‌تواند از سر لطف نیروهای اسیر را آزاد کند تا به مالک اصلی بازگردند."""
+    """ØµØ§Ø­Ø¨ ØªÙ„Ù‡ Ù…ÛŒâ€ŒØªÙˆØ§Ù†Ø¯ Ø§Ø² Ø³Ø± Ù„Ø·Ù Ù†ÛŒØ±ÙˆÙ‡Ø§ÛŒ Ø§Ø³ÛŒØ± Ø±Ø§ Ø¢Ø²Ø§Ø¯ Ú©Ù†Ø¯ ØªØ§ Ø¨Ù‡ Ù…Ø§Ù„Ú© Ø§ØµÙ„ÛŒ Ø¨Ø§Ø²Ú¯Ø±Ø¯Ù†Ø¯."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request, entry_id):
@@ -1121,7 +1207,7 @@ class ReleaseTrappedTroopsView(APIView):
                 'trapper_village', 'troop_type', 'original_owner_player'
             ).get(id=entry_id, trapper_village__player=request.user)
         except TrappedTroop.DoesNotExist:
-            return Response({"error": "این نیروی اسیرشده یافت نشد."}, status=404)
+            return Response({"error": "Ø§ÛŒÙ† Ù†ÛŒØ±ÙˆÛŒ Ø§Ø³ÛŒØ±Ø´Ø¯Ù‡ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         home_village = Village.objects.filter(
             player=entry.original_owner_player, is_capital=True
@@ -1133,9 +1219,9 @@ class ReleaseTrappedTroopsView(APIView):
             )
             vt.count += entry.count
             vt.save()
-            message = f"{entry.count} نیروی {entry.troop_type.name} آزاد شد و به {home_village.name} بازگشت."
+            message = f"{entry.count} Ù†ÛŒØ±ÙˆÛŒ {entry.troop_type.name} Ø¢Ø²Ø§Ø¯ Ø´Ø¯ Ùˆ Ø¨Ù‡ {home_village.name} Ø¨Ø§Ø²Ú¯Ø´Øª."
         else:
-            message = f"{entry.count} نیروی {entry.troop_type.name} آزاد شد (مالک اصلی دیگر دهکده‌ای ندارد)."
+            message = f"{entry.count} Ù†ÛŒØ±ÙˆÛŒ {entry.troop_type.name} Ø¢Ø²Ø§Ø¯ Ø´Ø¯ (Ù…Ø§Ù„Ú© Ø§ØµÙ„ÛŒ Ø¯ÛŒÚ¯Ø± Ø¯Ù‡Ú©Ø¯Ù‡â€ŒØ§ÛŒ Ù†Ø¯Ø§Ø±Ø¯)."
 
         entry.delete()
         return Response({"message": message})
@@ -1173,16 +1259,16 @@ class HeroAuctionBidView(APIView):
         auction_id = request.data.get('auction_id')
         currency = request.data.get('currency', 'gold')
         if currency not in ('gold', 'silver'):
-            return Response({"error": "واحد پول نامعتبر است."}, status=400)
+            return Response({"error": "ÙˆØ§Ø­Ø¯ Ù¾ÙˆÙ„ Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª."}, status=400)
 
         try:
             bid_amount = int(request.data.get('bid_amount', 0))
         except (TypeError, ValueError):
-            return Response({"error": "مقدار پیشنهاد نامعتبر است."}, status=400)
+            return Response({"error": "Ù…Ù‚Ø¯Ø§Ø± Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª."}, status=400)
         if bid_amount <= 0:
-            return Response({"error": "مقدار پیشنهاد باید مثبت باشد."}, status=400)
+            return Response({"error": "Ù…Ù‚Ø¯Ø§Ø± Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ø¨Ø§ÛŒØ¯ Ù…Ø«Ø¨Øª Ø¨Ø§Ø´Ø¯."}, status=400)
 
-        # current_bid همیشه بر حسب «معادل طلا» ذخیره می‌شود تا پیشنهادهای طلا/نقره قابل مقایسه باشند
+        # current_bid Ù‡Ù…ÛŒØ´Ù‡ Ø¨Ø± Ø­Ø³Ø¨ Â«Ù…Ø¹Ø§Ø¯Ù„ Ø·Ù„Ø§Â» Ø°Ø®ÛŒØ±Ù‡ Ù…ÛŒâ€ŒØ´ÙˆØ¯ ØªØ§ Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯Ù‡Ø§ÛŒ Ø·Ù„Ø§/Ù†Ù‚Ø±Ù‡ Ù‚Ø§Ø¨Ù„ Ù…Ù‚Ø§ÛŒØ³Ù‡ Ø¨Ø§Ø´Ù†Ø¯
         bid_amount_in_gold = bid_amount if currency == 'gold' else (bid_amount / SILVER_PER_GOLD)
 
         with transaction.atomic():
@@ -1191,26 +1277,26 @@ class HeroAuctionBidView(APIView):
                     id=auction_id, is_completed=False, ends_at__gt=timezone.now()
                 )
             except HeroAuction.DoesNotExist:
-                return Response({"error": "این حراجی یافت نشد یا به پایان رسیده است."}, status=404)
+                return Response({"error": "Ø§ÛŒÙ† Ø­Ø±Ø§Ø¬ÛŒ ÛŒØ§ÙØª Ù†Ø´Ø¯ ÛŒØ§ Ø¨Ù‡ Ù¾Ø§ÛŒØ§Ù† Ø±Ø³ÛŒØ¯Ù‡ Ø§Ø³Øª."}, status=404)
 
             min_required_gold = auction.current_bid + HeroAuction.MIN_BID_INCREMENT
             if bid_amount_in_gold < min_required_gold:
                 min_in_currency = min_required_gold if currency == 'gold' else int(min_required_gold * SILVER_PER_GOLD)
-                unit_label = "سکه طلا" if currency == 'gold' else "نقره"
-                return Response({"error": f"پیشنهاد باید حداقل {min_in_currency} {unit_label} باشد."}, status=400)
+                unit_label = "Ø³Ú©Ù‡ Ø·Ù„Ø§" if currency == 'gold' else "Ù†Ù‚Ø±Ù‡"
+                return Response({"error": f"Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ø¨Ø§ÛŒØ¯ Ø­Ø¯Ø§Ù‚Ù„ {min_in_currency} {unit_label} Ø¨Ø§Ø´Ø¯."}, status=400)
 
             bidder = request.user
             if currency == 'gold':
                 if bidder.gold_coins < bid_amount:
-                    return Response({"error": "سکه طلای کافی ندارید."}, status=400)
+                    return Response({"error": "Ø³Ú©Ù‡ Ø·Ù„Ø§ÛŒ Ú©Ø§ÙÛŒ Ù†Ø¯Ø§Ø±ÛŒØ¯."}, status=400)
                 bidder.gold_coins -= bid_amount
             else:
                 if bidder.silver_coins < bid_amount:
-                    return Response({"error": "نقره کافی ندارید."}, status=400)
+                    return Response({"error": "Ù†Ù‚Ø±Ù‡ Ú©Ø§ÙÛŒ Ù†Ø¯Ø§Ø±ÛŒØ¯."}, status=400)
                 bidder.silver_coins -= bid_amount
             bidder.save(update_fields=['gold_coins', 'silver_coins'])
 
-            # بازپرداخت پیشنهاد قبلی، دقیقا در همان واحدی که پرداخت شده بود
+            # Ø¨Ø§Ø²Ù¾Ø±Ø¯Ø§Ø®Øª Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ù‚Ø¨Ù„ÛŒØŒ Ø¯Ù‚ÛŒÙ‚Ø§ Ø¯Ø± Ù‡Ù…Ø§Ù† ÙˆØ§Ø­Ø¯ÛŒ Ú©Ù‡ Ù¾Ø±Ø¯Ø§Ø®Øª Ø´Ø¯Ù‡ Ø¨ÙˆØ¯
             if auction.current_bidder_id:
                 previous_bidder = auction.current_bidder
                 if auction.current_bid_currency == 'silver':
@@ -1226,18 +1312,18 @@ class HeroAuctionBidView(APIView):
             auction.save()
 
         return Response({
-            "message": "پیشنهاد شما ثبت شد.",
+            "message": "Ù¾ÛŒØ´Ù†Ù‡Ø§Ø¯ Ø´Ù…Ø§ Ø«Ø¨Øª Ø´Ø¯.",
             "current_bid": auction.current_bid,
             "current_bid_currency": auction.current_bid_currency,
         })
 
 class FarmListManageView(APIView):
-    """مدیریت خودِ فارم‌لیست‌ها: ساخت، تغییر نام، حذف."""
+    """Ù…Ø¯ÛŒØ±ÛŒØª Ø®ÙˆØ¯Ù ÙØ§Ø±Ù…â€ŒÙ„ÛŒØ³Øªâ€ŒÙ‡Ø§: Ø³Ø§Ø®ØªØŒ ØªØºÛŒÛŒØ± Ù†Ø§Ù…ØŒ Ø­Ø°Ù."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         if not request.user.has_gold_club:
-            return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
+            return Response({"error": "Ø¨Ø±Ø§ÛŒ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² Ù„ÛŒØ³Øª Ù…Ø²Ø±Ø¹Ù‡ Ø¨Ù‡ Ú©Ù„ÙˆÙ¾ Ø·Ù„Ø§ÛŒÛŒ Ù†ÛŒØ§Ø² Ø¯Ø§Ø±ÛŒØ¯."}, status=403)
 
         lists = FarmList.objects.filter(player=request.user).annotate(
             entries_count=Count('entries')
@@ -1249,9 +1335,9 @@ class FarmListManageView(APIView):
 
     def post(self, request):
         if not request.user.has_gold_club:
-            return Response({"error": "برای استفاده از لیست مزرعه به کلوپ طلایی نیاز دارید."}, status=403)
+            return Response({"error": "Ø¨Ø±Ø§ÛŒ Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø§Ø² Ù„ÛŒØ³Øª Ù…Ø²Ø±Ø¹Ù‡ Ø¨Ù‡ Ú©Ù„ÙˆÙ¾ Ø·Ù„Ø§ÛŒÛŒ Ù†ÛŒØ§Ø² Ø¯Ø§Ø±ÛŒØ¯."}, status=403)
 
-        name = (request.data.get('name') or '').strip() or 'لیست جدید'
+        name = (request.data.get('name') or '').strip() or 'Ù„ÛŒØ³Øª Ø¬Ø¯ÛŒØ¯'
         farm_list = FarmList.objects.create(player=request.user, name=name)
         return Response({"id": farm_list.id, "name": farm_list.name}, status=201)
 
@@ -1259,21 +1345,21 @@ class FarmListManageView(APIView):
         farm_list_id = request.data.get('farm_list_id')
         new_name = (request.data.get('name') or '').strip()
         if not new_name:
-            return Response({"error": "نام جدید نمی‌تواند خالی باشد."}, status=400)
+            return Response({"error": "Ù†Ø§Ù… Ø¬Ø¯ÛŒØ¯ Ù†Ù…ÛŒâ€ŒØªÙˆØ§Ù†Ø¯ Ø®Ø§Ù„ÛŒ Ø¨Ø§Ø´Ø¯."}, status=400)
         try:
             farm_list = FarmList.objects.get(id=farm_list_id, player=request.user)
         except FarmList.DoesNotExist:
-            return Response({"error": "لیست یافت نشد."}, status=404)
+            return Response({"error": "Ù„ÛŒØ³Øª ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
         farm_list.name = new_name
         farm_list.save(update_fields=['name'])
-        return Response({"message": "نام لیست تغییر کرد.", "name": farm_list.name})
+        return Response({"message": "Ù†Ø§Ù… Ù„ÛŒØ³Øª ØªØºÛŒÛŒØ± Ú©Ø±Ø¯.", "name": farm_list.name})
 
     def delete(self, request):
         farm_list_id = request.query_params.get('farm_list_id')
         deleted, _ = FarmList.objects.filter(id=farm_list_id, player=request.user).delete()
         if not deleted:
-            return Response({"error": "لیست یافت نشد."}, status=404)
-        return Response({"message": "لیست حذف شد."})
+            return Response({"error": "Ù„ÛŒØ³Øª ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
+        return Response({"message": "Ù„ÛŒØ³Øª Ø­Ø°Ù Ø´Ø¯."})
 
 
 class ReinforcementReportListView(APIView):
@@ -1314,7 +1400,7 @@ class ReinforcementReportDetailView(APIView):
                 Q(id=report_id) & (Q(sender_player=request.user) | Q(receiver_player=request.user))
             )
         except ReinforcementReport.DoesNotExist:
-            return Response({"error": "گزارش یافت نشد."}, status=404)
+            return Response({"error": "Ú¯Ø²Ø§Ø±Ø´ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
 
         is_sender = r.sender_player_id == request.user.id
         if is_sender and not r.is_read_by_sender:
@@ -1323,7 +1409,7 @@ class ReinforcementReportDetailView(APIView):
         elif not is_sender and not r.is_read_by_receiver:
             r.is_read_by_receiver = True
             r.save(update_fields=['is_read_by_receiver'])
-        return Response({"message": "خوانده شد"})
+        return Response({"message": "Ø®ÙˆØ§Ù†Ø¯Ù‡ Ø´Ø¯"})
 
     def delete(self, request, report_id):
         from .models import ReinforcementReport
@@ -1332,10 +1418,10 @@ class ReinforcementReportDetailView(APIView):
                 Q(id=report_id) & (Q(sender_player=request.user) | Q(receiver_player=request.user))
             )
         except ReinforcementReport.DoesNotExist:
-            return Response({"error": "گزارش یافت نشد."}, status=404)
+            return Response({"error": "Ú¯Ø²Ø§Ø±Ø´ ÛŒØ§ÙØª Ù†Ø´Ø¯."}, status=404)
         if r.sender_player_id == request.user.id:
             r.hidden_from_sender = True
         else:
             r.hidden_from_receiver = True
         r.save()
-        return Response({"message": "گزارش حذف شد."})
+        return Response({"message": "Ú¯Ø²Ø§Ø±Ø´ Ø­Ø°Ù Ø´Ø¯."})

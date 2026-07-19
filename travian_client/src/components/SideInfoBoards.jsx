@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -9,9 +9,9 @@ function formatCountdown(seconds) {
     const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
-    if (d > 0) return `${d}روز و  ${h}:${m}`;
-    if (h > 0) return `${h}:${m}:${s}`;
-    if (m > 0) return `${m}:${s}`;
+    if (d > 0) return `${d}d ${h}h ${m}m`;
+    if (h > 0) return `${h}h ${m}m ${s}s`;
+    if (m > 0) return `${m}m ${s}s`;
     return `${s}s`;
 }
 
@@ -26,6 +26,7 @@ export default function SideInfoBoards() {
 
     const [buildingQueue, setBuildingQueue] = useState([]);
     const [hero, setHero] = useState(null);
+    const [heroImageUrl, setHeroImageUrl] = useState(null);
     const [now, setNow] = useState(Date.now());
     const [serverConfig, setServerConfig] = useState(null);
 
@@ -58,6 +59,21 @@ export default function SideInfoBoards() {
     }, []);
 
     useEffect(() => {
+        let revokeUrl = null;
+        const fetchHeroImage = async () => {
+            try {
+                const response = await api.get('combat/hero/image/?size=sideinfo', { responseType: 'blob' });
+                const url = URL.createObjectURL(response.data);
+                if (revokeUrl) URL.revokeObjectURL(revokeUrl);
+                revokeUrl = url;
+                setHeroImageUrl(url);
+            } catch { /* silent */ }
+        };
+        fetchHeroImage();
+        return () => { if (revokeUrl) URL.revokeObjectURL(revokeUrl); };
+    }, []);
+
+    useEffect(() => {
         fetchBuildingQueue();
         fetchHero();
         fetchServerConfig();
@@ -72,10 +88,6 @@ export default function SideInfoBoards() {
 
     if (!user) return null;
 
-    const heroGender = hero?.appearance?.gender || 'FEMALE';
-    const heroHairStyle = hero?.appearance?.hair_style || 1;
-
-    // Calculate server timers (catapult, inscription, WW plan)
     const nowSec = Math.floor(now / 1000);
     const cataTime = serverConfig?.catapult_release_time || 0;
     const katibeTime = serverConfig?.inscription_release_time || 0;
@@ -85,7 +97,6 @@ export default function SideInfoBoards() {
     const katibeRemaining = katibeTime > nowSec ? katibeTime - nowSec : 0;
     const wwPlanRemaining = wwPlanTime > nowSec ? wwPlanTime - nowSec : 0;
 
-    // Medal distribution timer (daily at midnight)
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
@@ -97,12 +108,11 @@ export default function SideInfoBoards() {
             <div className="heroImageBorder"></div>
             <a className="heroProfile" href="/hero" title="قهرمان">
                 <img
-                    src="/assets/hero/hero-portrait.png"
+                    src={heroImageUrl || "/assets/hero/hero-portrait.png"}
                     alt="قهرمان"
                     onError={(e) => { e.target.style.display = 'none'; }}
                 />
             </a>
-            {/* دو دایره کوچیک - href رو خودت مقداردهی کن */}
             <a className="heroLinkTop" href="/hero#adventure" title="ماجراجویی"></a>
             <a className="heroLinkBottom" href="/hero#auction" title="حراجی"></a>
         </div>
@@ -122,7 +132,6 @@ export default function SideInfoBoards() {
                 )}
             </div>
 
-            {/* Alliance */}
             {user.alliance_tag && (
                 <div className="sideInfoAlly">
                     <a className="signLink" href="/embassy">
@@ -131,7 +140,6 @@ export default function SideInfoBoards() {
                 </div>
             )}
 
-            {/* Village list */}
             <div id="villageList" className="listing">
                 <div className="head">
                     <a href="/villages" title="نمای کلی دهکده‌ها">آمار دهکده‌ها:</a>
@@ -162,7 +170,6 @@ export default function SideInfoBoards() {
                 <div className="foot"></div>
             </div>
 
-            {/* Server timers (catapult, inscription, WW plan) */}
             <div id="villageList" className="listing" style={{ marginTop: '0' }}>
                 <div className="head"></div>
                 <div className="list" style={{ padding: '8px', marginTop: '-40px', textAlign: 'center', fontSize: '11px' }}>
@@ -211,7 +218,6 @@ export default function SideInfoBoards() {
                 <div className="foot"></div>
             </div>
 
-            {/* Building queue */}
             {buildingQueue.length > 0 && (
                 <div className="sideBuildingQueue">
                     <div className="sideBuildingQueue-header">
