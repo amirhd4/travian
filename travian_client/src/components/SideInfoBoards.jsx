@@ -92,27 +92,22 @@ export default function SideInfoBoards() {
     const medalRemaining = Math.max(0, Math.floor((tomorrow.getTime() - now) / 1000));
 
     return (
-        <div id="side_info">
-            {/* Hero section */}
+    <div id="side_info">
+        <div className="sideInfoHero">
+            <div className="heroImageBorder"></div>
+            <a className="heroProfile" href="/hero" title="قهرمان">
+                <img
+                    src="/assets/hero/hero-portrait.png"
+                    alt="قهرمان"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                />
+            </a>
+            {/* دو دایره کوچیک - href رو خودت مقداردهی کن */}
+            <a className="heroLinkTop" href="/hero#adventure" title="ماجراجویی"></a>
+            <a className="heroLinkBottom" href="/hero#auction" title="حراجی"></a>
+        </div>
 
-            {/* Player name */}
-
-
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <br/>
-            <div className="sideInfoPlayer" title="پروفایل بازیکن">
+        <div className="sideInfoPlayer" title="پروفایل بازیکن">
                 <a className="signLink" href="/profile">
                     <span className="wrap">{user.username}</span>
                 </a>

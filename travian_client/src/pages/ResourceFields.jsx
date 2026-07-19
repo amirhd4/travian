@@ -1,47 +1,31 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as PIXI from 'pixi.js';
+﻿import { useEffect, useState, useCallback } from 'react';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
 
-// PHP field.tpl exact coordinates (scaled to 500x370 canvas)
+// مختصات جدید و کاملا قرینه شده، مخصوص زمانی که عکس پس‌زمینه scaleX(-1) دارد
+// تنظیم شده برای بوم دقیق 484x317
 const DORF1_SLOTS = {
-    1: { x: 180, y: 80 }, 2: { x: 269, y: 81 }, 3: { x: 338, y: 93 },
-    4: { x: 122, y: 119 }, 5: { x: 235, y: 132 }, 6: { x: 292, y: 139 },
-    7: { x: 377, y: 137 }, 8: { x: 62, y: 170 }, 9: { x: 143, y: 171 },
-    10: { x: 333, y: 171 }, 11: { x: 420, y: 171 }, 12: { x: 70, y: 231 },
-    13: { x: 143, y: 221 }, 14: { x: 279, y: 257 }, 15: { x: 401, y: 226 },
-    16: { x: 174, y: 311 }, 17: { x: 265, y: 316 }, 18: { x: 355, y: 293 },
-};
-
-// PHP field type to image mapping
-const FIELD_IMAGES = {
-    1: '/assets/fields/f1.jpg',  // Woodcutter
-    2: '/assets/fields/f2.jpg',  // Clay Pit
-    3: '/assets/fields/f3.jpg',  // Iron Mine
-    4: '/assets/fields/f4.jpg',  // Cropland
-};
-
-// PHP village terrain type to background image
-const VILLAGE_BACKGROUNDS = {
-    1: '/assets/fields/f1.jpg',
-    2: '/assets/fields/f2.jpg',
-    3: '/assets/fields/f3.jpg',
-    4: '/assets/fields/f4.jpg',
-    5: '/assets/fields/f5.jpg',
-    6: '/assets/fields/f6.jpg',
-    7: '/assets/fields/f7.jpg',
-    8: '/assets/fields/f8.jpg',
-    9: '/assets/fields/f9.jpg',
-    10: '/assets/fields/f10.jpg',
-    11: '/assets/fields/f11.jpg',
-    12: '/assets/fields/f12.jpg',
-};
-
-// Resource type to field image key
-const RESOURCE_TO_FIELD = {
-    'چوب‌بری': 1, 'گودال خاک رس': 2, 'معدن آهن': 3, 'مزرعه گندم': 4,
+    1: { x: 242, y: 40 },   // بالا مرکز (مزرعه گندم)
+    2: { x: 145, y: 65 },   // بالا چپ 1 (جنگل چوب)
+    3: { x: 95, y: 105 },   // بالا چپ 2 (جنگل چوب)
+    4: { x: 60, y: 160 },   // چپ دور (مزرعه گندم)
+    5: { x: 105, y: 245 },  // پایین چپ 1 (گودال خشت)
+    6: { x: 160, y: 275 },  // پایین چپ 2 (گودال خشت)
+    7: { x: 242, y: 285 },  // پایین مرکز (جنگل چوب)
+    8: { x: 324, y: 275 },  // پایین راست 1 (گودال خشت)
+    9: { x: 379, y: 245 },  // پایین راست 2 (گودال خشت)
+    10: { x: 424, y: 160 }, // راست دور (مزرعه گندم)
+    11: { x: 389, y: 105 }, // بالا راست 1 (معدن آهن)
+    12: { x: 339, y: 65 },  // بالا راست 2 (معدن آهن)
+    // حلقه داخلی (دور خندق دهکده)
+    13: { x: 185, y: 115 }, // داخلی بالا چپ
+    14: { x: 155, y: 175 }, // داخلی چپ
+    15: { x: 185, y: 225 }, // داخلی پایین چپ
+    16: { x: 299, y: 225 }, // داخلی پایین راست
+    17: { x: 329, y: 175 }, // داخلی راست
+    18: { x: 299, y: 115 }, // داخلی بالا راست
 };
 
 function formatCountdown(seconds) {
@@ -65,13 +49,10 @@ export default function ResourceFields() {
     const [loading, setLoading] = useState(true);
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [upgrading, setUpgrading] = useState(false);
+    const [bgFailed, setBgFailed] = useState(false);
 
-    // Movement and troop data
     const [movements, setMovements] = useState([]);
     const [troops, setTroops] = useState([]);
-
-    const pixiContainerRef = useRef(null);
-    const pixiAppRef = useRef(null);
 
     const fetchBuildings = useCallback(async () => {
         if (!activeVillageId) { setLoading(false); return; }
@@ -102,7 +83,13 @@ export default function ResourceFields() {
         } catch { /* silent */ }
     }, [activeVillageId]);
 
-    useEffect(() => { setLoading(true); fetchBuildings(); fetchMovements(); fetchTroops(); }, [fetchBuildings, fetchMovements, fetchTroops]);
+    useEffect(() => {
+        setLoading(true);
+        fetchBuildings();
+        fetchMovements();
+        fetchTroops();
+    }, [fetchBuildings, fetchMovements, fetchTroops]);
+
     useEffect(() => {
         if (lastMessage?.type === 'building_completed') {
             fetchBuildings();
@@ -110,6 +97,7 @@ export default function ResourceFields() {
             fetchTroops();
         }
     }, [lastMessage, fetchBuildings, fetchMovements, fetchTroops]);
+
     useEffect(() => {
         const interval = setInterval(() => {
             fetchBuildings();
@@ -118,130 +106,6 @@ export default function ResourceFields() {
         }, 30000);
         return () => clearInterval(interval);
     }, [fetchBuildings, fetchMovements, fetchTroops]);
-
-    // PixiJS village map rendering
-    useEffect(() => {
-        if (loading || !pixiContainerRef.current) return;
-        let isMounted = true;
-        const app = new PIXI.Application();
-
-        async function initPixi() {
-            await app.init({
-                width: 500, height: 370,
-                backgroundColor: 0xC3EDAE,
-                resolution: window.devicePixelRatio || 1,
-                autoDensity: true, antialias: true,
-            });
-            if (!isMounted) { app.destroy(true, { children: true }); return; }
-            pixiAppRef.current = app;
-            pixiContainerRef.current.innerHTML = '';
-            pixiContainerRef.current.appendChild(app.canvas);
-            renderScene(app);
-        }
-
-        async function renderScene(app) {
-            app.stage.removeChildren();
-
-            // Background: try to load village terrain image
-            const terrainType = villageInfo?.terrain_type || 1;
-            const bgPath = VILLAGE_BACKGROUNDS[terrainType] || '/assets/fields/f1.jpg';
-            try {
-                const bgTexture = await PIXI.Assets.load(bgPath);
-                const bgSprite = new PIXI.Sprite(bgTexture);
-                bgSprite.width = app.screen.width;
-                bgSprite.height = app.screen.height;
-                app.stage.addChild(bgSprite);
-            } catch {
-                // Fallback: solid green background
-                const bg = new PIXI.Graphics();
-                bg.rect(0, 0, app.screen.width, app.screen.height).fill({ color: 0xC3EDAE });
-                app.stage.addChild(bg);
-            }
-
-            // Render resource fields
-            const activeBuildings = buildings.filter(b => DORF1_SLOTS[b.position]);
-
-            for (const b of activeBuildings) {
-                const coords = DORF1_SLOTS[b.position];
-                const container = new PIXI.Container();
-                container.x = coords.x;
-                container.y = coords.y;
-
-                // Field image
-                const fieldType = RESOURCE_TO_FIELD[b.name] || 4;
-                const fieldPath = FIELD_IMAGES[fieldType] || FIELD_IMAGES[4];
-
-                if (b.level > 0 || b.is_upgrading) {
-                    try {
-                        const texture = await PIXI.Assets.load(fieldPath);
-                        const sprite = new PIXI.Sprite(texture);
-                        sprite.anchor.set(0.5);
-                        sprite.width = 50;
-                        sprite.height = 50;
-                        container.addChild(sprite);
-                    } catch {
-                        // Fallback: colored circle
-                        const fallback = new PIXI.Graphics();
-                        fallback.circle(0, 0, 25).fill({ color: fieldType === 1 ? 0x2f6b3a : fieldType === 2 ? 0xb5652f : fieldType === 3 ? 0x5b6470 : 0xd9a62e });
-                        container.addChild(fallback);
-                    }
-                } else {
-                    // Empty field: subtle placeholder
-                    const placeholder = new PIXI.Graphics();
-                    placeholder.circle(0, 0, 20).fill({ color: 0x999999, alpha: 0.3 }).stroke({ width: 1, color: 0xffffff, alpha: 0.5 });
-                    container.addChild(placeholder);
-                }
-
-                // PHP-style level badge: green gradient circle
-                if (b.level > 0 || b.is_upgrading) {
-                    // Outer border
-                    const badgeBorder = new PIXI.Graphics();
-                    badgeBorder.circle(0, 0, 14).fill({ color: 0x506d00 });
-                    badgeBorder.x = 20;
-                    badgeBorder.y = 20;
-                    container.addChild(badgeBorder);
-
-                    // Green gradient fill
-                    const badge = new PIXI.Graphics();
-                    badge.circle(0, 0, 12).fill({ color: 0x7da100 });
-                    badge.x = 20;
-                    badge.y = 20;
-                    container.addChild(badge);
-
-                    // Level text
-                    const lvlText = new PIXI.Text({
-                        text: b.level.toString(),
-                        style: { fontFamily: 'Arial, Helvetica, Verdana', fontSize: 11, fill: 0xFFFFFF, fontWeight: 'bold' }
-                    });
-                    lvlText.anchor.set(0.5);
-                    lvlText.x = 20;
-                    lvlText.y = 20;
-                    container.addChild(lvlText);
-                }
-
-                // Upgrading indicator
-                if (b.is_upgrading) {
-                    const ring = new PIXI.Graphics();
-                    ring.circle(0, 0, 28).stroke({ width: 2, color: 0xF88C1F, alpha: 0.9 });
-                    container.addChild(ring);
-                }
-
-                container.eventMode = 'static';
-                container.cursor = 'pointer';
-                container.on('pointerover', () => { container.scale.set(1.08); });
-                container.on('pointerout', () => { container.scale.set(1); });
-                container.on('pointerdown', () => setSelectedSlot(b));
-
-                app.stage.addChild(container);
-            }
-        }
-
-        initPixi();
-        return () => {
-            isMounted = false;
-            if (pixiAppRef.current) { pixiAppRef.current.destroy(true, { children: true }); pixiAppRef.current = null; }
-        };
-    }, [loading, buildings, villageInfo]);
 
     const handleUpgrade = async () => {
         if (!selectedSlot || !activeVillageId) return;
@@ -263,33 +127,108 @@ export default function ResourceFields() {
         return r.wood >= c.wood && r.clay >= c.clay && r.iron >= c.iron && r.crop >= c.crop;
     };
 
-    // Get movement type label and color (matching PHP movement.tpl)
     const getMovementInfo = (type) => {
         const types = {
-            'incoming_attack': { label: 'حمله', color: '#F00', icon: 'att1', aclass: 'a1' },
-            'incoming_reinforcement': { label: 'نیروی کمکی ورودی', color: '#228B22', icon: 'def1', aclass: 'd1' },
-            'outgoing_attack': { label: 'حمله', color: '#F2C700', icon: 'att2', aclass: 'a2' },
-            'outgoing_reinforcement': { label: 'نیروی کمکی خروجی', color: '#F2C700', icon: 'def2', aclass: 'd2' },
-            'new_village': { label: 'تأسیس دهکده', color: '#B500A3', icon: 'att3', aclass: 'a3' },
-            'adventure': { label: 'ماجراجویی', color: '#B500A3', icon: 'att4', aclass: 'a4' },
+            'incoming_attack': { label: 'حمله', aclass: 'a1' },
+            'incoming_reinforcement': { label: 'نیروی کمکی ورودی', aclass: 'd1' },
+            'outgoing_attack': { label: 'حمله', aclass: 'a2' },
+            'outgoing_reinforcement': { label: 'نیروی کمکی خروجی', aclass: 'd2' },
+            'new_village': { label: 'تأسیس دهکده', aclass: 'a3' },
+            'adventure': { label: 'ماجراجویی', aclass: 'a4' },
         };
-        return types[type] || { label: type, color: '#333', icon: '', aclass: '' };
+        return types[type] || { label: type, aclass: '' };
     };
+
+    const activeSlots = buildings.filter((b) => DORF1_SLOTS[b.position]);
 
     return (
         <div className="village1">
-            {/* Village Map - PixiJS Canvas */}
-            <div id="village_map">
+            <div id="village_map" style={{ position: 'relative', width: '484px', height: '317px', top: "90px", left: "-100px", margin: '0 auto', borderRadius: '50%', overflow: 'hidden', boxShadow: '0 4px 8px rgba(0,0,0,0.2)' }}>
                 {loading ? (
-                    <p style={{ fontWeight: 'bold', marginTop: '64px', color: '#252525' }}>در حال بارگذاری دهکده...</p>
+                    <p style={{ fontWeight: 'bold', paddingTop: '160px', color: '#252525', textAlign: 'center' }}>
+                        در حال بارگذاری دهکده...
+                    </p>
                 ) : (
-                    <div ref={pixiContainerRef} style={{ width: '500px', height: '370px' }} />
+                    <>
+                        {/* عکس پس زمینه که با دستور scaleX(-1) برعکس شده است */}
+                        {!bgFailed ? (
+                            <img
+                                src="/assets/bgs/f3-rtl.jpg"
+                                alt="Village Map"
+                                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, transform: 'scaleX(-1)' }}
+                                onError={() => setBgFailed(true)}
+                            />
+                        ) : (
+                            <div style={{ position: 'absolute', inset: 0, background: '#C3EDAE', zIndex: 0 }} />
+                        )}
+
+                        {activeSlots.map((b) => {
+                            const coords = DORF1_SLOTS[b.position];
+                            const isEmpty = b.level === 0 && !b.is_upgrading;
+
+                            return (
+                                <div
+                                    key={b.id}
+                                    className={`level-indicator ${b.is_upgrading ? 'upgrading' : ''} ${isEmpty ? 'empty' : 'active'}`}
+                                    style={{
+                                        position: 'absolute',
+                                        left: coords.x,
+                                        top: coords.y,
+                                        transform: 'translate(-50%, -50%)', // نکته مهم: دایره‌ها scaleX نمی‌شوند تا اعداد درست خوانده شوند
+                                        zIndex: 5
+                                    }}
+                                    onClick={() => setSelectedSlot(b)}
+                                    title={b.name}
+                                >
+                                    {!isEmpty ? b.level : '+'}
+                                </div>
+                            );
+                        })}
+                    </>
                 )}
+
+                <style>{`
+                    .level-indicator { 
+                        width: 28px; 
+                        height: 28px; 
+                        border-radius: 50%; 
+                        display: flex; 
+                        align-items: center; 
+                        justify-content: center; 
+                        font-weight: bold; 
+                        font-size: 13px; 
+                        cursor: pointer; 
+                        box-shadow: 0 1px 4px rgba(0,0,0,0.6); 
+                        transition: all 0.2s ease;
+                        font-family: Tahoma, Arial, sans-serif;
+                    }
+                    .level-indicator.active {
+                        background-color: #ffffff; 
+                        border: 2px solid #73b544;
+                        color: #252525;
+                    }
+                    .level-indicator.upgrading { 
+                        background-color: #fce2a8; 
+                        border: 2px solid #f88c1f;
+                        color: #a65a12;
+                    }
+                    .level-indicator.empty {
+                        background-color: rgba(255,255,255,0.6);
+                        border: 2px dashed #73b544;
+                        color: rgba(37,37,37,0.5);
+                    }
+                    .level-indicator:hover { 
+                        transform: translate(-50%, -50%) scale(1.2) !important; 
+                        z-index: 10 !important;
+                    }
+                    .level-indicator.empty:hover {
+                        background-color: #ffffff;
+                        color: #252525;
+                    }
+                `}</style>
             </div>
 
-            {/* Map Details: Movements, Production, Troops */}
-            <div id="map_details">
-                {/* Troop Movements */}
+            <div id="map_details" style={{ marginTop: '20px' }}>
                 {movements.length > 0 && (
                     <div className="boxes villageList movements">
                         <div className="boxes-contents">
@@ -303,16 +242,10 @@ export default function ResourceFields() {
                                         const remaining = m.end_time ? Math.max(0, Math.floor((new Date(m.end_time).getTime() - Date.now()) / 1000)) : 0;
                                         return (
                                             <tr key={i}>
-                                                <td className="typ">
-                                                    <span className={info.aclass}>&raquo;</span>
-                                                </td>
+                                                <td className="typ"><span className={info.aclass}>&raquo;</span></td>
                                                 <td>
-                                                    <div className="mov">
-                                                        <span className={info.aclass}>{m.count || 1} {info.label}</span>
-                                                    </div>
-                                                    <div className="dur_r">
-                                                        &nbsp;<span>{formatCountdown(remaining)}</span>&nbsp;ساعت
-                                                    </div>
+                                                    <div className="mov"><span className={info.aclass}>{m.count || 1} {info.label}</span></div>
+                                                    <div className="dur_r">&nbsp;<span>{formatCountdown(remaining)}</span>&nbsp;ساعت</div>
                                                 </td>
                                             </tr>
                                         );
@@ -323,7 +256,8 @@ export default function ResourceFields() {
                     </div>
                 )}
 
-                {/* Production Table */}
+                <br/><br/><br/><br/><br/><br/><br/>
+
                 {villageInfo && (
                     <div className="boxes villageList production">
                         <div className="boxes-contents">
@@ -358,7 +292,6 @@ export default function ResourceFields() {
                     </div>
                 )}
 
-                {/* Stationed Troops */}
                 {troops.length > 0 && (
                     <div className="boxes villageList units">
                         <div className="boxes-contents">
@@ -385,46 +318,55 @@ export default function ResourceFields() {
 
             <div className="clear" />
 
-            {/* Upgrade Dialog */}
             {selectedSlot && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-                    <div style={{ background: '#FFF', border: '2px solid #C9C9C9', maxWidth: '400px', width: '100%', position: 'relative' }}>
-                        {/* Header */}
-                        <div className="round" style={{ width: '100%', boxSizing: 'border-box', margin: 0, left: 0 }}>
-                            <span>{selectedSlot.level > 0 ? selectedSlot.name : 'زمین خالی'}</span>
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                    <div style={{ background: '#FFF', border: '2px solid #C9C9C9', borderRadius: '8px', maxWidth: '400px', width: '100%', position: 'relative', overflow: 'hidden', boxShadow: '0 8px 16px rgba(0,0,0,0.3)' }}>
+                        <div style={{ background: '#f8f8f8', padding: '12px 16px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 'bold', fontSize: '15px' }}>{selectedSlot.level > 0 ? selectedSlot.name : 'زمین خالی'}</span>
+                            <button onClick={() => setSelectedSlot(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#888' }}>✖</button>
                         </div>
-                        {/* Body */}
-                        <div style={{ padding: '12px' }}>
-                            <p style={{ fontSize: '13px', marginBottom: '12px', color: '#252525' }}>
-                                سطح فعلی: <span style={{ fontWeight: 'bold' }}>{selectedSlot.level}</span>
+                        <div style={{ padding: '16px' }}>
+                            <p style={{ fontSize: '14px', marginBottom: '16px', color: '#333' }}>
+                                سطح فعلی: <span style={{ fontWeight: 'bold', color: '#73b544' }}>{selectedSlot.level}</span>
                             </p>
 
                             {selectedSlot.is_upgrading ? (
-                                <div style={{ padding: '12px', textAlign: 'center', marginBottom: '16px', background: '#ffe4b5', border: '1px solid #F88C1F' }}>
-                                    <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#b3721f', margin: 0 }}>در حال ارتقا...</p>
+                                <div style={{ padding: '12px', textAlign: 'center', marginBottom: '16px', background: '#fff3cd', border: '1px solid #ffeeba', borderRadius: '4px' }}>
+                                    <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#856404', margin: 0 }}>در حال ارتقا...</p>
                                 </div>
                             ) : selectedSlot.is_max_level ? (
-                                <div style={{ padding: '12px', textAlign: 'center', marginBottom: '16px', background: '#E5EECC', border: '1px solid #99C01A' }}>
-                                    <p style={{ fontSize: '13px', fontWeight: 'bold', color: '#228B22', margin: 0 }}>این مزرعه به حداکثر سطح رسیده است.</p>
+                                <div style={{ padding: '12px', textAlign: 'center', marginBottom: '16px', background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: '4px' }}>
+                                    <p style={{ fontSize: '14px', fontWeight: 'bold', color: '#155724', margin: 0 }}>این مزرعه به حداکثر سطح رسیده است.</p>
                                 </div>
                             ) : (
-                                <div style={{ padding: '16px', marginBottom: '16px', fontSize: '13px', background: '#F5F5F5', border: '1px solid #C9C9C9' }}>
-                                    <p style={{ fontWeight: 'bold', marginBottom: '8px', color: '#252525' }}>هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '11px', fontWeight: 'bold', marginBottom: '12px', color: '#252525' }}>
-                                        <span>چوب: {selectedSlot.next_level_cost.wood}</span>
-                                        <span>خاک رس: {selectedSlot.next_level_cost.clay}</span>
-                                        <span>آهن: {selectedSlot.next_level_cost.iron}</span>
-                                        <span>گندم: {selectedSlot.next_level_cost.crop}</span>
+                                <div style={{ padding: '16px', marginBottom: '16px', fontSize: '13px', background: '#fdfdfd', border: '1px solid #eee', borderRadius: '4px' }}>
+                                    <p style={{ fontWeight: 'bold', marginBottom: '12px', color: '#444' }}>هزینه ارتقا به سطح {selectedSlot.level + 1}:</p>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', fontWeight: 'bold', marginBottom: '16px', color: '#222' }}>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><img src="/assets/ui/res-1.gif" alt="چوب" width="14" /> {selectedSlot.next_level_cost.wood}</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><img src="/assets/ui/res-2.gif" alt="رس" width="14" /> {selectedSlot.next_level_cost.clay}</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><img src="/assets/ui/res-3.gif" alt="آهن" width="14" /> {selectedSlot.next_level_cost.iron}</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><img src="/assets/ui/res-4.gif" alt="گندم" width="14" /> {selectedSlot.next_level_cost.crop}</span>
                                     </div>
-                                    <p style={{ fontSize: '11px', color: '#777', margin: 0 }}>زمان ساخت: {formatDuration(selectedSlot.next_level_time_seconds)}</p>
-                                    {!canAfford(selectedSlot) && <p style={{ fontSize: '11px', fontWeight: 'bold', marginTop: '12px', color: '#DE0000' }}>منابع کافی ندارید.</p>}
+                                    <p style={{ fontSize: '12px', color: '#666', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        🕒 زمان ساخت: <span style={{ fontWeight: 'bold' }}>{formatDuration(selectedSlot.next_level_time_seconds)}</span>
+                                    </p>
+                                    {!canAfford(selectedSlot) && <p style={{ fontSize: '12px', fontWeight: 'bold', marginTop: '12px', color: '#dc3545', textAlign: 'center' }}>منابع کافی ندارید.</p>}
                                 </div>
                             )}
 
                             <button onClick={handleUpgrade}
                                 disabled={selectedSlot.is_upgrading || upgrading || selectedSlot.is_max_level || !canAfford(selectedSlot)}
-                                className="btn-primary"
-                                style={{ width: '100%', padding: '8px 20px' }}>
+                                style={{
+                                    width: '100%',
+                                    padding: '10px',
+                                    background: (selectedSlot.is_upgrading || upgrading || selectedSlot.is_max_level || !canAfford(selectedSlot)) ? '#ccc' : '#73b544',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    fontWeight: 'bold',
+                                    cursor: (selectedSlot.is_upgrading || upgrading || selectedSlot.is_max_level || !canAfford(selectedSlot)) ? 'not-allowed' : 'pointer',
+                                    transition: 'background 0.2s'
+                                }}>
                                 {upgrading ? "صبر کنید..." : `ارتقا به سطح ${selectedSlot.level + 1}`}
                             </button>
                         </div>

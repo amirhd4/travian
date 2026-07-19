@@ -1,7 +1,5 @@
-﻿import React, { useEffect, useRef, useState, useCallback } from 'react';
-import * as PIXI from 'pixi.js';
-import { Modal } from '../components/Modal';
-import { AlertModal } from '../components/Modal';
+﻿import { useEffect, useState, useCallback } from 'react';
+import { Modal, AlertModal } from '../components/Modal';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -46,10 +44,7 @@ const BUILDING_META = {
     'تله': { asset: '/assets/buildings/g34.png' },
 };
 
-function remainingSeconds(endTimeIso) {
-    if (!endTimeIso) return 0;
-    return Math.max(0, Math.round((new Date(endTimeIso).getTime() - Date.now()) / 1000));
-}
+const FALLBACK_ASSET = '/assets/buildings/g1.png';
 
 export default function VillageCenter() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
@@ -64,9 +59,6 @@ export default function VillageCenter() {
     const [movingCapital, setMovingCapital] = useState(false);
     const [townHallStatus, setTownHallStatus] = useState(null);
     const [celebrating, setCelebrating] = useState(null);
-
-    const pixiContainerRef = useRef(null);
-    const pixiAppRef = useRef(null);
 
     const fetchBuildings = useCallback(async () => {
         if (!activeVillageId) { setLoading(false); return; }
@@ -87,114 +79,6 @@ export default function VillageCenter() {
         const interval = setInterval(fetchBuildings, 30000);
         return () => clearInterval(interval);
     }, [fetchBuildings]);
-
-    useEffect(() => {
-        if (loading || !pixiContainerRef.current) return;
-        let isMounted = true;
-        const app = new PIXI.Application();
-
-        async function initPixi() {
-            await app.init({
-                width: 540, height: 448,
-                backgroundColor: 0xC3EDAE,
-                resolution: window.devicePixelRatio || 1,
-                autoDensity: true, antialias: true,
-            });
-            if (!isMounted) { app.destroy(true, { children: true }); return; }
-            pixiAppRef.current = app;
-            pixiContainerRef.current.innerHTML = '';
-            pixiContainerRef.current.appendChild(app.canvas);
-            renderScene(app);
-        }
-
-        async function renderScene(app) {
-            app.stage.removeChildren();
-
-            try {
-                const bgTexture = await PIXI.Assets.load('/assets/bgs/bg1.jpg');
-                const bgSprite = new PIXI.Sprite(bgTexture);
-                bgSprite.width = app.screen.width;
-                bgSprite.height = app.screen.height;
-                app.stage.addChild(bgSprite);
-            } catch {
-                const bg = new PIXI.Graphics();
-                bg.rect(0, 0, app.screen.width, app.screen.height).fill({ color: 0xC3EDAE });
-                app.stage.addChild(bg);
-            }
-
-            const activeBuildings = buildings.filter(b => DORF2_SLOTS[b.position]);
-
-            for (const b of activeBuildings) {
-                const coords = DORF2_SLOTS[b.position];
-                const container = new PIXI.Container();
-                container.x = coords.x;
-                container.y = coords.y;
-
-                const meta = BUILDING_META[b.name];
-                const hasLevel = b.level > 0 || b.is_upgrading;
-
-                if (meta) {
-                    try {
-                        const texture = await PIXI.Assets.load(meta.asset);
-                        const sprite = new PIXI.Sprite(texture);
-                        sprite.anchor.set(0.5);
-                        sprite.width = 64;
-                        sprite.height = 64;
-                        container.addChild(sprite);
-                    } catch {
-                        const fallback = new PIXI.Graphics();
-                        fallback.circle(0, 0, 25).fill({ color: 0x8B7355 });
-                        container.addChild(fallback);
-                    }
-                } else {
-                    try {
-                        const texture = await PIXI.Assets.load('/assets/buildings/g1.png');
-                        const sprite = new PIXI.Sprite(texture);
-                        sprite.anchor.set(0.5);
-                        sprite.width = 64;
-                        sprite.height = 64;
-                        sprite.alpha = 0.3;
-                        container.addChild(sprite);
-                    } catch {
-                        const placeholder = new PIXI.Graphics();
-                        placeholder.circle(0, 0, 20).fill({ color: 0x999999, alpha: 0.3 });
-                        container.addChild(placeholder);
-                    }
-                }
-
-                if (hasLevel) {
-                    const badge = new PIXI.Graphics();
-                    badge.circle(0, 0, 11).fill({ color: 0xFFFFFF });
-                    badge.x = 22;
-                    badge.y = 22;
-                    container.addChild(badge);
-
-                    const lvlText = new PIXI.Text({
-                        text: b.level.toString(),
-                        style: { fontFamily: 'Arial, Helvetica, Verdana', fontSize: 11, fill: 0x000000, fontWeight: 'normal' }
-                    });
-                    lvlText.anchor.set(0.5);
-                    lvlText.x = 22;
-                    lvlText.y = 22;
-                    container.addChild(lvlText);
-                }
-
-                container.eventMode = 'static';
-                container.cursor = 'pointer';
-                container.on('pointerover', () => container.scale.set(1.06));
-                container.on('pointerout', () => container.scale.set(1));
-                container.on('pointerdown', () => setSelectedSlot(b));
-
-                app.stage.addChild(container);
-            }
-        }
-
-        initPixi();
-        return () => {
-            isMounted = false;
-            if (pixiAppRef.current) { pixiAppRef.current.destroy(true, { children: true }); pixiAppRef.current = null; }
-        };
-    }, [loading, buildings]);
 
     const handleUpgrade = async () => {
         if (!selectedSlot || !activeVillageId) return;
@@ -258,17 +142,68 @@ export default function VillageCenter() {
         return r.wood >= c.wood && r.clay >= c.clay && r.iron >= c.iron && r.crop >= c.crop;
     };
 
+    const activeSlots = buildings.filter((b) => DORF2_SLOTS[b.position]);
+
     return (
         <div className="village2">
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="مرکز دهکده" />
 
-            {loading ? (
-                <p style={{ fontWeight: 'bold', marginTop: '64px', color: '#252525', textAlign: 'center' }}>در حال بارگذاری مرکز دهکده...</p>
-            ) : (
-                <div id="village_map">
-                    <div ref={pixiContainerRef} style={{ width: '540px', height: '448px' }} />
-                </div>
-            )}
+            {/* نقشه مرکز دهکده - HTML/CSS ساده، بدون canvas/pixi */}
+            <div id="village_map">
+                {loading ? (
+                    <p style={{ fontWeight: 'bold', marginTop: '64px', color: '#252525', textAlign: 'center' }}>
+                        در حال بارگذاری مرکز دهکده...
+                    </p>
+                ) : (
+                    <>
+                        <img
+                            src="/assets/bgs/bg1.jpg" alt=""
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0 }}
+                            onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.background = '#C3EDAE'; }}
+                        />
+
+                        {activeSlots.map((b) => {
+                            const coords = DORF2_SLOTS[b.position];
+                            const hasLevel = b.level > 0 || b.is_upgrading;
+                            const meta = BUILDING_META[b.name];
+                            const asset = meta ? meta.asset : FALLBACK_ASSET;
+
+                            return (
+                                <div
+                                    key={b.id}
+                                    className="dorf2-slot"
+                                    style={{ position: 'absolute', left: coords.x, top: coords.y, transform: 'translate(-50%, -50%)', zIndex: 5 }}
+                                    onClick={() => setSelectedSlot(b)}
+                                    title={b.name}
+                                >
+                                    <img
+                                        src={asset}
+                                        alt={b.name}
+                                        className="dorf2-img"
+                                        style={!meta ? { opacity: 0.3 } : undefined}
+                                        onError={(e) => { e.target.style.visibility = 'hidden'; }}
+                                    />
+                                    {hasLevel && (
+                                        <div className="dorf2-level">{b.level}</div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </>
+                )}
+
+                <style>{`
+                    .dorf2-slot { cursor: pointer; transition: transform 0.15s ease; }
+                    .dorf2-slot:hover { transform: translate(-50%, -50%) scale(1.06) !important; }
+                    .dorf2-img { width: 64px; height: 64px; object-fit: contain; display: block; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35)); }
+                    .dorf2-level {
+                        position: absolute; left: 22px; top: 22px; transform: translate(-50%, -50%);
+                        width: 22px; height: 22px; border-radius: 50%; background: #FFF;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 11px; color: #000; box-shadow: 0 0 0 1px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.3);
+                    }
+                `}</style>
+            </div>
 
             <Modal open={!!selectedSlot} onClose={() => setSelectedSlot(null)} size="sm"
                 title={selectedSlot?.level > 0 ? selectedSlot.name : 'زمین خالی'}>

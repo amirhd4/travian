@@ -185,12 +185,12 @@ REST_FRAMEWORK = {
         'login_ip': '10/min',
         'login_username': '5/min',
         'register_ip': '5/hour',
-        'captcha_ip': '60/min',
+        'captcha_ip': '120/min',
     },
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5), # زمان را از ۲ دقیقه به ۵ دقیقه افزایش بده تا فشار کمتری به شبکه بیاید
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=155),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "AUTH_HEADER_TYPES": ("Bearer",),
     "ROTATE_REFRESH_TOKENS": True,
