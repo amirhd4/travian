@@ -16,6 +16,7 @@ const useGameStore = create((set) => ({
     villages: [],
     activeVillageId: null,
     heroImageVersion: 0,
+    cropConsumption: 0,
 
     setCapacities: (storage, granary) => set({ maxStorage: storage, maxGranary: granary }),
 
@@ -33,6 +34,7 @@ const useGameStore = create((set) => ({
     setActiveVillageId: (villageId) => set({ activeVillageId: villageId }),
 
     refreshHeroImage: () => set((state) => ({ heroImageVersion: state.heroImageVersion + 1 })),
+    setCropConsumption: (v) => set({ cropConsumption: v }),
 
     // قبلا این استیت هیچ‌وقت از سرور آپدیت نمی‌شد؛ ResourceBar فقط مقادیر
     // پیش‌فرض هاردکد را هر ثانیه در کلاینت تیک می‌زد.

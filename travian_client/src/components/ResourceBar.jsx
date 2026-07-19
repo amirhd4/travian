@@ -18,7 +18,7 @@ function isNightTime() {
 }
 
 export default function ResourceBar() {
-    const { resources, production, tickResources, updateResources, setProduction, setCapacities } = useGameStore();
+    const { resources, production, tickResources, updateResources, setProduction, setCapacities, cropConsumption: storeCropConsumption, setCropConsumption } = useGameStore();
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const user = useGameStore((state) => state.user);
     const maxStorage = useGameStore((state) => state.maxStorage);
@@ -40,6 +40,7 @@ export default function ResourceBar() {
                 updateResources(data.resources);
                 setProduction(data.production);
                 setCapacities(data.max_storage, data.max_granary);
+                if (data.crop_consumption !== undefined) setCropConsumption(data.crop_consumption);
             } catch (error) {
                 console.error(error);
             }
@@ -56,7 +57,7 @@ export default function ResourceBar() {
 
     const nightMode = isNightTime();
     const cropProduction = production.crop || 0;
-    const cropConsumption = useGameStore((s) => s.village?.crop_consumption || 0);
+    const cropConsumption = useGameStore((s) => s.cropConsumption || 0);
     const cropNet = cropProduction - cropConsumption;
 
     return (

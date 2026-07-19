@@ -70,16 +70,16 @@ export default function ResourceFields() {
     const fetchMovements = useCallback(async () => {
         if (!activeVillageId) return;
         try {
-            const { data } = await api.get(`game/villages/${activeVillageId}/movements/`);
-            setMovements(data.movements || []);
+            const { data } = await api.get(`combat/movements/?village_id=${activeVillageId}`);
+            setMovements([...(data.outgoing || []).map(m => ({...m, direction: "outgoing"})), ...(data.incoming || []).map(m => ({...m, direction: "incoming"}))]);
         } catch { /* silent */ }
     }, [activeVillageId]);
 
     const fetchTroops = useCallback(async () => {
         if (!activeVillageId) return;
         try {
-            const { data } = await api.get(`game/villages/${activeVillageId}/troops/`);
-            setTroops(data.troops || []);
+            const { data } = await api.get(`combat/village-troops/?village_id=${activeVillageId}`);
+            setTroops(Array.isArray(data) ? data : (data.troops || []));
         } catch { /* silent */ }
     }, [activeVillageId]);
 
@@ -231,6 +231,15 @@ export default function ResourceFields() {
             <div id="map_details" style={{ marginTop: '20px' }}>
                 {movements.length > 0 && (
                     <div className="boxes villageList movements">
+                        <div className="boxes-tl"></div>
+                        <div className="boxes-tr"></div>
+                        <div className="boxes-tc"></div>
+                        <div className="boxes-ml"></div>
+                        <div className="boxes-mr"></div>
+                        <div className="boxes-mc"></div>
+                        <div className="boxes-bl"></div>
+                        <div className="boxes-br"></div>
+                        <div className="boxes-bc"></div>
                         <div className="boxes-contents">
                             <table id="movements" cellPadding="1" cellSpacing="1">
                                 <thead>
@@ -238,7 +247,7 @@ export default function ResourceFields() {
                                 </thead>
                                 <tbody>
                                     {movements.map((m, i) => {
-                                        const info = getMovementInfo(m.type);
+                                        const info = getMovementInfo(m);
                                         const remaining = m.end_time ? Math.max(0, Math.floor((new Date(m.end_time).getTime() - Date.now()) / 1000)) : 0;
                                         return (
                                             <tr key={i}>
@@ -256,7 +265,7 @@ export default function ResourceFields() {
                     </div>
                 )}
 
-                <br/><br/><br/><br/><br/><br/><br/>
+                
 
                 {villageInfo && (
                     <div className="boxes villageList production">
@@ -295,6 +304,18 @@ export default function ResourceFields() {
                                         <td className="res">گندم:</td>
                                         <td className="num">{villageInfo.production?.crop ?? 0}</td>
                                     </tr>
+                                    <tr style={{ borderTop: '2px solid #99C01A' }}>
+                                        <td className="ico"><div><img className="r5Big" src="/assets/ui/res-5.gif" alt="مصرف" title="مصرف گندم" /></div></td>
+                                        <td className="res">مصرف گندم:</td>
+                                        <td className="num" style={{ color: '#DE0000' }}>-{villageInfo.crop_consumption ?? 0}</td>
+                                    </tr>
+                                    <tr style={{ borderTop: '1px solid #CCC' }}>
+                                        <td className="ico"></td>
+                                        <td className="res" style={{ fontWeight: 'bold' }}>تراز گندم:</td>
+                                        <td className="num" style={{ fontWeight: 'bold', color: ((villageInfo.production?.crop ?? 0) - (villageInfo.crop_consumption ?? 0)) >= 0 ? '#228B22' : '#DE0000' }}>
+                                            {((villageInfo.production?.crop ?? 0) - (villageInfo.crop_consumption ?? 0)) >= 0 ? '+' : ''}{Math.round((villageInfo.production?.crop ?? 0) - (villageInfo.crop_consumption ?? 0))}
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -303,13 +324,29 @@ export default function ResourceFields() {
 
                 {troops.length > 0 && (
                     <div className="boxes villageList units">
+                        <div className="boxes-tl"></div>
+                        <div className="boxes-tr"></div>
+                        <div className="boxes-tc"></div>
+                        <div className="boxes-ml"></div>
+                        <div className="boxes-mr"></div>
+                        <div className="boxes-mc"></div>
+                        <div className="boxes-bl"></div>
+                        <div className="boxes-br"></div>
+                        <div className="boxes-bc"></div>
                         <div className="boxes-contents">
                             <table id="troops" cellPadding="1" cellSpacing="1">
                                 <thead>
-                                    <tr><th colSpan="3">نیروهای مستقر</th></tr>
+                                    <tr><th colSpan="3">نیروهای مستقر در دهکده</th></tr>
                                 </thead>
                                 <tbody>
-                                    {troops.map((t, i) => (
+                                    {troops.length > 0 && (
+                                    <tr style={{ background: '#E5EECC' }}>
+                                        <td className="ico"><img className="unit uhero" src="/assets/troops/hero-portrait.png" alt="قهرمان" title="قهمان" onError={(e) => { e.target.style.display = 'none'; }} /></td>
+                                        <td className="num" style={{ fontWeight: 'bold' }}>{troops.reduce((sum, t) => sum + (t.is_hero ? t.count : 0), 0) || '-'}</td>
+                                        <td className="un" style={{ fontWeight: 'bold' }}>قهرمان</td>
+                                    </tr>
+                                )}
+                                {troops.filter(t => !t.is_hero).map((t, i) => (
                                         <tr key={i}>
                                             <td className="ico">
                                                 <img className={`unit u${t.unit_id}`} src={`/assets/troops/unit-${t.unit_id}.gif`} alt={t.name} title={t.name} />

@@ -96,6 +96,7 @@ class VillageDetailView(APIView):
                 "iron": round(rates['iron'], 1),
                 "crop": round(rates['crop'], 1),
             },
+            "crop_consumption": round(calculate_crop_upkeep(village), 1),
             "max_storage": village.max_storage,
             "max_granary": village.max_granary,
         })
@@ -148,6 +149,9 @@ class VillageBuildingsView(APIView):
                     b.building_type.base_build_time * time_multiplier * get_main_building_speed_multiplier(village)),
             })
 
+        rates = get_effective_production_rates(village)
+        crop_consumption = calculate_crop_upkeep(village)
+
         return Response({
             "village": {
                 "id": village.id,
@@ -161,6 +165,13 @@ class VillageBuildingsView(APIView):
                     "iron": village.iron,
                     "crop": village.crop,
                 },
+                "production": {
+                    "wood": round(rates["wood"], 1),
+                    "clay": round(rates["clay"], 1),
+                    "iron": round(rates["iron"], 1),
+                    "crop": round(rates["crop"], 1),
+                },
+                "crop_consumption": round(crop_consumption, 1),
             },
             "buildings": data,
         })
