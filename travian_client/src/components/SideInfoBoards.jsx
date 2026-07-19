@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -9,9 +9,9 @@ function formatCountdown(seconds) {
     const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
-    if (d > 0) return `${d}d ${h}h ${m}m`;
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    if (m > 0) return `${m}m ${s}s`;
+    if (d > 0) return `${d}روز و  ${h}:${m}`;
+    if (h > 0) return `${h}:${m}:${s}`;
+    if (m > 0) return `${m}:${s}`;
     return `${s}s`;
 }
 
@@ -199,6 +199,12 @@ export default function SideInfoBoards() {
                     ) : (
                         <span>نقشه‌های ساخت شگفتی آزاد شدند</span>
                     )}
+                    <br />
+                    <span style={{ color: '#999' }}>---------</span>
+                    <br />
+                    <span>زمان باقیمانده تا تقسیم مدال</span>
+                    <br />
+                    <b>{formatCountdown(medalRemaining)}</b>
                     <br />
                     <span style={{ color: '#999' }}>---------</span>
                 </div>

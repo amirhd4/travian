@@ -1,4 +1,4 @@
-﻿@tailwind base;
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -56,10 +56,26 @@ body.login #logo, body.signup #logo { background-image: url('/assets/layout/logo
 #res li .bar-bg { background-color: #CCC; height: 3px; margin: 4px 0 0; width: 107px; float: right; }
 #res li .bar { background-color: #FF0; height: 3px; font-size: 0; }
 #plusLink { height: 47px; position: absolute; right: 212px; top: 16px; width: 85px; text-align: center; z-index: 10; }
+#plusLink #plus { text-align: center; position: relative; display: inline; font-size: 11px; }
+#plusLink #plus a.plusBtn { display: inline-block; height: 18px; line-height: 18px; text-align: center; font-weight: bold; color: #ab7900; }
+#plusLink #plus a.plusBtn:hover { color: #727272; }
+#plusLink #plus a.plusBtn .plusBtn-l,
+#plusLink #plus a.plusBtn .plusBtn-r,
+#plusLink #plus:hover a.plusBtn .plusBtn-l,
+#plusLink #plus:hover a.plusBtn .plusBtn-r,
+#gs p { background-image: url('/assets/layout/plusBtn.png'); }
+#plusLink #plus a.plusBtn .plusBtn-l { background-position: right -37px; background-repeat: no-repeat; display: inline-block; height: 18px; padding: 0 5px 0 0; }
+#plusLink #plus a.plusBtn .plusBtn-r { background-position: left -37px; background-repeat: no-repeat; display: inline-block; height: 18px; width: 5px; }
+#plusLink #plus:hover a.plusBtn .plusBtn-l { background-position: right -67px; }
+#plusLink #plus:hover a.plusBtn .plusBtn-r { background-position: left -67px; }
 #gs { font-size: 10px; line-height: 13px; right: 0; position: absolute; bottom: 0; text-align: center; width: 100%; }
-#gs p { background: url('/assets/layout/plusBtn.png') no-repeat; background-position: top left; color: #252525; display: inline-block; height: 33px; text-align: center; width: 41px; margin: 0; }
-#gs p:hover { background-position: top right; }
+#gs p { background-position: top right; color: #252525; display: inline-block; height: 33px; text-align: center; width: 41px; margin: 0; }
+#gs p:hover { background-position: top left; }
 #gs p a { display: block; padding-top: 7px; font-weight: bold; color: #252525; }
+#gs p a:hover { color: #252525; }
+#gs p.gold { float: right; }
+#gs p.silver { float: left; }
+#gs p.silver img.silver { margin-top: 3px; }
 img.gold { width: 12px; height: 12px; background-image: url('/assets/ui/gold-icon.gif'); background-repeat: no-repeat; }
 img.silver { width: 10px; height: 9px; background-image: url('/assets/ui/plus-icon.gif'); background-repeat: no-repeat; }
 #stime { color: #FFF; font-size: 10px; height: 22px; position: absolute; right: 35px; top: 0; z-index: 10; }
@@ -254,3 +270,23 @@ div.village1 table#movements .a3, div.village1 table#movements .d3 { color: #B50
 
 /* Side info adventure/auction links */
 .sideInfoAdventures:hover, .sideInfoAuctions:hover { opacity: 0.7; }
+
+/* Quest Master sidebar */
+.questMaster {
+    position: absolute;
+    left: -11px;
+    top: 221px;
+    width: 160px;
+    height: 195px;
+    z-index: 100;
+    cursor: pointer;
+}
+.questMasterImg {
+    width: 160px;
+    height: 195px;
+    object-fit: contain;
+    transition: filter 0.3s ease;
+}
+.questMasterImg:hover {
+    filter: brightness(1.1) drop-shadow(0 2px 6px rgba(0,0,0,0.3));
+}

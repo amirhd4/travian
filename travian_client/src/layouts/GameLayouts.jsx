@@ -1,9 +1,10 @@
-﻿import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import ResourceBar from "../components/ResourceBar";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import SideInfoBoards from "../components/SideInfoBoards";
 import VillageNameSign from "../components/VillageNameSign";
+import QuestMasterSidebar from "../components/QuestMasterSidebar";
 import { useEffect } from "react";
 import useGameStore from "../store/useGameStore";
 import api from "../api/axiosConfig";
@@ -61,6 +62,7 @@ export default function GameLayout() {
                     </div>
                     <SideInfoBoards />
                     <VillageNameSign village={activeVillage} />
+                    <QuestMasterSidebar />
                     <Footer />
                 </div>
             </div>

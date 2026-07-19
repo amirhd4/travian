@@ -63,22 +63,21 @@ export default function ResourceBar() {
         <>
             <div id="stime" className="stime">
                 <div className={`content ${nightMode ? 'night' : 'day'}`}>
-                    <span style={{ fontWeight: 'bold' }}>{now.toLocaleTimeString('fa-IR')}</span>
-                    <span>&nbsp;{nightMode ? 'Night' : 'Day'}</span>
+                    <span style={{ float: 'right' }}>{now.toLocaleTimeString('fa-IR')}</span>
                 </div>
             </div>
             <div id="plusLink">
                 <div id="gs">
                     <p className="gold">
-                        <a href="/gold-shop" title="Gold">
-                            <img src="/assets/ui/gold-icon.gif" alt="Gold" className="gold" />
+                        <a href="/gold-shop" title="سکه طلا">
+                            <img src="/assets/ui/gold-icon.gif" alt="طلا" className="gold" />
                             <br />
                             {(user?.gold_coins ?? 0).toLocaleString()}
                         </a>
                     </p>
                     <p className="silver">
-                        <a href="/hero" title="Silver">
-                            <img src="/assets/ui/plus-icon.gif" alt="Silver" className="silver" />
+                        <a href="/hero" title="سکه نقره">
+                            <img src="/assets/ui/plus-icon.gif" alt="نقره" className="silver" />
                             <br />
                             {(user?.silver_coins ?? 0).toLocaleString()}
                         </a>
@@ -86,7 +85,7 @@ export default function ResourceBar() {
                     <div className="clear"></div>
                 </div>
                 <div id="plus">
-                    <a href="/plus" className="plusBtn" title="Plus">
+                    <a href="/plus" className="plusBtn" title="اکانت پلاس">
                         <span className="plusBtn-l"><span className="plus_g">Plus</span></span>
                         <span className="plusBtn-r">&nbsp;</span>
                     </a>
