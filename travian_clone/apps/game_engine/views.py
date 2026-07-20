@@ -134,7 +134,7 @@ class VillageBuildingsView(APIView):
             is_max_level = display_level >= effective_max_level
 
             data.append({
-                "id": b.id, "position": b.position, "name": b.building_type.name,
+                "id": b.id, "position": b.position, "name": b.building_type.name, "building_type_id": b.building_type.id,
                 "category": b.building_type.category, "level": display_level,
                 "max_level": effective_max_level, "is_max_level": is_max_level,
                 "is_upgrading": b.is_upgrading, "upgrade_end_time": b.upgrade_end_time,
