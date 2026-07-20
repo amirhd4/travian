@@ -276,6 +276,7 @@ class HeroView(APIView):
             "is_away": hero.is_away,
 
             # ✅ جدید: امتیازات قابل تخصیص قهرمان
+            "speed": hero.level + sum(inv.item.speed_bonus for inv in PlayerHeroItem.objects.filter(hero=hero, is_equipped=True)),
             "fighting_strength_points": hero.fighting_strength_points,
             "off_bonus_points": hero.off_bonus_points,
             "def_bonus_points": hero.def_bonus_points,
@@ -295,6 +296,7 @@ class HeroView(APIView):
                 "eye_style": hero.eye_style,
                 "nose_style": hero.nose_style,
                 "mouth_style": hero.mouth_style,
+                "beard_style": hero.beard_style,
                 "options_count": Hero.APPEARANCE_OPTION_COUNT,
             },
 
@@ -948,7 +950,7 @@ class HeroAppearanceView(APIView):
 
     APPEARANCE_FIELDS = [
         'head_style', 'hair_color', 'hair_style', 'ear_style',
-        'eyebrow_style', 'eye_style', 'nose_style', 'mouth_style',
+        'eyebrow_style', 'eye_style', 'nose_style', 'mouth_style', 'beard_style',
     ]
 
     def post(self, request):
@@ -1001,6 +1003,7 @@ class HeroImageView(APIView):
             ear_style = int(request.query_params.get('ear_style', hero.ear_style))
             mouth_style = int(request.query_params.get('mouth_style', hero.mouth_style))
             head_style = int(request.query_params.get('head_style', hero.head_style))
+            beard_style = int(request.query_params.get('beard_style', hero.beard_style))
         else:
             gender = hero.gender
             hair_color = hero.hair_color
@@ -1011,6 +1014,7 @@ class HeroImageView(APIView):
             ear_style = hero.ear_style
             mouth_style = hero.mouth_style
             head_style = hero.head_style
+            beard_style = hero.beard_style
         size_key = request.query_params.get('size', 'sideinfo')
         size = self.SIZE_MAP.get(size_key, '119x136')
         gdir = 'male' if gender == 'MALE' else 'female'
@@ -1055,7 +1059,7 @@ class HeroImageView(APIView):
         face = load(os.path.join(base_path, 'face', 'face{}.png'.format(face_idx)))
         if face: body.paste(face, (0, 0), face)
         if gender == 'MALE':
-            beard_idx = (head_style - 1) % 5
+            beard_idx = (beard_style - 1) % 6
             beard = load(os.path.join(base_path, 'beard', 'beard{}-{}.png'.format(beard_idx, color)))
             if beard: body.paste(beard, (0, 0), beard)
         from io import BytesIO

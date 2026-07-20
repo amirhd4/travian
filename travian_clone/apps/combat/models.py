@@ -269,6 +269,7 @@ class Hero(models.Model):
     eye_style = models.PositiveSmallIntegerField(default=1)
     nose_style = models.PositiveSmallIntegerField(default=1)
     mouth_style = models.PositiveSmallIntegerField(default=1)
+    beard_style = models.PositiveSmallIntegerField(default=1)
 
     POINTS_PER_LEVEL = 4
     RESOURCE_UNITS_PER_POINT_PER_HOUR = 3  # هر امتیاز منابع، این مقدار در ساعت تولید می‌کند

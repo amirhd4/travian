@@ -10,6 +10,7 @@ from .views import (
     CombatReportListView, CombatReportUnreadCountView, CombatReportDetailView,
     TrappedTroopsListView, ReleaseTrappedTroopsView,
     TroopEvasionView, FarmListManageView, ReinforcementReportDetailView, ReinforcementReportListView,
+    HeroAuctionListView, HeroAuctionBidView,
 )
 
 urlpatterns = [
@@ -34,6 +35,8 @@ urlpatterns = [
     path('hero/settings/', HeroSettingsView.as_view(), name='hero_settings'),
     path('hero/revive/', HeroReviveView.as_view(), name='hero_revive'),
     path('hero/appearance/', HeroAppearanceView.as_view(), name='hero_appearance'),
+    path('hero/auction/', HeroAuctionListView.as_view(), name='hero_auction_list'),
+    path('hero/auction/bid/', HeroAuctionBidView.as_view(), name='hero_auction_bid'),
     path('hero/image/', HeroImageView.as_view(), name='hero_image'),
     path('reports/', CombatReportListView.as_view(), name='combat_reports'),  # ✅ جدید
     path('reports/unread-count/', CombatReportUnreadCountView.as_view(), name='combat_reports_unread'),  # ✅ جدید

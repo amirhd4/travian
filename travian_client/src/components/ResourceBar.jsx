@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -18,7 +18,7 @@ function isNightTime() {
 }
 
 export default function ResourceBar() {
-    const { resources, production, tickResources, updateResources, setProduction, setCapacities, cropConsumption: storeCropConsumption, setCropConsumption } = useGameStore();
+    const { resources, production, tickResources, updateResources, setProduction, setCapacities, setCropConsumption } = useGameStore();
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const user = useGameStore((state) => state.user);
     const maxStorage = useGameStore((state) => state.maxStorage);
@@ -35,7 +35,7 @@ export default function ResourceBar() {
         let cancelled = false;
         const fetchVillageResources = async () => {
             try {
-                const { data } = await api.get(`game/villages/${activeVillageId}/`);
+                const { data } = await api.get("game/villages/" + activeVillageId + "/");
                 if (cancelled) return;
                 updateResources(data.resources);
                 setProduction(data.production);
@@ -63,7 +63,7 @@ export default function ResourceBar() {
     return (
         <>
             <div id="stime" className="stime">
-                <div className={`content ${nightMode ? 'night' : 'day'}`}>
+                <div className={"content " + (nightMode ? 'night' : 'day')}>
                     <span style={{ float: 'right' }}>{now.toLocaleTimeString('fa-IR')}</span>
                 </div>
             </div>
@@ -98,35 +98,30 @@ export default function ResourceBar() {
                     { key: 'clay', img: '/assets/ui/res-2.gif', label: 'خاک رس', maxKey: 'maxStorage' },
                     { key: 'iron', img: '/assets/ui/res-3.gif', label: 'آهن', maxKey: 'maxStorage' },
                     { key: 'crop', img: '/assets/ui/res-4.gif', label: 'گندم', maxKey: 'maxGranary' },
-                ].map(({ key, img, label, maxKey }, idx) => {
-                    const value = Math.floor(resources[key]);
-                    const max = maxKey === 'maxGranary' ? maxGranary : maxStorage;
-                    const percent = Math.min(100, (value / (max || 1)) * 100);
-                    const prod = Math.floor(production[key] || 0);
+                ].map(function(item, idx) {
+                    var value = Math.floor(resources[item.key]);
+                    var max = item.maxKey === 'maxGranary' ? maxGranary : maxStorage;
+                    var percent = Math.min(100, (value / (max || 1)) * 100);
+                    var prod = Math.floor(production[item.key] || 0);
+                    var barColor = percent > 90 ? '#DE0000' : percent > 70 ? '#F88C1F' : '#006900';
                     return (
-                        <li key={key} className={`r${idx + 1}`}
-                            title={`${label} - Production: ${prod}`}>
+                        <li key={item.key} className={"r" + (idx + 1)}
+                            title={item.label + " - تولید: " + prod + "/ساعت"}>
                             <p>
-                                <img src={img} alt={label} />
-                                <span className="value">{value.toLocaleString()}</span>
+                                <img src={item.img} alt={item.label} />
+                                <span className="value">{value.toLocaleString()}/{max.toLocaleString()}</span>
                             </p>
                             <div className="bar-bg">
-                                <div className="bar" style={{ width: `${percent}%` }}></div>
+                                <div className="bar" style={{ width: percent + '%', backgroundColor: barColor }}></div>
                             </div>
                         </li>
                     );
                 })}
-                <li className="r5" title={`Crop consumption: ${cropConsumption} - Net: ${cropNet}`}>
+                <li className="r5" title={"مصرف گندم: " + cropConsumption + " - تولید: " + cropProduction + " - تراز: " + (cropNet >= 0 ? '+' : '') + Math.floor(cropNet)}>
                     <p>
-                        <img src="/assets/ui/res-5.gif" alt="Crop consumption" />
-                        <span className="value">{Math.floor(cropConsumption).toLocaleString()}</span>
+                        <img src="/assets/ui/res-5.gif" alt="تراز گندم" />
+                        <span className="value">{Math.floor(cropConsumption).toLocaleString()}/{Math.floor(cropProduction).toLocaleString()}</span>
                     </p>
-                    <div className="bar-bg">
-                        <div className="bar" style={{
-                            width: `${Math.min(100, cropProduction > 0 ? (cropConsumption / cropProduction) * 100 : 0)}%`,
-                            backgroundColor: cropNet < 0 ? '#F00' : '#FF0'
-                        }}></div>
-                    </div>
                 </li>
             </ul>
         </>

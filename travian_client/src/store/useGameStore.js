@@ -67,10 +67,10 @@ const useGameStore = create((set) => ({
     // clamp می‌شود تا عدد منفی لحظه‌ای در UI نمایش داده نشود.
     tickResources: () => set((state) => ({
         resources: {
-            wood: state.resources.wood + (state.production.wood / 3600),
-            clay: state.resources.clay + (state.production.clay / 3600),
-            iron: state.resources.iron + (state.production.iron / 3600),
-            crop: Math.max(0, state.resources.crop + (state.production.crop / 3600)),
+            wood: Math.min(state.maxStorage, state.resources.wood + (state.production.wood / 3600)),
+            clay: Math.min(state.maxStorage, state.resources.clay + (state.production.clay / 3600)),
+            iron: Math.min(state.maxStorage, state.resources.iron + (state.production.iron / 3600)),
+            crop: Math.min(state.maxGranary, Math.max(0, state.resources.crop + (state.production.crop / 3600))),
         }
     })),
 }));

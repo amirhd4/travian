@@ -349,7 +349,7 @@ export default function ResourceFields() {
                                 {troops.map((t, i) => (
                                         <tr key={i}>
                                             <td className="ico">
-                                                <img className={`unit u${t.unit_id}`} src={`/assets/troops/unit-${t.unit_id}.gif`} alt={t.name} title={t.name} />
+                                                <img className={`unit u${t.troop_type_id}`} src={`/assets/troops/unit-${t.troop_type_id}.gif`} alt={t.name} title={t.name} />
                                             </td>
                                             <td className="num">{t.count}</td>
                                             <td className="un">{t.name}</td>

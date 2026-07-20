@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
@@ -56,6 +56,7 @@ function AppearanceTab({ hero, onSave }) {
     const [earStyle, setEarStyle] = useState(hero.appearance?.ear_style || 1);
     const [mouthStyle, setMouthStyle] = useState(hero.appearance?.mouth_style || 1);
     const [headStyle, setHeadStyle] = useState(hero.appearance?.head_style || 1);
+    const [beardStyle, setBeardStyle] = useState(hero.appearance?.beard_style || 1);
     const [saving, setSaving] = useState(false);
     const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -68,10 +69,10 @@ function AppearanceTab({ hero, onSave }) {
             gender, hair_color: hairColor, hair_style: hairStyle,
             eye_style: eyeStyle, eyebrow_style: eyebrowStyle,
             nose_style: noseStyle, ear_style: earStyle,
-            mouth_style: mouthStyle, head_style: headStyle,
+            mouth_style: mouthStyle, head_style: headStyle, beard_style: beardStyle,
         });
         return 'combat/hero/image/?' + params.toString();
-    }, [gender, hairColor, hairStyle, eyeStyle, eyebrowStyle, noseStyle, earStyle, mouthStyle, headStyle]);
+    }, [gender, hairColor, hairStyle, eyeStyle, eyebrowStyle, noseStyle, earStyle, mouthStyle, headStyle, beardStyle]);
 
     useEffect(() => {
         let revokeUrl = null;
@@ -95,7 +96,7 @@ function AppearanceTab({ hero, onSave }) {
                 gender, hair_style: hairStyle, hair_color: hairColor,
                 eye_style: eyeStyle, eyebrow_style: eyebrowStyle,
                 nose_style: noseStyle, ear_style: earStyle,
-                mouth_style: mouthStyle, head_style: headStyle,
+                mouth_style: mouthStyle, head_style: headStyle, beard_style: beardStyle,
             });
             useGameStore.getState().refreshHeroImage();
         } finally { setSaving(false); }
@@ -159,6 +160,11 @@ function AppearanceTab({ hero, onSave }) {
 
                 <OptionGrid label="دهان" count={4} selected={mouthStyle} onSelect={setMouthStyle}
                     basePath={basePath} prefix="mouth/mouth" suffix=".png" />
+
+                {gender === "MALE" && (
+                    <OptionGrid label="ریش" count={6} selected={beardStyle} onSelect={setBeardStyle}
+                        basePath={basePath} prefix="beard/beard" suffix={"-" + colorNames[hairColor - 1] + ".png"} />
+                )}
 
                 <button onClick={handleSave} disabled={saving} className="btn-primary w-full mt-4">
                     {saving ? 'در حال ذخیره...' : 'ذخیره ظاهر'}
@@ -440,7 +446,7 @@ export default function Hero() {
                             className="w-20 h-20 rounded-full border-4 border-gold-500 object-cover bg-ink-700 flex-shrink-0"
                             onError={(e) => { e.target.style.display='none'; }} />
                         <div>
-                            <h1 className="text-2xl font-extrabold text-gold-400">🦸 قهرمان شما</h1>
+                            <h1 className="text-2xl font-extrabold text-gold-400">قهرمان شما</h1>
                             <p className="text-xs text-parchment-400 mt-1">سطح {hero.level}</p>
                         </div>
                     </div>
