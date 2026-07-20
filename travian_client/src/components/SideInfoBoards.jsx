@@ -145,7 +145,7 @@ export default function SideInfoBoards() {
                 <div className="head">
                     <a href="/villages" title="نمای کلی دهکده‌ها">آمار دهکده‌ها:</a>
                 </div>
-                <div className="list">
+                <div className="list" style={{ maxHeight: '150px', overflowY: 'auto' }}>
                     <ul>
                         {villages.map((v) => {
                             const isActive = v.id === activeVillageId;
@@ -174,42 +174,36 @@ export default function SideInfoBoards() {
             <div id="villageList" className="listing" style={{ marginTop: '0' }}>
                 <div className="head"></div>
                 <div className="list" style={{ padding: '8px', marginTop: '-40px', textAlign: 'center', fontSize: '11px' }}>
-                    {cataRemaining > 0 ? (
+                    {cataRemaining > 0 && (
                         <>
                             <span>آزاد شدن منجنیق</span>
                             <br />
                             <b>{formatCountdown(cataRemaining)}</b>
+                            <br />
+                            <span style={{ color: '#999' }}>---------</span>
+                            <br />
                         </>
-                    ) : (
-                        <span>منجنیق آزاد شد</span>
                     )}
-                    <br />
-                    <span style={{ color: '#999' }}>---------</span>
-                    <br />
-                    {katibeRemaining > 0 ? (
+                    {katibeRemaining > 0 && (
                         <>
                             <span>زمان آزاد شدن کتیبه‌ها</span>
                             <br />
                             <b>{formatCountdown(katibeRemaining)}</b>
+                            <br />
+                            <span style={{ color: '#999' }}>---------</span>
+                            <br />
                         </>
-                    ) : (
-                        <span>کتیبه‌ها آزاد شدند</span>
                     )}
-                    <br />
-                    <span style={{ color: '#999' }}>---------</span>
-                    <br />
-                    {wwPlanRemaining > 0 ? (
+                    {wwPlanRemaining > 0 && (
                         <>
                             <span>آزادسازی نقشه ساخت شگفتی</span>
                             <br />
                             <b>{formatCountdown(wwPlanRemaining)}</b>
+                            <br />
+                            <span style={{ color: '#999' }}>---------</span>
+                            <br />
                         </>
-                    ) : (
-                        <span>نقشه‌های ساخت شگفتی آزاد شدند</span>
                     )}
-                    <br />
-                    <span style={{ color: '#999' }}>---------</span>
-                    <br />
                     <span>زمان باقیمانده تا تقسیم مدال</span>
                     <br />
                     <b>{formatCountdown(medalRemaining)}</b>

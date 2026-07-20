@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -78,16 +78,20 @@ export default function ResourceBar() {
                     </p>
                     <p className="silver">
                         <a href="/hero" title="سکه نقره">
-                            <img src="/assets/ui/plus-icon.gif" alt="نقره" className="silver" />
+                            <img src="/assets/ui/silver-icon.gif" alt="نقره" className="silver" />
                             <br />
                             {(user?.silver_coins ?? 0).toLocaleString()}
                         </a>
                     </p>
                     <div className="clear"></div>
                 </div>
-                <div id="plus">
+                <div id="plus" style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                     <a href="/plus" className="plusBtn" title="اکانت پلاس">
-                        <span className="plusBtn-l"><span className="plus_g">Plus</span></span>
+                        <span className="plusBtn-l"><span className="plus_g">پلاس</span></span>
+                        <span className="plusBtn-r">&nbsp;</span>
+                    </a>
+                    <a href="/messages" className="plusBtn" title="پشتیبانی">
+                        <span className="plusBtn-l"><span className="plus_g">پشتیبانی</span></span>
                         <span className="plusBtn-r">&nbsp;</span>
                     </a>
                 </div>
