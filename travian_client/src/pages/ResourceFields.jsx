@@ -7,25 +7,28 @@ import { formatDuration } from "../utils/formatter.js";
 // مختصات جدید و کاملا قرینه شده، مخصوص زمانی که عکس پس‌زمینه scaleX(-1) دارد
 // تنظیم شده برای بوم دقیق 484x317
 const DORF1_SLOTS = {
-    1: { x: 242, y: 40 },   // بالا مرکز (مزرعه گندم)
-    2: { x: 145, y: 65 },   // بالا چپ 1 (جنگل چوب)
-    3: { x: 95, y: 105 },   // بالا چپ 2 (جنگل چوب)
-    4: { x: 60, y: 160 },   // چپ دور (مزرعه گندم)
-    5: { x: 105, y: 245 },  // پایین چپ 1 (گودال خشت)
-    6: { x: 160, y: 275 },  // پایین چپ 2 (گودال خشت)
-    7: { x: 242, y: 285 },  // پایین مرکز (جنگل چوب)
-    8: { x: 324, y: 275 },  // پایین راست 1 (گودال خشت)
-    9: { x: 379, y: 245 },  // پایین راست 2 (گودال خشت)
-    10: { x: 424, y: 160 }, // راست دور (مزرعه گندم)
-    11: { x: 389, y: 105 }, // بالا راست 1 (معدن آهن)
-    12: { x: 339, y: 65 },  // بالا راست 2 (معدن آهن)
-    // حلقه داخلی (دور خندق دهکده)
-    13: { x: 185, y: 115 }, // داخلی بالا چپ
-    14: { x: 155, y: 175 }, // داخلی چپ
-    15: { x: 185, y: 225 }, // داخلی پایین چپ
-    16: { x: 299, y: 225 }, // داخلی پایین راست
-    17: { x: 329, y: 175 }, // داخلی راست
-    18: { x: 299, y: 115 }, // داخلی بالا راست
+    // 1-4: چوب (جنگل) - positions on forest areas
+    1: { x: 260, y: 270 },   // جنگل پایین مرکز (مثلث سبز)
+    2: { x: 370, y: 55 },    // جنگل بالا راست
+    3: { x: 275, y: 225 },   // جنگل پایین چپ
+    4: { x: 155, y: 40 },    // جنگل بالا چپ (پشت کوه)
+    // 5-8: گودال خاک رس (قهوه‌ای)
+    5: { x: 230, y: 90 },   // گودال خاک رس پایین چپ بزرگ
+    6: { x: 185, y: 245 },   // گودال خاک رس پایین چپ کوچک
+    7: { x: 290, y: 90 },   // گودال خاک رس پایین راست بزرگ
+    8: { x: 350, y: 250 },   // گودال خاک رس پایین راست کوچک
+    // 9-12: معدن آهن (کوه/تپه خاکستری)
+    9: { x: 430, y: 110 },    // کوه بالا چپ
+    10: { x: 120, y: 100 },  // کوه بالا چپ 2
+    11: { x: 350, y: 90 },   // کوه بالا راست
+    12: { x: 380, y: 105 },  // کوه بالا راست 2
+    // 13-18: مزرعه گندم (زرد)
+    13: { x: 110, y: 155 },  // گندم زار بزرگ چپ بالا
+    14: { x: 80, y: 190 },   // گندم زار بزرگ چپ پایین
+    15: { x: 245, y: 40 },   // گندم زار کوچک بالای مرکز
+    16: { x: 370, y: 155 },  // گندم زار راست بالا
+    17: { x: 395, y: 185 },  // گندم زار راست پایین
+    18: { x: 150, y: 165 },  // گندم زار مرکز (نزدیک دهکده)
 };
 
 function formatCountdown(seconds) {
@@ -50,6 +53,8 @@ export default function ResourceFields() {
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [upgrading, setUpgrading] = useState(false);
     const [bgFailed, setBgFailed] = useState(false);
+    const [hoveredSlot, setHoveredSlot] = useState(null);
+    const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
     const [movements, setMovements] = useState([]);
     const [troops, setTroops] = useState([]);
@@ -178,6 +183,9 @@ export default function ResourceFields() {
                                         zIndex: 5
                                     }}
                                     onClick={() => setSelectedSlot(b)}
+                                    onMouseEnter={(e) => { setHoveredSlot(b); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
+                                    onMouseMove={(e) => { setTooltipPos({ x: e.clientX, y: e.clientY }); }}
+                                    onMouseLeave={() => setHoveredSlot(null)}
                                     title={b.name}
                                 >
                                     {!isEmpty ? b.level : '+'}
@@ -227,6 +235,48 @@ export default function ResourceFields() {
                     }
                 `}</style>
             </div>
+
+            {hoveredSlot && (
+                <div style={{
+                    position: 'fixed',
+                    left: tooltipPos.x + 15,
+                    top: tooltipPos.y - 10,
+                    background: 'rgba(0,0,0,0.85)',
+                    color: '#FFF',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    zIndex: 200,
+                    pointerEvents: 'none',
+                    minWidth: '150px',
+                    lineHeight: '18px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                    direction: 'rtl',
+                    fontFamily: 'Tahoma, Arial, sans-serif',
+                }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '13px', marginBottom: '4px', borderBottom: '1px solid rgba(255,255,255,0.3)', paddingBottom: '4px' }}>
+                        {hoveredSlot.name}
+                    </div>
+                    <div>سطح فعلی: <b style={{ color: '#99C01A' }}>{hoveredSlot.level}</b></div>
+                    {hoveredSlot.is_upgrading && (
+                        <div style={{ color: '#F88C1F', marginTop: '4px' }}>در حال ارتقا...</div>
+                    )}
+                    {!hoveredSlot.is_upgrading && !hoveredSlot.is_max_level && hoveredSlot.next_level_cost && (
+                        <>
+                            <div style={{ marginTop: '4px', fontSize: '11px', color: '#CCC' }}>هزینه ارتقا به سطح {hoveredSlot.level + 1}:</div>
+                            <div style={{ display: 'flex', gap: '8px', marginTop: '2px', fontSize: '11px' }}>
+                                <span><img src="/assets/ui/res-1.gif" width="12" style={{ verticalAlign: 'middle' }} /> {hoveredSlot.next_level_cost.wood}</span>
+                                <span><img src="/assets/ui/res-2.gif" width="12" style={{ verticalAlign: 'middle' }} /> {hoveredSlot.next_level_cost.clay}</span>
+                                <span><img src="/assets/ui/res-3.gif" width="12" style={{ verticalAlign: 'middle' }} /> {hoveredSlot.next_level_cost.iron}</span>
+                                <span><img src="/assets/ui/res-4.gif" width="12" style={{ verticalAlign: 'middle' }} /> {hoveredSlot.next_level_cost.crop}</span>
+                            </div>
+                        </>
+                    )}
+                    {hoveredSlot.is_max_level && (
+                        <div style={{ color: '#99C01A', marginTop: '4px' }}>حداکثر سطح</div>
+                    )}
+                </div>
+            )}
 
             <div id="map_details" style={{ marginTop: '20px' }}>
                 {movements.length > 0 && (
