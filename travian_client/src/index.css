@@ -92,7 +92,7 @@ body.village1 #contentOuterContainer { width: 702px; margin-left: 92px; float: l
 body.village1 #wrapper { background-image: url('/assets/bgs/bgResources-rtl.jpg'); }
 body.village2 #contentOuterContainer, body.village2 #contentOuterContainer .contentTitle, body.village2 #contentOuterContainer .contentContainer, body.village2 #contentOuterContainer .contentFooter { background: none; padding: 0; min-height: 0; }
 body.village2 #contentOuterContainer .contentTitle, body.village2 #contentOuterContainer .contentFooter { display: none; }
-body.village2 #contentOuterContainer { width: 628px; margin-left: 166px; float: left; }
+body.village2 #contentOuterContainer { width: 628px; margin-left: 166px; margin-top: 20px; float: left; }
 body.map #contentOuterContainer, body.map #contentOuterContainer .contentTitle, body.map #contentOuterContainer .contentContainer, body.map #contentOuterContainer .contentFooter { background: none; padding: 0; min-height: 0; }
 body.map #contentOuterContainer .contentTitle, body.map #contentOuterContainer .contentFooter { display: none; }
 body.map #contentOuterContainer { width: 702px; margin-left: 92px; float: left; }
@@ -100,10 +100,24 @@ body:not(.village1):not(.village2):not(.map) #contentOuterContainer .contentCont
 div.village1 { width: 100%; padding: 0; overflow: hidden; }
 div.village1 #village_map { width: 500px; height: 370px; position: relative; margin: 0 0 15px 0; background-color: #C3EDAE; overflow: hidden; }
 div.village1 #village_map img { position: absolute; z-index: 20; }
-div.village2 { width: 100%; padding: 0; overflow: hidden; }
-div.village2 #village_map { width: 540px; height: 448px; position: relative; margin: 0; overflow: hidden; }
-div.village2 #village_map img { position: absolute; }
+div.village2 { width: 100%; padding: 0; overflow: visible; }
+div.village2 #village_map { width: 540px; height: 448px; position: relative; margin: 0; overflow: visible; }
+div.village2 #village_map img { position: absolute; width: 120px; height: 120px; cursor: pointer; }
+div.village2 #village_map img.wall-top,
+div.village2 #village_map img.wall-bottom {
+    width: 115% !important;
+    height: 115% !important;
+    max-width: none !important;
+    max-height: none !important;
+    cursor: default !important;
+    object-fit: fill !important;
+    left: -7.5% !important;
+    top: -7.5% !important;
+}
+div.village2 #village_map img.dx1 { width: 120px; height: 160px; }
 div.village1 .level { position: absolute; width: 26px; height: 26px; font-size: 11px; text-align: center; border-radius: 50%; line-height: 23px; border: 1px solid #506d00; background-image: linear-gradient(to top, #7da100, #c7e94f); margin: 1px; }
+.building-level { position: absolute; width: 26px; height: 26px; font-size: 11px; text-align: center; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 50; font-family: Tahoma, Arial, sans-serif; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.4); padding-top: 1px; }
+.level-toggle { position: absolute; right: 10px; bottom: 10px; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; cursor: pointer; z-index: 60; color: #FFF; box-shadow: 0 1px 4px rgba(0,0,0,0.5); line-height: 1; user-select: none; }
 #side_info { float: left; position: relative; width: 196px; top: -90px; }
 .sideInfoHero { display: block; height: 136px; left: -20px; position: relative; width: 145px; z-index: 1; }
 .sideInfoHero .heroImageBorder { width: 145px; height: 136px; position: absolute; left: 0; top: 0; background: url('/assets/layout/sign_heroBorder-rtl.png') no-repeat; }

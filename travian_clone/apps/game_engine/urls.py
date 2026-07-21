@@ -1,4 +1,4 @@
-from django.urls import path
+﻿from django.urls import path
 
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
@@ -14,6 +14,7 @@ from .views import (
     ResourceBonusView, BuyFullWarehouseView, BuyProtectionView, ExitProtectionView, InstantRallyPointView,
     BuyGoldClubView, CropperSearchView, StandardNpcTradeView, GoldToSilverExchangeView, SupportMessageView,
     InstantConstructionView, GoldTroopShopView, AllianceListView, MoveCapitalView, TownHallCelebrationView,
+    AvailableBuildingsView,
 )
 from ..combat.views import HeroAuctionListView, HeroAuctionBidView
 
@@ -21,6 +22,7 @@ urlpatterns = [
     path('villages/', VillageListView.as_view(), name='village_list'),
     path('villages/<int:village_id>/', VillageDetailView.as_view(), name='village_detail'),
     path('villages/<int:village_id>/buildings/', VillageBuildingsView.as_view(), name='village_buildings'),
+    path('villages/<int:village_id>/available-buildings/', AvailableBuildingsView.as_view(), name='available_buildings'),
     path('villages/rename/', VillageRenameView.as_view(), name='village_rename'),
     path('villages/move-capital/', MoveCapitalView.as_view(), name='move_capital'),  # ✅ جدید
     path('town-hall/celebrate/', TownHallCelebrationView.as_view(), name='town_hall_celebration'),  # ✅ جدید

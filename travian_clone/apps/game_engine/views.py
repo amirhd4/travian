@@ -12,14 +12,14 @@ import datetime
 import math
 import uuid
 
-from .models import Transaction, Discount, GameLog, GoldPackage, Village, VillageBuilding, ServerSetting
+from .models import Transaction, Discount, GameLog, GoldPackage, Village, VillageBuilding, ServerSetting, BuildingType
 from .engine import schedule_game_event
 from .utils import (
     update_village_resources, calculate_crop_upkeep, calculate_building_population,
     calculate_village_population, is_server_finished, get_effective_production_rates, get_effective_max_level,
     get_main_building_speed_multiplier, get_player_best_embassy_level, get_alliance_capacity,
 )
-from .services import found_new_village, abandon_village
+from .services import found_new_village, abandon_village, EMPTY_SLOT_NAME
 from .serializers import GameLogSerializer
 from .models import Message
 from .serializers import MessageSerializer
@@ -292,6 +292,157 @@ class AbandonVillageView(APIView):
         return Response({"message": "دهکده با موفقیت رها شد."})
 
 
+# ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ───
+# Prerequisites map for building selection (position-independent)
+# ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ───
+_BUILDING_PREREQUISITES = {
+    "مخفیگاه": {"ساختمان اصلی": 1},
+    "سیلوی غله": {"ساختمان اصلی": 1},
+    "عمارت قهرمان": {"ساختمان اصلی": 3, "محل گردهمایی": 1},
+    "پادگان": {"ساختمان اصلی": 3, "محل گردهمایی": 1},
+    "آسیاب": {"مزرعه گندم": 5},
+    "بازارچه": {"سیلوی غله": 1, "انبار": 1, "ساختمان اصلی": 3},
+    "اقامتگاه": {"ساختمان اصلی": 5},
+    "آکادمی": {"ساختمان اصلی": 3, "پادگان": 3},
+    "قصر": {"سفارتخانه": 1, "ساختمان اصلی": 5},
+    "آهنگری": {"آکادمی": 1, "ساختمان اصلی": 3},
+    "کارگاه سنگ‌تراشی": {"قصر": 3, "ساختمان اصلی": 5},
+    "اصطبل": {"آهنگری": 3, "آکادمی": 5},
+    "خزانه‌داری": {"ساختمان اصلی": 10},
+    "کوره آجرپزی": {"گودال خاک رس": 10, "ساختمان اصلی": 5},
+    "اره‌خانه": {"چوب‌بری": 10, "ساختمان اصلی": 5},
+    "کوره آهنگری": {"معدن آهن": 10, "ساختمان اصلی": 5},
+    "کارگاه": {"آکادمی": 10, "ساختمان اصلی": 5},
+    "میدان تورنمنت": {"محل گردهمایی": 15},
+    "نانوایی": {"آسیاب": 5, "مزرعه گندم": 10, "ساختمان اصلی": 5},
+    "تالار شهر": {"ساختمان اصلی": 10, "آکادمی": 10},
+    "اداره تجارت": {"بازارچه": 20, "اصطبل": 10},
+    "پادگان بزرگ": {"پادگان": 20},
+    "اصطبل بزرگ": {"اصطبل": 20},
+}
+
+
+def _get_building_level(village, building_name):
+    """Get the current level of a building by name in a village."""
+    b = VillageBuilding.objects.filter(
+        village=village, building_type__name=building_name
+    ).first()
+    return b.level if b else 0
+
+
+def _check_prerequisites(village, building_name):
+    """Check if prerequisites are met. Returns (can_build, missing_list)."""
+    prereqs = _BUILDING_PREREQUISITES.get(building_name, {})
+    missing = []
+    for req_name, req_level in prereqs.items():
+        current = _get_building_level(village, req_name)
+        if current < req_level:
+            missing.append(f"{req_name} سطح {req_level}")
+    return (len(missing) == 0, missing)
+
+
+class AvailableBuildingsView(APIView):
+    """List all buildings available to construct at an empty slot."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, village_id):
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق شما نیست."}, status=404)
+
+        update_village_resources(village)
+
+        # Get all building types (exclude resource fields and empty placeholder)
+        all_types = BuildingType.objects.exclude(category='RESOURCE').exclude(name=EMPTY_SLOT_NAME)
+
+        # ✅ فقط دیوار قبیله‌ای بازیکن را نشان بده
+        tribe = request.user.tribe
+        tribe_wall_name = {'ROMAN': 'دیوار شهر', 'TEUTON': 'دیوار خاکی', 'GAUL': 'حصار چوبی'}.get(tribe, 'دیوار شهر')
+
+        # Get existing buildings in this village (use max to handle duplicate types)
+        existing = {}
+        for vb in VillageBuilding.objects.filter(village=village):
+            name = vb.building_type.name
+            if name not in existing or vb.level > existing[name]:
+                existing[name] = vb.level
+
+        # Check if currently upgrading
+        has_queue = VillageBuilding.objects.filter(village=village, is_upgrading=True).exists()
+
+        # Check palace elsewhere
+        has_palace_elsewhere = VillageBuilding.objects.filter(
+            village__player=request.user, building_type__name="قصر", level__gt=0
+        ).exclude(village=village).exists()
+
+        result = []
+        for bt in all_types:
+            name = bt.name
+
+            # ✅ Skip wall types that don't match the player's tribe
+            if bt.category == 'WALL' and name != tribe_wall_name:
+                continue
+
+            current_level = existing.get(name, 0)
+
+            # Skip buildings that already exist (level > 0) - they're not "available to build"
+            if current_level > 0:
+                continue
+
+            # Skip tribe-specific buildings
+            if name == "تله" and tribe != "GAUL":  # Trapper - Gaul only
+                continue
+            if name == "آبشخور اسب" and tribe != "TEUTON":  # Horse Trough - Teuton only
+                continue
+
+            # Check prerequisites
+            can_build, missing = _check_prerequisites(village, name)
+
+            # Special: Palace requires no palace elsewhere
+            if name == "قصر" and has_palace_elsewhere:
+                can_build = False
+                missing.append("قصر دیگر در دهکده دیگر")
+
+            # Special: Great Barracks/Stable - not in capital
+            if name in ("پادگان بزرگ", "اصطبل بزرگ"):
+                if village.is_capital:
+                    can_build = False
+                    missing.append("در دهکده اصلی قابل نمی‌شود")
+
+            # If can't build and has missing prereqs, set reason
+            reason = None
+            if not can_build and missing:
+                reason = "پیش‌نیاز: " + "، ".join(missing)
+
+            # Calculate cost for level 1
+            multiplier = 1.5 ** 0  # = 1.0 for first level
+            cost = {
+                "wood": int(bt.base_wood_cost * multiplier),
+                "clay": int(bt.base_clay_cost * multiplier),
+                "iron": int(bt.base_iron_cost * multiplier),
+                "crop": int(bt.base_crop_cost * multiplier),
+            }
+
+            build_time = int(bt.base_build_time * get_main_building_speed_multiplier(village))
+
+            result.append({
+                "building_type_id": bt.id,
+                "name": name,
+                "description": bt.description or "",
+                "category": bt.category,
+                "cost": cost,
+                "build_time_seconds": build_time,
+                "crop_upkeep": bt.crop_upkeep,
+                "can_build": can_build,
+                "reason": reason,
+            })
+
+        # Sort: buildable first, then by name
+        result.sort(key=lambda x: (not x["can_build"], x["name"]))
+
+        return Response({"buildings": result})
+
+
 class UpgradeBuildingView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -301,6 +452,7 @@ class UpgradeBuildingView(APIView):
 
         village_id = request.data.get('village_id')
         position = request.data.get('position')
+        building_type_id = request.data.get('building_type_id')
 
         with transaction.atomic():
             try:
@@ -320,18 +472,117 @@ class UpgradeBuildingView(APIView):
 
             try:
                 building = VillageBuilding.objects.select_for_update().get(village=village, position=position)
-
-                effective_max_level = get_effective_max_level(village, building.building_type)
-                if building.level >= effective_max_level:
-                    return Response(
-                        {"error": f"این ساختمان به حداکثر سطح مجاز ({effective_max_level}) رسیده است."},
-                        status=400
-                    )
             except VillageBuilding.DoesNotExist:
                 return Response({"error": "ساختمانی در این جایگاه یافت نشد."}, status=404)
 
             if building.is_upgrading:
                 return Response({"error": "این ساختمان در حال حاضر در حال ارتقا است."}, status=400)
+
+            # ─── ساخت جدید روی اسلات خالی ───
+            is_empty_slot = (building.level == 0 and building.building_type.name == EMPTY_SLOT_NAME)
+
+            if is_empty_slot and building_type_id:
+                # ── اعتبارسنجی نوع ساختمان درخواستی ──
+                try:
+                    new_building_type = BuildingType.objects.get(id=building_type_id)
+                except BuildingType.DoesNotExist:
+                    return Response({"error": "نوع ساختمان نامعتبر است."}, status=400)
+
+                if new_building_type.name == EMPTY_SLOT_NAME:
+                    return Response({"error": "امکان ساخت نوع ساختمان خالی وجود ندارد."}, status=400)
+
+                # ── بررسی پیش‌نیازها ──
+                can_build, missing = _check_prerequisites(village, new_building_type.name)
+                if not can_build:
+                    return Response(
+                        {"error": "پیش‌نیازها برآورده نشده‌اند: " + "، ".join(missing)},
+                        status=400
+                    )
+
+                # ── بررسی تکراری نبودن (هر ساختمان فقط یک‌بار در دهکده) ──
+                already_exists = VillageBuilding.objects.filter(
+                    village=village, building_type=new_building_type, level__gt=0
+                ).exists()
+                if already_exists:
+                    return Response(
+                        {"error": f"ساختمان «{new_building_type.name}» قبلا در این دهکده ساخته شده است."},
+                        status=400
+                    )
+
+                # ── محدودیت قصر ──
+                if new_building_type.name == "قصر":
+                    other_palace = VillageBuilding.objects.filter(
+                        village__player=request.user, building_type__name="قصر", level__gt=0
+                    ).exclude(village=village).exists()
+                    if other_palace:
+                        return Response(
+                            {"error": "شما در حال حاضر یک «قصر» ساخته‌شده در دهکده‌ی دیگری دارید."},
+                            status=400
+                        )
+
+                # ── محدودیت پادگان بزرگ / اصطبل بزرگ ──
+                if new_building_type.name in ("پادگان بزرگ", "اصطبل بزرگ"):
+                    if village.is_capital:
+                        return Response(
+                            {"error": "پادگان بزرگ / اصطبل بزرگ در دهکده اصلی قابل ساخت نیست."},
+                            status=400
+                        )
+
+                # ── محدودیت قبیله‌ای ──
+                tribe = request.user.tribe
+                if new_building_type.name == "تله" and tribe != "GAUL":
+                    return Response({"error": "تله فقط برای گول‌ها قابل ساخت است."}, status=400)
+                if new_building_type.name == "آبشخور اسب" and tribe != "TEUTON":
+                    return Response({"error": "آبشخور اسب فقط برای توتون‌ها قابل ساخت است."}, status=400)
+
+                # ── محاسبه هزینه سطح ۱ ──
+                multiplier = 1.5 ** 0  # = 1.0
+                req_wood = int(new_building_type.base_wood_cost * multiplier)
+                req_clay = int(new_building_type.base_clay_cost * multiplier)
+                req_iron = int(new_building_type.base_iron_cost * multiplier)
+                req_crop = int(new_building_type.base_crop_cost * multiplier)
+
+                if village.wood < req_wood or village.clay < req_clay or village.iron < req_iron or village.crop < req_crop:
+                    return Response({"error": "منابع کافی نیست."}, status=400)
+
+                village.wood -= req_wood
+                village.clay -= req_clay
+                village.iron -= req_iron
+                village.crop -= req_crop
+                village.save()
+
+                # ── تغییر نوع ساختمان اسلات به نوع جدید ──
+                building.building_type = new_building_type
+
+                base_time = new_building_type.base_build_time * (1.2 ** 0)
+                base_time *= get_main_building_speed_multiplier(village)
+                building.is_upgrading = True
+                building.upgrade_end_time = timezone.now() + datetime.timedelta(seconds=base_time)
+                building.save()
+
+                next_level = 1
+                transaction.on_commit(lambda: schedule_game_event(
+                    village_id=village.id,
+                    event_type="BUILDING_UPGRADE",
+                    base_duration_seconds=base_time,
+                    details={"building_id": building.id, "next_level": next_level}
+                ))
+
+                return Response({"message": f"ساخت «{new_building_type.name}» آغاز شد."})
+
+            # ─── ارتقای ساختمان موجود ───
+            if building.building_type.name == EMPTY_SLOT_NAME:
+                return Response(
+                    {"error": "این اسلات خالی است. لطفاً ابتدا نوع ساختمان را انتخاب کنید."},
+                    status=400
+                )
+
+            effective_max_level = get_effective_max_level(village, building.building_type)
+            if building.level >= effective_max_level:
+                return Response(
+                    {"error": f"این ساختمان به حداکثر سطح مجاز ({effective_max_level}) رسیده است."},
+                    status=400
+                )
 
             if building.building_type.name == "شگفتی جهان":
                 return Response(
@@ -339,8 +590,6 @@ class UpgradeBuildingView(APIView):
                     status=400
                 )
 
-                # ✅ جدید: طبق قوانین تراوین اصلی، هر بازیکن در کل حساب خود فقط می‌تواند
-                # یک «قصر» ساخته‌شده (سطح ۱ به بالا) داشته باشد؛ اقامتگاه چنین محدودیتی ندارد.
             if building.building_type.name == "قصر" and building.level == 0:
                 other_palace_exists = VillageBuilding.objects.filter(
                     village__player=request.user, building_type__name="قصر", level__gt=0

@@ -85,7 +85,16 @@ _CITY_BUILDING_DEFS = (
 )
 
 _RALLY_POINT_DEF = ("محل گردهمایی", 1, 'INFRASTRUCTURE')
-_WALL_DEF = ("دیوار", 0, 'WALL')
+
+# ✅ دیوار قبیله‌ای - هر قبیله دیوار مخصوص خود را دارد
+_WALL_DEFS = {
+    'ROMAN': ("دیوار شهر", 0, 'WALL'),
+    'TEUTON': ("دیوار خاکی", 0, 'WALL'),
+    'GAUL': ("حصار چوبی", 0, 'WALL'),
+}
+_DEFAULT_WALL_DEF = ("دیوار شهر", 0, 'WALL')
+
+EMPTY_SLOT_NAME = "خالی"
 
 
 def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=None):
@@ -145,6 +154,11 @@ def _get_or_create_building_type(name, provides_wall_defense=False, max_level=20
     return building_type
 
 
+def _get_or_create_empty_building_type():
+    """ایجاد یا دریافت نوع ساختمان «خالی» به عنوان placeholder برای اسلات‌های خالی."""
+    return _get_or_create_building_type(EMPTY_SLOT_NAME, max_level=0, category='INFRASTRUCTURE')
+
+
 def _pick_field_distribution():
     """یک نوع توزیع زمین (عادی/۹ گندمی/۱۵ گندمی) با احتمال وزن‌دار انتخاب می‌کند."""
     keys = list(FIELD_DISTRIBUTION_WEIGHTS.keys())
@@ -152,7 +166,7 @@ def _pick_field_distribution():
     return random.choices(keys, weights=weights, k=1)[0]
 
 
-def _create_default_buildings(village, distribution_key='NORMAL'):
+def _create_default_buildings(village, distribution_key='NORMAL', tribe='ROMAN'):
     if VillageBuilding.objects.filter(village=village).exists():
         return
     position = 1
@@ -165,24 +179,26 @@ def _create_default_buildings(village, distribution_key='NORMAL'):
             )
             position += 1
 
-    position = 19
-    for type_name, level, category in _CITY_BUILDING_DEFS:
-        # ✅ FIX: طبق تراوین اصلی، مخفی‌گاه حداکثر سطح ۱۰ دارد (نه ۲۰).
-        max_level_override = 10 if type_name == "مخفیگاه" else 20
-        building_type = _get_or_create_building_type(type_name, category=category, max_level=max_level_override)
-        if building_type.max_level != max_level_override:
-            building_type.max_level = max_level_override
-            building_type.save(update_fields=['max_level'])
+    # ✅ ساختمان اصلی (Main Building) در جایگاه ۱۹ با سطح ۱
+    main_building_type = _get_or_create_building_type("ساختمان اصلی", category='INFRASTRUCTURE')
+    VillageBuilding.objects.create(
+        village=village, building_type=main_building_type, position=19, level=1,
+    )
+
+    # ✅ جایگاه‌های ۲۰ تا ۳۸: اسلات‌های خالی (هیچ ساختمان خاصی از پیش تعیین نشده)
+    empty_type = _get_or_create_empty_building_type()
+    for pos in range(20, 39):
         VillageBuilding.objects.create(
-            village=village, building_type=building_type, position=position, level=level,
+            village=village, building_type=empty_type, position=pos, level=0,
         )
-        position += 1
 
     rally_name, rally_level, rally_category = _RALLY_POINT_DEF
     rally_type = _get_or_create_building_type(rally_name, category=rally_category)
     VillageBuilding.objects.create(village=village, building_type=rally_type, position=39, level=rally_level)
 
-    wall_name, wall_level, wall_category = _WALL_DEF
+    # ✅ دیوار قبیله‌ای (هر قبیله دیوار مخصوص خود را دارد)
+    wall_def = _WALL_DEFS.get(tribe, _DEFAULT_WALL_DEF)
+    wall_name, wall_level, wall_category = wall_def
     wall_type = _get_or_create_building_type(wall_name, provides_wall_defense=True, category=wall_category)
     VillageBuilding.objects.create(village=village, building_type=wall_type, position=40, level=wall_level)
 
@@ -227,7 +243,7 @@ def create_starter_village(player, name="دهکده اول", starting_quadrant='
         max_granary=max_granary,
     )
 
-    _create_default_buildings(village)
+    _create_default_buildings(village, tribe=player.tribe)
 
     return village
 
@@ -303,7 +319,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         max_granary=max_granary,
     )
 
-    _create_default_buildings(village, distribution_key=distribution_key)
+    _create_default_buildings(village, distribution_key=distribution_key, tribe=player.tribe)
 
     return new_village
 
