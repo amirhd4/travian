@@ -5,28 +5,28 @@ import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
 
 const SLOT_POSITIONS = {
-    19: { left: 165, top: 110, size: 50 },
-    20: { left: 225, top: 80,  size: 50 },
-    21: { left: 280, top: 70,  size: 50 },
-    22: { left: 335, top: 80,  size: 50 },
-    23: { left: 395, top: 110, size: 50 },
-    24: { left: 135, top: 155, size: 52 },
-    25: { left: 195, top: 140, size: 52 },
-    26: { left: 270, top: 125, size: 55 },
-    27: { left: 345, top: 140, size: 52 },
-    28: { left: 410, top: 155, size: 52 },
-    29: { left: 120, top: 215, size: 52 },
-    30: { left: 175, top: 195, size: 52 },
-    31: { left: 365, top: 195, size: 52 },
-    32: { left: 425, top: 215, size: 52 },
-    33: { left: 140, top: 275, size: 52 },
-    34: { left: 210, top: 255, size: 52 },
-    35: { left: 270, top: 235, size: 52 },
-    36: { left: 330, top: 255, size: 52 },
-    37: { left: 390, top: 275, size: 52 },
-    38: { left: 270, top: 295, size: 52 },
-    39: { left: 338, top: 215, size: 45 },
-    40: { left: 270, top: 200, size: 280 }
+    19: { left: 265, top: 120, size: 80 },
+    20: { left: 205, top: 45,  size: 80 },
+    21: { left: 105, top: 90,  size: 80 },
+    22: { left: 290, top: 45,  size: 80 },
+    23: { left: 450, top: 290, size: 80 },
+    24: { left: 380, top: 54, size: 80 },
+    25: { left: 434, top: 104, size: 80 },
+    26: { left: 490, top: 155, size: 80 },
+    27: { left: 458, top: 210, size: 80 },
+    28: { left: 500, top: 260, size: 80 },
+    29: { left: 260, top: 356, size: 80 },
+    30: { left: 65, top: 260, size: 80 },
+    31: { left: 55, top: 145, size: 80 },
+    32: { left: 175, top: 145, size: 80 },
+    33: { left: 150, top: 185, size: 80 },
+    34: { left: 170, top: 217, size: 80 },
+    35: { left: 40, top: 200, size: 80 },
+    36: { left: 160, top: 325, size: 80 },
+    37: { left: 330, top: 335, size: 80 },
+    38: { left: 250, top: 265, size: 80 },
+    39: { left: 378, top: 205, size: 80 },
+    40: { left: 10, top: 10, size: 10 }
 };
 
 const NAME_TO_GID = {
@@ -200,7 +200,10 @@ export default function VillageCenter() {
         !searchQuery || b.name.includes(searchQuery)
     );
 
-    const getBuildingImg = (btId) => `/assets/buildings/g${btId}.png`;
+    const getBuildingImg = (btName) => {
+        const gid = getGid(btName);
+        return gid ? `/assets/buildings/g${gid}.png` : '/assets/buildings/iso.gif';
+    };
 
     return (
         <div className='village2' style={{ display:'flex', justifyContent:'center', margin:'20px auto' }}>
@@ -293,28 +296,28 @@ export default function VillageCenter() {
 
             {hoveredSlot && !showBuildList && <div style={{ position:'fixed', left:tooltipPos.x+15, top:tooltipPos.y-10, background:'rgba(0,0,0,0.85)', color:'#FFF', padding:'8px 12px', borderRadius:6, fontSize:12, zIndex:200, pointerEvents:'none', minWidth:150, lineHeight:'18px', boxShadow:'0 2px 8px rgba(0,0,0,0.4)', direction:'rtl', fontFamily:'Tahoma,Arial,sans-serif' }}>
                 <div style={{ fontWeight:'bold', fontSize:13, marginBottom:4, borderBottom:'1px solid rgba(255,255,255,0.3)', paddingBottom:4 }}>{hoveredSlot.name}</div>
-                {isEmpty(hoveredSlot) ? <div style={{ color:'#F88C1F', marginTop:4 }}>اسلات خالی - کلیک کنید</div> : <div>سطوح فعلی: <b style={{ color:'#99C01A' }}>{hoveredSlot.level}</b></div>}
+                {isEmpty(hoveredSlot) ? <div style={{ color:'#F88C1F', marginTop:4 }}>اسلات خالی - کلیک کنید</div> : <div>سطح فعلی: <b style={{ color:'#99C01A' }}>{hoveredSlot.level}</b></div>}
                 {hoveredSlot.is_upgrading && <div style={{ color:'#F88C1F', marginTop:4 }}>در حال ارتقا...</div>}
                 {!hoveredSlot.is_upgrading && !hoveredSlot.is_max_level && hoveredSlot.next_level_cost && <>
-                    <div style={{ marginTop:4, fontSize:11, color:'#CCC' }}>هزینه {isEmpty(hoveredSlot)?'ساخت':'ارتقا'} به سطوح {hoveredSlot.level+1}:</div>
+                    <div style={{ marginTop:4, fontSize:11, color:'#CCC' }}>هزینه {isEmpty(hoveredSlot)?'ساخت':'ارتقا'} به سطح {hoveredSlot.level+1}:</div>
                     <div style={{ display:'flex', gap:8, marginTop:2, fontSize:11 }}>
                         <span><img src='/assets/ui/res-1.gif' width='12' alt='' style={{ verticalAlign:'middle' }} /> {hoveredSlot.next_level_cost.wood}</span>
                         <span><img src='/assets/ui/res-2.gif' width='12' alt='' style={{ verticalAlign:'middle' }} /> {hoveredSlot.next_level_cost.clay}</span>
                         <span><img src='/assets/ui/res-3.gif' width='12' alt='' style={{ verticalAlign:'middle' }} /> {hoveredSlot.next_level_cost.iron}</span>
                         <span><img src='/assets/ui/res-4.gif' width='12' alt='' style={{ verticalAlign:'middle' }} /> {hoveredSlot.next_level_cost.crop}</span>
                     </div></>}
-                {hoveredSlot.is_max_level && <div style={{ color:'#99C01A', marginTop:4 }}>حداکثر سطوح</div>}
+                {hoveredSlot.is_max_level && <div style={{ color:'#99C01A', marginTop:4 }}>حداکثر سطح</div>}
             </div>}
 
             {/* Upgrade Modal for existing buildings */}
             {selectedSlot && <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}><div style={{ background:'#FFF', border:'2px solid #C9C9C9', borderRadius:8, maxWidth:400, width:'100%', position:'relative', overflow:'hidden', boxShadow:'0 8px 16px rgba(0,0,0,0.3)' }}>
                 <div style={{ background:'#f8f8f8', padding:'12px 16px', borderBottom:'1px solid #ddd', display:'flex', justifyContent:'space-between', alignItems:'center' }}><span style={{ fontWeight:'bold', fontSize:15 }}>{selectedSlot.name}</span><button onClick={()=>setSelectedSlot(null)} style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:18, color:'#888' }}>&#10006;</button></div>
                 <div style={{ padding:16 }}>
-                    <p style={{ fontSize:14, marginBottom:16, color:'#333' }}>سطوح فعلی: <span style={{ fontWeight:'bold', color:'#73b544' }}>{selectedSlot.level}</span></p>
+                    <p style={{ fontSize:14, marginBottom:16, color:'#333' }}>سطح فعلی: <span style={{ fontWeight:'bold', color:'#73b544' }}>{selectedSlot.level}</span></p>
                     {selectedSlot.is_upgrading ? <div style={{ padding:12, textAlign:'center', marginBottom:16, background:'#fff3cd', border:'1px solid #ffeeba', borderRadius:4 }}><p style={{ fontSize:14, fontWeight:'bold', color:'#856404', margin:0 }}>در حال ارتقا...</p></div>
-                    : selectedSlot.is_max_level ? <div style={{ padding:12, textAlign:'center', marginBottom:16, background:'#d4edda', border:'1px solid #c3e6cb', borderRadius:4 }}><p style={{ fontSize:14, fontWeight:'bold', color:'#155724', margin:0 }}>این ساختمان به حداکثر سطوح رسیده است.</p></div>
+                    : selectedSlot.is_max_level ? <div style={{ padding:12, textAlign:'center', marginBottom:16, background:'#d4edda', border:'1px solid #c3e6cb', borderRadius:4 }}><p style={{ fontSize:14, fontWeight:'bold', color:'#155724', margin:0 }}>این ساختمان به حداکثر سطح رسیده است.</p></div>
                     : <div style={{ padding:16, marginBottom:16, fontSize:13, background:'#fdfdfd', border:'1px solid #eee', borderRadius:4 }}>
-                        <p style={{ fontWeight:'bold', marginBottom:12, color:'#444' }}>هزینه ارتقا به سطوح {selectedSlot.level+1}:</p>
+                        <p style={{ fontWeight:'bold', marginBottom:12, color:'#444' }}>هزینه ارتقا به سطح {selectedSlot.level+1}:</p>
                         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, fontSize:12, fontWeight:'bold', marginBottom:16, color:'#222' }}>
                             <span style={{ display:'flex', alignItems:'center', gap:4 }}><img src='/assets/ui/res-1.gif' width='14' alt='' /> {selectedSlot.next_level_cost.wood}</span>
                             <span style={{ display:'flex', alignItems:'center', gap:4 }}><img src='/assets/ui/res-2.gif' width='14' alt='' /> {selectedSlot.next_level_cost.clay}</span>
@@ -325,7 +328,7 @@ export default function VillageCenter() {
                         {!canAfford(selectedSlot) && <p style={{ fontSize:12, fontWeight:'bold', marginTop:12, color:'#dc3545', textAlign:'center' }}>منابع کافی ندارید.</p>}
                     </div>}
                     <button onClick={handleUpgrade} disabled={selectedSlot.is_upgrading||upgrading||selectedSlot.is_max_level||!canAfford(selectedSlot)} style={{ width:'100%', padding:10, background:(selectedSlot.is_upgrading||upgrading||selectedSlot.is_max_level||!canAfford(selectedSlot))?'#ccc':'#73b544', color:'#fff', border:'none', borderRadius:4, fontWeight:'bold', cursor:(selectedSlot.is_upgrading||upgrading||selectedSlot.is_max_level||!canAfford(selectedSlot))?'not-allowed':'pointer' }}>
-                        {upgrading ? 'صبر کنید...' : `ارتقا به سطوح ${selectedSlot.level+1}`}
+                        {upgrading ? 'صبر کنید...' : `ارتقا به سطح ${selectedSlot.level+1}`}
                     </button>
                 </div></div></div>}
 
@@ -338,7 +341,7 @@ export default function VillageCenter() {
                 <div style={{ padding:16, overflowY:'auto', maxHeight:'calc(80vh - 120px)' }}>
                     {buildListLoading ? <p style={{ textAlign:'center', color:'#666' }}>در حال بارگذاری...</p> : filteredBuildings.length === 0 ? <p style={{ textAlign:'center', color:'#666' }}>ساختمانی یافت نشد.</p> : filteredBuildings.map(bt => (
                         <div key={bt.building_type_id} style={{ display:'flex', gap:12, padding:'12px', marginBottom:8, border:bt.can_build?'1px solid #99C01A':'1px solid #ddd', borderRadius:6, background:bt.can_build?'#f9fbe7':'#f9f9f9', opacity:bt.can_build?1:0.7, transition:'all 0.2s' }}>
-                            <img src={getBuildingImg(bt.building_type_id)} alt={bt.name} style={{ width:60, height:60, objectFit:'contain', borderRadius:4, background:'#fff', border:'1px solid #eee', flexShrink:0 }} onError={(e)=>{e.target.src='/assets/buildings/iso.gif'}} />
+                            <img src={getBuildingImg(bt.name)} alt={bt.name} style={{ width:60, height:60, objectFit:'contain', borderRadius:4, background:'#fff', border:'1px solid #eee', flexShrink:0 }} onError={(e)=>{e.target.src='/assets/buildings/iso.gif'}} />
                             <div style={{ flex:1, minWidth:0 }}>
                                 <div style={{ fontWeight:'bold', fontSize:14, color:'#333', marginBottom:4 }}>{bt.name}</div>
                                 <div style={{ display:'flex', flexWrap:'wrap', gap:6, fontSize:11, marginBottom:4 }}>
