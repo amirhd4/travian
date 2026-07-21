@@ -1,210 +1,480 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
+import { MAP } from '../constants/images';
 
-const RADIUS = 2;
-const CELL_W = Math.floor(543 / 5);
-const CELL_H = Math.floor(401 / 5);
+const RADIUS = 4;
+const COLS = 9;
+const ROWS = 7;
+const TILE_SIZE = 60;
+
+const TRIBE_MAP = { ROMAN: 1, TEUTON: 2, GAUL: 3 };
+const WALL_TRIBE_GID = { ROMAN: 31, TEUTON: 32, GAUL: 33 };
+
+const FIELD_DISTRIBUTIONS = {
+  1: '3-3-3-9', 2: '3-4-5-6', 3: '4-4-4-6', 4: '4-5-3-6',
+  5: '5-3-4-6', 6: '1-1-1-15', 7: '4-4-3-7', 8: '3-4-4-7',
+  9: '4-3-4-7', 10: '3-5-4-6', 11: '4-3-5-6', 12: '5-4-3-6',
+};
+
+const OASIS_BONUS_LABELS = {
+  'wood': 'چوب', 'clay': 'خشت', 'iron': 'آهن', 'crop': 'گندم',
+};
+
+function getTileBgPattern(x, y) {
+  let pattern = '';
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const cx = x + c - 1;
+      const cy = y - r + 1;
+      const dist = Math.sqrt(cx * cx + cy * cy);
+      pattern += dist <= 6.5 ? '1' : '0';
+    }
+  }
+  return pattern;
+}
+
+function isVolcanoTile(x, y) {
+  return x >= -2 && x <= 2 && y >= -2 && y <= 1;
+}
+
+function getVolcanoClass(x, y) {
+  const volcanoMap = {
+    '-1,1': 'volcano1', '0,1': 'volcano2', '1,1': 'volcano3',
+    '-2,0': 'volcano4', '-1,0': 'volcano5', '0,0': 'volcano6',
+    '1,0': 'volcano7', '2,0': 'volcano8',
+    '-2,-1': 'volcano9', '-1,-1': 'volcano10', '0,-1': 'volcano11',
+    '1,-1': 'volcano12', '2,-1': 'volcano13',
+    '-2,-2': 'volcano14', '-1,-2': 'volcano15', '0,-2': 'volcano16',
+    '1,-2': 'volcano17', '2,-2': 'volcano18',
+  };
+  return volcanoMap[`${x},${y}`] || null;
+}
 
 export default function WorldMap() {
-    const navigate = useNavigate();
-    const villages = useGameStore((state) => state.villages);
-    const activeVillageId = useGameStore((state) => state.activeVillageId);
+  const navigate = useNavigate();
+  const villages = useGameStore((s) => s.villages);
+  const activeVillageId = useGameStore((s) => s.activeVillageId);
+  const user = useGameStore((s) => s.user);
 
-    const [center, setCenter] = useState({ x: 0, y: 0 });
-    const [mapVillages, setMapVillages] = useState([]);
-    const [oases, setOases] = useState([]);
-    const [selectedOasis, setSelectedOasis] = useState(null);
-    const [oasisTroops, setOasisTroops] = useState({});
-    const [availableTroops, setAvailableTroops] = useState([]);
-    const [attackingOasis, setAttackingOasis] = useState(false);
-    const [oasisAlert, setOasisAlert] = useState(null);
-    const [loading, setLoading] = useState(true);
+  const [center, setCenter] = useState({ x: 0, y: 0 });
+  const [mapVillages, setMapVillages] = useState([]);
+  const [oases, setOases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [hoveredTile, setHoveredTile] = useState(null);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [selectedTile, setSelectedTile] = useState(null);
+  const [positionDetail, setPositionDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [coordInput, setCoordInput] = useState({ x: '', y: '' });
+  const [selectedOasis, setSelectedOasis] = useState(null);
+  const [oasisTroops, setOasisTroops] = useState({});
+  const [availableTroops, setAvailableTroops] = useState([]);
+  const [attackingOasis, setAttackingOasis] = useState(false);
+  const [oasisAlert, setOasisAlert] = useState(null);
+  const mapRef = useRef(null);
 
-    useEffect(() => {
-        if (!activeVillageId) return;
-        api.get('combat/village-troops/', { params: { village_id: activeVillageId } })
-            .then(({ data }) => setAvailableTroops(data)).catch(() => {});
-    }, [activeVillageId]);
+  useEffect(() => {
+    if (!activeVillageId) return;
+    api.get('combat/village-troops/', { params: { village_id: activeVillageId } })
+      .then(({ data }) => setAvailableTroops(data)).catch(() => {});
+  }, [activeVillageId]);
 
-    useEffect(() => {
-        const activeVillage = villages.find((v) => v.id === activeVillageId);
-        if (activeVillage) setCenter({ x: activeVillage.x_coord, y: activeVillage.y_coord });
-    }, [villages, activeVillageId]);
+  useEffect(() => {
+    const av = villages.find((v) => v.id === activeVillageId);
+    if (av) {
+      setCenter({ x: av.x_coord, y: av.y_coord });
+      setCoordInput({ x: String(av.x_coord), y: String(av.y_coord) });
+    }
+  }, [villages, activeVillageId]);
 
-    useEffect(() => {
-        const fetchMap = async () => {
-            setLoading(true);
-            try {
-                const { data } = await api.get('game/world-map/', { params: { x: center.x, y: center.y, radius: RADIUS } });
-                setMapVillages(data);
-                const oasesRes = await api.get('game/oases/', { params: { x: center.x, y: center.y, radius: RADIUS } });
-                setOases(oasesRes.data);
-            } catch (error) {
-                console.error("خطا در دریافت نقشه جهان", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchMap();
-    }, [center]);
+  const fetchMap = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [vRes, oRes] = await Promise.all([
+        api.get('game/world-map/', { params: { x: center.x, y: center.y, radius: RADIUS } }),
+        api.get('game/oases/', { params: { x: center.x, y: center.y, radius: RADIUS } }),
+      ]);
+      setMapVillages(vRes.data);
+      setOases(oRes.data);
+    } catch (e) {
+      console.error('Map fetch error', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [center]);
 
+  useEffect(() => { fetchMap(); }, [fetchMap]);
+
+  const buildGrid = () => {
     const grid = [];
-    for (let y = center.y + RADIUS; y >= center.y - RADIUS; y--) {
-        for (let x = center.x - RADIUS; x <= center.x + RADIUS; x++) {
-            const found = mapVillages.find((v) => v.x_coord === x && v.y_coord === y);
-            const oasis = oases.find((o) => o.x_coord === x && o.y_coord === y);
-            grid.push({
-                x, y, hasVillage: !!found,
-                name: found ? found.name : null,
-                owner: found ? found.owner : null,
-                isNatar: found ? found.is_natar : false,
-                isMine: found ? found.id === activeVillageId : false,
-                id: found ? found.id : null,
-                isWwSite: found ? found.is_natar_ww_site : false,
-                isPlanGuard: found ? found.is_natar_plan_guard : false,
-                oasis,
-                isArtifactSite: found ? found.is_natar_artifact_site : false,
-            });
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const x = center.x - Math.floor(COLS / 2) + col;
+        const y = center.y + Math.floor(ROWS / 2) - row;
+        const village = mapVillages.find((v) => v.x_coord === x && v.y_coord === y);
+        const oasis = oases.find((o) => o.x_coord === x && o.y_coord === y);
+        const isNatarCenter = isVolcanoTile(x, y);
+        const volcanoClass = getVolcanoClass(x, y);
+        const isGrayTile = Math.sqrt(x * x + y * y) <= 6.5;
+
+        let fieldType = 0;
+        let oasisType = 0;
+        if (oasis) {
+          oasisType = oasis.oasis_type || 1;
+        } else if (village) {
+          fieldType = village.field_type || 0;
         }
+
+        grid.push({
+          x, y, row, col, village, oasis,
+          isNatarCenter, volcanoClass, isGrayTile,
+          fieldType, oasisType,
+          isMine: village ? village.id === activeVillageId : false,
+          isNatar: village ? village.is_natar : false,
+          isWwSite: village ? village.is_natar_ww_site : false,
+          isArtifactSite: village ? village.is_natar_artifact_site : false,
+        });
+      }
+    }
+    return grid;
+  };
+
+  const getBorderClass = (cell) => {
+    if (!cell.village) return 'borderneutr';
+    if (cell.isMine) return 'borderown';
+    if (cell.isNatar) return 'borderatwar';
+    return 'borderneutr';
+  };
+
+  const handleTileClick = async (cell) => {
+    if (cell.oasis) {
+      setSelectedOasis(cell.oasis);
+      return;
+    }
+    setSelectedTile(cell);
+    setDetailLoading(true);
+    try {
+      const { data } = await api.get('game/position-details/', { params: { x: cell.x, y: cell.y } });
+      setPositionDetail(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleTileHover = (cell, e) => {
+    setHoveredTile(cell);
+    setTooltipPos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleCoordSubmit = (e) => {
+    e.preventDefault();
+    const nx = parseInt(coordInput.x, 10);
+    const ny = parseInt(coordInput.y, 10);
+    if (!isNaN(nx) && !isNaN(ny)) {
+      setCenter({ x: nx, y: ny });
+    }
+  };
+
+  const handleOasisAttack = async () => {
+    const payload = Object.fromEntries(Object.entries(oasisTroops).filter(([, v]) => v > 0));
+    if (Object.keys(payload).length === 0 || !activeVillageId) return;
+    setAttackingOasis(true);
+    try {
+      const { data } = await api.post('game/oases/attack/', {
+        village_id: activeVillageId, oasis_id: selectedOasis.id, troops_payload: payload,
+      });
+      setOasisAlert(data.message);
+      setSelectedOasis(null);
+      setOasisTroops({});
+      fetchMap();
+    } catch (error) {
+      setOasisAlert(error.response?.data?.error || 'خطا در حمله');
+    } finally {
+      setAttackingOasis(false);
+    }
+  };
+
+  const grid = buildGrid();
+
+  const renderTile = (cell) => {
+    const { x, y, village, oasis, isNatarCenter, volcanoClass, isGrayTile, isMine, isNatar } = cell;
+
+    let bgColor = '#beecaf';
+    if (isGrayTile) bgColor = '#9aa59d';
+
+    let tileBgPattern = '';
+    if (isGrayTile && !isNatarCenter) {
+      tileBgPattern = getTileBgPattern(x, y);
     }
 
-    const handleCellClick = (cell) => {
-        if (cell.oasis) { setSelectedOasis(cell.oasis); return; }
-        if (cell.hasVillage && !cell.isMine) {
-            navigate('/send-troops', { state: { targetVillageId: cell.id, targetName: cell.name } });
-        }
-    };
-
-    const handleOasisAttack = async () => {
-        const payload = Object.fromEntries(Object.entries(oasisTroops).filter(([, v]) => v > 0));
-        if (Object.keys(payload).length === 0 || !activeVillageId) return;
-        setAttackingOasis(true);
-        try {
-            const { data } = await api.post('game/oases/attack/', {
-                village_id: activeVillageId, oasis_id: selectedOasis.id, troops_payload: payload,
-            });
-            setOasisAlert(data.message);
-            setSelectedOasis(null);
-            setOasisTroops({});
-        } catch (error) {
-            setOasisAlert(error.response?.data?.error || 'خطا در حمله به اوسیس');
-        } finally {
-            setAttackingOasis(false);
-        }
-    };
-
-    const getTileStyle = (cell) => {
-        if (cell.oasis) {
-            return cell.oasis.is_free
-                ? { background: 'url(/assets/map/oasis-1.gif) center/cover', border: '1px solid #5a8a3a' }
-                : { background: 'url(/assets/map/oasis-2.gif) center/cover', border: '1px solid #3a6a2a' };
-        }
-        if (cell.isMine) return { background: 'url(/assets/map/tribe-1.gif) center/contain no-repeat, #e8e0d0', border: '2px solid #d4a017' };
-        if (cell.hasVillage) return { background: 'url(/assets/map/tribe-2.gif) center/contain no-repeat, #e8e0d0', border: '1px solid #8b7355' };
-        if (cell.isNatar) return { background: 'url(/assets/map/tribe-5.gif) center/contain no-repeat, #e8e0d0', border: '1px solid #cc3333' };
-        if (cell.isWwSite) return { background: '#f0e8ff', border: '1px solid #9966cc' };
-        if (cell.isArtifactSite) return { background: '#e8f8ff', border: '1px solid #6699cc' };
-        return { background: '#f5f0e8', border: '1px solid #d4c8b0' };
-    };
+    const borderClass = getBorderClass(cell);
+    const wallLevel = village ? (village.wall_level || 0) : 0;
+    const pop = village ? (village.population || 0) : 0;
+    const hasVillage = !!village;
+    const hasOasis = !!oasis;
 
     return (
-        <div className="map">
-            <div id="mapContainer" style={{ position: 'relative', width: '543px', height: '401px', margin: '0 auto', border: '1px solid #636363', background: '#C3EDAE' }}>
-                {loading ? (
-                    <p style={{ padding: '20px', textAlign: 'center', fontWeight: 'bold' }}>در حال بارگذاری نقشه...</p>
-                ) : (
-                    <>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gridTemplateRows: 'repeat(5, 1fr)', gap: '0', width: '100%', height: '100%' }}>
-                            {grid.map((cell, index) => (
-                                <div
-                                    key={index}
-                                    onClick={() => handleCellClick(cell)}
-                                    style={{
-                                        ...getTileStyle(cell),
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: cell.hasVillage || cell.oasis ? 'pointer' : 'default',
-                                        position: 'relative',
-                                        padding: '2px',
-                                        overflow: 'hidden',
-                                    }}
-                                >
-                                    {cell.oasis ? (
-                                        <>
-                                            <img src="/assets/map/oasis-1.gif" alt="oasis" style={{ width: '24px', height: '24px' }} />
-                                            <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#333' }}>[{cell.x}|{cell.y}]</span>
-                                        </>
-                                    ) : cell.hasVillage ? (
-                                        <>
-                                            <span style={{ fontSize: '10px', fontWeight: 'bold', color: cell.isMine ? '#006600' : '#333', textAlign: 'center' }}>
-                                                {cell.name}
-                                            </span>
-                                            {cell.owner && !cell.isNatar && !cell.isMine && (
-                                                <span style={{ fontSize: '8px', color: '#666' }}>{cell.owner}</span>
-                                            )}
-                                        </>
-                                    ) : (
-                                        <span style={{ fontSize: '8px', color: '#999' }}>[{cell.x}|{cell.y}]</span>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
+      <div
+        key={`${x},${y}`}
+        className="tile"
+        onClick={() => handleTileClick(cell)}
+        onMouseEnter={(e) => handleTileHover(cell, e)}
+        onMouseMove={(e) => setTooltipPos({ x: e.clientX, y: e.clientY })}
+        onMouseLeave={() => setHoveredTile(null)}
+        style={{
+          background: bgColor,
+          cursor: hasVillage || hasOasis ? 'pointer' : 'default',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Layer 1: Tile background pattern (Natar region) */}
+        {isGrayTile && !isNatarCenter && tileBgPattern && (
+          <img src={MAP.getTileBg(tileBgPattern)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
+        )}
 
-                        <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '18px', background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
-                            <span style={{ color: '#FFF', fontSize: '10px', fontWeight: 'bold' }}>
-                                {center.x - RADIUS}|{center.y + RADIUS} تا {center.x + RADIUS}|{center.y - RADIUS}
-                            </span>
-                        </div>
-                    </>
-                )}
+        {/* Layer 2: Terrain type (oasis tiles) */}
+        {hasOasis && cell.oasisType > 0 && (
+          <img src={MAP.getTerrain(cell.oasisType)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
+        )}
+
+        {/* Layer 3: Volcano */}
+        {isNatarCenter && volcanoClass && (
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', backgroundImage: `url(${MAP.volcano})`, backgroundPosition: `0 ${-(parseInt(volcanoClass.replace('volcano', '')) - 1) * 60}px`, backgroundRepeat: 'no-repeat' }} />
+        )}
+
+        {/* Layer 4: Oasis overlay */}
+        {hasOasis && cell.oasisType > 0 && (
+          <img src={oasis.is_free ? MAP.getOasisTile(cell.oasisType) : MAP.getOasisOccupied(cell.oasisType)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
+        )}
+
+        {/* Layer 5: Border */}
+        {hasVillage && (
+          <img src={MAP.getBorder(borderClass)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
+        )}
+
+        {/* Layer 6: Wall */}
+        {hasVillage && wallLevel > 0 && (
+          <img src={MAP.getWall(wallLevel)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
+        )}
+
+        {/* Layer 7: Population */}
+        {hasVillage && pop > 0 && (
+          <img src={MAP.getPop(pop)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
+        )}
+
+        {/* Layer 8: Attack marker */}
+        {hasVillage && village.has_incoming_attack && (
+          <img src={MAP.att1} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
+        )}
+
+        {/* Village text */}
+        {hasVillage && (
+          <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
+            <div style={{ fontSize: 9, fontWeight: 'bold', color: isMine ? '#006600' : isNatar ? '#cc0000' : '#333', textShadow: '0 0 2px #fff, 0 0 2px #fff', lineHeight: '11px', maxWidth: 58, margin: '0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {village.name}
             </div>
-
-            <div style={{ textAlign: 'center', marginTop: '10px' }}>
-                <button onClick={() => setCenter(c => ({ ...c, y: c.y + 1 }))} className="btn-ghost" style={{ margin: '2px' }}>▲</button>
-                <div style={{ display: 'inline-flex', gap: '2px' }}>
-                    <button onClick={() => setCenter(c => ({ ...c, x: c.x - 1 }))} className="btn-ghost" style={{ margin: '2px' }}>◄</button>
-                    <button onClick={() => setCenter(c => ({ ...c, x: c.x + 1 }))} className="btn-ghost" style={{ margin: '2px' }}>►</button>
-                </div>
-                <button onClick={() => setCenter(c => ({ ...c, y: c.y - 1 }))} className="btn-ghost" style={{ margin: '2px' }}>▼</button>
-            </div>
-
-            <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '10px', color: '#252525' }}>
-                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#006600' }}>دهکده من</span></span>
-                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#8b7355' }}>بازیکن دیگر</span></span>
-                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#cc3333' }}>ناتار</span></span>
-                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#9966cc' }}>شگفتی جهان</span></span>
-                <span style={{ margin: '0 8px' }}>● <span style={{ color: '#5a8a3a' }}>اوسیس</span></span>
-            </div>
-
-            {selectedOasis && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: '#FFF', border: '2px solid #C9C9C9', maxWidth: '400px', width: '100%', padding: '16px' }}>
-                        <h3 style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '8px' }}>اوسیس ({selectedOasis.x_coord}|{selectedOasis.y_coord})</h3>
-                        <p style={{ fontSize: '11px', color: '#666', marginBottom: '8px' }}>
-                            بونوس: {selectedOasis.bonus_percent}٪ {selectedOasis.bonus_resource} · قدرت دفاعی: {selectedOasis.defense_strength}
-                        </p>
-                        {oasisAlert && <p style={{ fontSize: '11px', fontWeight: 'bold', color: '#228B22', marginBottom: '8px' }}>{oasisAlert}</p>}
-                        <div style={{ maxHeight: '200px', overflow: 'auto', marginBottom: '8px' }}>
-                            {availableTroops.map((t) => (
-                                <div key={t.troop_type_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', padding: '4px 0', borderBottom: '1px solid #EEE' }}>
-                                    <span>{t.name} (موجود: {t.count})</span>
-                                    <input type="number" min="0" max={t.count} className="text" style={{ width: '60px', textAlign: 'center' }}
-                                        value={oasisTroops[t.troop_type_id] || ''}
-                                        onChange={(e) => setOasisTroops((p) => ({ ...p, [t.troop_type_id]: Math.max(0, Math.min(t.count, parseInt(e.target.value) || 0)) }))} />
-                                </div>
-                            ))}
-                        </div>
-                        <button onClick={handleOasisAttack} disabled={attackingOasis} className="btn-danger" style={{ width: '100%', marginBottom: '8px' }}>
-                            {attackingOasis ? '...' : 'حمله به اوسیس (فوری)'}
-                        </button>
-                        <button onClick={() => setSelectedOasis(null)} className="btn-ghost" style={{ width: '100%' }}>بستن</button>
-                    </div>
-                </div>
-            )}
-        </div>
+          </div>
+        )}
+      </div>
     );
+  };
+
+  const xCoords = [];
+  for (let i = 0; i < COLS; i++) xCoords.push(center.x - Math.floor(COLS / 2) + i);
+  const yCoords = [];
+  for (let i = 0; i < ROWS; i++) yCoords.push(center.y + Math.floor(ROWS / 2) - i);
+
+  return (
+    <div className="map" style={{ direction: 'rtl' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '10px auto' }}>
+        <div style={{ position: 'relative' }}>
+          {/* Y-axis ruler */}
+          <div style={{ position: 'absolute', right: -30, top: 0, width: 28 }}>
+            {yCoords.map((yc) => (
+              <div key={yc} style={{ height: TILE_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', color: '#333' }}>{yc}</div>
+            ))}
+          </div>
+
+          {/* Map container */}
+          <div ref={mapRef} style={{ position: 'relative', width: COLS * TILE_SIZE, height: ROWS * TILE_SIZE, border: '2px solid #636363', background: '#C3EDAE', overflow: 'hidden' }}>
+            {loading ? (
+              <div style={{ padding: 100, textAlign: 'center', fontWeight: 'bold', fontSize: 14 }}>در حال بارگذاری نقشه...</div>
+            ) : (
+              <div style={{ width: '100%', height: '100%' }}>
+                {grid.map((cell) => renderTile(cell))}
+              </div>
+            )}
+          </div>
+
+          {/* X-axis ruler */}
+          <div style={{ width: COLS * TILE_SIZE, display: 'flex' }}>
+            {xCoords.map((xc) => (
+              <div key={xc} style={{ width: TILE_SIZE, textAlign: 'center', fontSize: 10, fontWeight: 'bold', color: '#333', paddingTop: 2 }}>{xc}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation arrows */}
+      <div style={{ textAlign: 'center', margin: '8px 0' }}>
+        <button onClick={() => setCenter((c) => ({ ...c, y: c.y + 1 }))} style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 'bold', margin: '2px' }}>▲</button>
+        <div style={{ display: 'inline-flex', gap: 4 }}>
+          <button onClick={() => setCenter((c) => ({ ...c, x: c.x - 1 }))} style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 'bold', margin: '2px' }}>◄</button>
+          <button onClick={() => setCenter((c) => ({ ...c, x: c.x + 1 }))} style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 'bold', margin: '2px' }}>►</button>
+        </div>
+        <button onClick={() => setCenter((c) => ({ ...c, y: c.y - 1 }))} style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 'bold', margin: '2px' }}>▼</button>
+      </div>
+
+      {/* Coordinate input */}
+      <form onSubmit={handleCoordSubmit} style={{ textAlign: 'center', margin: '8px 0' }}>
+        <span style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>X:</span>
+        <input type="text" value={coordInput.x} onChange={(e) => setCoordInput((p) => ({ ...p, x: e.target.value }))} style={{ width: 50, textAlign: 'center', border: '1px solid #999', borderRadius: 3, padding: '2px 4px', fontSize: 12, direction: 'ltr', margin: '0 4px' }} />
+        <span style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>Y:</span>
+        <input type="text" value={coordInput.y} onChange={(e) => setCoordInput((p) => ({ ...p, y: e.target.value }))} style={{ width: 50, textAlign: 'center', border: '1px solid #999', borderRadius: 3, padding: '2px 4px', fontSize: 12, direction: 'ltr', margin: '0 4px' }} />
+        <button type="submit" style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '3px 12px', cursor: 'pointer', fontWeight: 'bold', fontSize: 12 }}>OK</button>
+      </form>
+
+      {/* Legend */}
+      <div style={{ textAlign: 'center', margin: '8px 0', fontSize: 10, color: '#252525', lineHeight: '18px' }}>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#006600' }}>دهکده من</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#8b7355' }}>بازیکن دیگر</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#cc3333' }}>ناتار</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#9966cc' }}>شگفتی جهان</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#5a8a3a' }}>اوسیس آزاد</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#3a6a2a' }}>اوسیس اشغال‌شده</span></span>
+      </div>
+
+      {/* Hover tooltip */}
+      {hoveredTile && (
+        <div style={{
+          position: 'fixed', left: tooltipPos.x + 15, top: tooltipPos.y - 10,
+          background: 'rgba(0,0,0,0.88)', color: '#FFF', padding: '8px 12px',
+          borderRadius: 6, fontSize: 11, zIndex: 200, pointerEvents: 'none',
+          minWidth: 140, lineHeight: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+          direction: 'rtl', fontFamily: 'Tahoma,Arial,sans-serif',
+        }}>
+          {hoveredTile.village ? (
+            <>
+              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.3)', paddingBottom: 4 }}>
+                {hoveredTile.village.name}
+              </div>
+              <div>({hoveredTile.y}|{hoveredTile.x})</div>
+              <div>بازیکن: {hoveredTile.village.owner}</div>
+              {hoveredTile.village.tribe && <div>قبیله: {hoveredTile.village.tribe}</div>}
+              {hoveredTile.village.alliance_id && <div>اتحاد: #{hoveredTile.village.alliance_id}</div>}
+              <div>جمعیت: {hoveredTile.village.population?.toLocaleString()}</div>
+              {hoveredTile.village.wall_level > 0 && <div>دیوار: سطح {hoveredTile.village.wall_level}</div>}
+              {hoveredTile.village.is_capital && <div style={{ color: '#f88c1f' }}>پایتخت</div>}
+            </>
+          ) : hoveredTile.oasis ? (
+            <>
+              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4 }}>اوسیس</div>
+              <div>({hoveredTile.y}|{hoveredTile.x})</div>
+              <div>بونوس: {OASIS_BONUS_LABELS[hoveredTile.oasis.bonus_resource] || hoveredTile.oasis.bonus_resource} {hoveredTile.oasis.bonus_percent}٪</div>
+              <div>دفاع: {hoveredTile.oasis.defense_strength}</div>
+              <div>{hoveredTile.oasis.is_free ? 'آزاد' : `مالک: ${hoveredTile.oasis.owner_name}`}</div>
+            </>
+          ) : (
+            <div>({hoveredTile.y}|{hoveredTile.x})</div>
+          )}
+        </div>
+      )}
+
+      {/* Position details popup */}
+      {selectedTile && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#FFF', border: '2px solid #C9C9C9', borderRadius: 8, maxWidth: 420, width: '100%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 8px 16px rgba(0,0,0,0.3)' }}>
+            <div style={{ background: '#f8f8f8', padding: '10px 14px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '6px 6px 0 0' }}>
+              <span style={{ fontWeight: 'bold', fontSize: 14 }}>جزئیات موقعیت</span>
+              <button onClick={() => { setSelectedTile(null); setPositionDetail(null); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, color: '#888' }}>&#10006;</button>
+            </div>
+            <div style={{ padding: 14 }}>
+              {detailLoading ? (
+                <p style={{ textAlign: 'center', color: '#666' }}>در حال بارگذاری...</p>
+              ) : positionDetail ? (
+                <div>
+                  <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>({selectedTile.y}|{selectedTile.x})</div>
+                  {positionDetail.type === 'village' && (
+                    <>
+                      <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>{positionDetail.name}</h3>
+                      <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                        <tbody>
+                          <tr><td style={{ padding: '4px 0', color: '#666' }}>بازیکن</td><td style={{ fontWeight: 'bold' }}>{positionDetail.owner}</td></tr>
+                          {positionDetail.tribe && <tr><td style={{ padding: '4px 0', color: '#666' }}>قبیله</td><td>{positionDetail.tribe}</td></tr>}
+                          {positionDetail.alliance_id && <tr><td style={{ padding: '4px 0', color: '#666' }}>اتحاد</td><td>#{positionDetail.alliance_id}</td></tr>}
+                          <tr><td style={{ padding: '4px 0', color: '#666' }}>جمعیت</td><td style={{ fontWeight: 'bold' }}>{positionDetail.population?.toLocaleString()}</td></tr>
+                          {positionDetail.wall_level > 0 && <tr><td style={{ padding: '4px 0', color: '#666' }}>دیوار</td><td>سطح {positionDetail.wall_level}</td></tr>}
+                          {positionDetail.field_distribution && (
+                            <tr><td style={{ padding: '4px 0', color: '#666' }}>توزیع منابع</td><td style={{ fontWeight: 'bold', color: '#498843' }}>{positionDetail.field_distribution}</td></tr>
+                          )}
+                          {positionDetail.is_capital && <tr><td style={{ padding: '4px 0', color: '#f88c1f', fontWeight: 'bold' }} colSpan={2}>پایتخت</td></tr>}
+                        </tbody>
+                      </table>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/send-troops', { state: { targetVillageId: positionDetail.id, targetName: positionDetail.name } }); }} style={{ flex: 1, padding: 8, background: '#498843', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>ارسال نیرو</button>
+                        <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/marketplace', { state: { targetX: selectedTile.x, targetY: selectedTile.y } }); }} style={{ flex: 1, padding: 8, background: '#F88C1F', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>ارسال منابع</button>
+                      </div>
+                    </>
+                  )}
+                  {positionDetail.type === 'oasis' && (
+                    <>
+                      <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>اوسیس</h3>
+                      <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+                        <tbody>
+                          <tr><td style={{ padding: '4px 0', color: '#666' }}>بونوس</td><td style={{ fontWeight: 'bold' }}>{OASIS_BONUS_LABELS[positionDetail.bonus_resource]} {positionDetail.bonus_percent}٪</td></tr>
+                          <tr><td style={{ padding: '4px 0', color: '#666' }}>قدرت دفاعی</td><td>{positionDetail.defense_strength}</td></tr>
+                          <tr><td style={{ padding: '4px 0', color: '#666' }}>وضعیت</td><td>{positionDetail.is_free ? 'آزاد' : `مالک: ${positionDetail.owner_name}`}</td></tr>
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                  {positionDetail.type === 'empty' && (
+                    <p style={{ textAlign: 'center', color: '#666' }}>این موقعیت خالی است.</p>
+                  )}
+                </div>
+              ) : (
+                <p style={{ textAlign: 'center', color: '#666' }}>اطلاعاتی یافت نشد.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Oasis attack modal */}
+      {selectedOasis && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#FFF', border: '2px solid #C9C9C9', borderRadius: 8, maxWidth: 400, width: '100%', boxShadow: '0 8px 16px rgba(0,0,0,0.3)' }}>
+            <div style={{ background: '#498843', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '6px 6px 0 0' }}>
+              <span style={{ fontWeight: 'bold', fontSize: 14, color: '#fff' }}>اوسیس ({selectedOasis.x_coord}|{selectedOasis.y_coord})</span>
+              <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff' }}>&#10006;</button>
+            </div>
+            <div style={{ padding: 14 }}>
+              <p style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
+                بونوس: {OASIS_BONUS_LABELS[selectedOasis.bonus_resource]} {selectedOasis.bonus_percent}٪ · قدرت دفاعی: {selectedOasis.defense_strength}
+              </p>
+              {oasisAlert && <p style={{ fontSize: 11, fontWeight: 'bold', color: '#228B22', marginBottom: 8 }}>{oasisAlert}</p>}
+              <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 8 }}>
+                {availableTroops.map((t) => (
+                  <div key={t.troop_type_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, padding: '4px 0', borderBottom: '1px solid #EEE' }}>
+                    <span>{t.name} (موجود: {t.count})</span>
+                    <input type="number" min="0" max={t.count} style={{ width: 60, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, padding: '2px 4px' }}
+                      value={oasisTroops[t.troop_type_id] || ''}
+                      onChange={(e) => setOasisTroops((p) => ({ ...p, [t.troop_type_id]: Math.max(0, Math.min(t.count, parseInt(e.target.value) || 0)) }))} />
+                  </div>
+                ))}
+              </div>
+              <button onClick={handleOasisAttack} disabled={attackingOasis} style={{ width: '100%', padding: 10, background: attackingOasis ? '#ccc' : '#DE0000', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: attackingOasis ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
+                {attackingOasis ? '...' : 'حمله به اوسیس (فوری)'}
+              </button>
+              <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ width: '100%', padding: 8, background: '#eee', color: '#333', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }}>بستن</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -93,6 +93,8 @@ class Village(models.Model):
 
     is_natar_artifact_site = models.BooleanField(default=False)
 
+    field_type = models.IntegerField(default=0, help_text="Resource field type 0-12 (0=empty/oasis)")
+
     class Meta:
         unique_together = ('x_coord', 'y_coord')
         indexes = [models.Index(fields=['x_coord', 'y_coord'])]
@@ -336,6 +338,7 @@ class Oasis(models.Model):
     bonus_resource = models.CharField(max_length=10, choices=RESOURCE_CHOICES, default='crop')
     bonus_percent = models.IntegerField(default=25)
     defense_strength = models.IntegerField(default=150)
+    oasis_type = models.IntegerField(default=1, help_text="Oasis type 1-12 for tile image selection")
 
     owner_village = models.ForeignKey(Village, on_delete=models.SET_NULL, null=True, blank=True, related_name='oases')
 

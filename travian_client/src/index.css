@@ -308,3 +308,27 @@ div.village1 table#movements .a3, div.village1 table#movements .d3 { color: #B50
 .questMasterImg:hover {
     filter: brightness(1.1) drop-shadow(0 2px 6px rgba(0,0,0,0.3));
 }
+
+/* ===== World Map Styles ===== */
+.map .tile {
+    width: 59px;
+    height: 59px;
+    float: left;
+    position: relative;
+    background-repeat: no-repeat;
+    background-position: left top;
+    border: 1px solid rgba(0,0,0,0.15);
+}
+.map .tile:hover {
+    outline: 2px solid rgba(255,215,0,0.8);
+    outline-offset: -2px;
+    z-index: 10;
+}
+.map .tile img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 59px;
+    height: 59px;
+    pointer-events: none;
+}

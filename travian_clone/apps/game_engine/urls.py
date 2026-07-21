@@ -1,4 +1,4 @@
-﻿from django.urls import path
+from django.urls import path
 
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
@@ -7,7 +7,7 @@ from .views import (
     GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
     FarmVillagesListView,
     CulturePointsView, VillageRenameView, NpcTradeView, OasisMapView, OasisAttackView,
-    OasisReleaseView, VillagesOverviewView,
+    OasisReleaseView, VillagesOverviewView, PositionDetailView,
     ArtifactListView,
     LatestDailyMedalsView, MyMedalsView, ToggleMedalVisibilityView, PlayerPublicMedalsView,
     GoldBankDepositView, GoldBankWithdrawView, MyGoldBankDepositsView,
@@ -28,7 +28,8 @@ urlpatterns = [
     path('town-hall/celebrate/', TownHallCelebrationView.as_view(), name='town_hall_celebration'),  # ✅ جدید
     path('villages/<int:village_id>/abandon/', AbandonVillageView.as_view(), name='abandon_village'),
     path('world-map/', WorldMapView.as_view(), name='world_map'),
-    path('oases/', OasisMapView.as_view(), name='oasis_map'),  # ✅ جدید
+    path('oases/', OasisMapView.as_view(), name='oasis_map'),
+    path('position-details/', PositionDetailView.as_view(), name='position_details'),
     path('oases/attack/', OasisAttackView.as_view(), name='oasis_attack'),  # ✅ جدید
     path('farm-villages/', FarmVillagesListView.as_view(), name='farm_villages'),
     path('found-village/', FoundVillageView.as_view(), name='found_village'),

@@ -187,12 +187,27 @@ class WorldMapView(APIView):
         except (TypeError, ValueError):
             return Response({"error": "مختصات نامعتبر است."}, status=400)
 
-        radius = min(max(int(request.query_params.get('radius', 2) or 2), 1), 10)
+        radius = min(max(int(request.query_params.get('radius', 4) or 4), 1), 10)
 
         villages = Village.objects.filter(
             x_coord__range=(center_x - radius, center_x + radius),
             y_coord__range=(center_y - radius, center_y + radius),
         ).select_related('player')
+
+        village_ids = [v.id for v in villages]
+        wall_data = {}
+        if village_ids:
+            for vb in VillageBuilding.objects.filter(
+                village_id__in=village_ids,
+                building_type__provides_wall_defense=True,
+                level__gt=0
+            ).select_related('building_type'):
+                wall_data[vb.village_id] = vb.level
+
+        from .utils import calculate_village_population
+        population_cache = {}
+        for v in villages:
+            population_cache[v.id] = calculate_village_population(v)
 
         data = [
             {
@@ -201,6 +216,12 @@ class WorldMapView(APIView):
                 "x_coord": v.x_coord,
                 "y_coord": v.y_coord,
                 "owner": v.player.username,
+                "owner_id": v.player.id,
+                "tribe": v.player.tribe,
+                "alliance_id": v.player.alliance_id,
+                "population": population_cache.get(v.id, 0),
+                "wall_level": wall_data.get(v.id, 0),
+                "field_type": v.field_type,
                 "is_natar": v.player.username == "Natars",
                 "is_farm": v.is_farm_village,
                 "is_capital": v.is_capital,
@@ -2295,11 +2316,92 @@ class OasisMapView(APIView):
                 "bonus_resource": o.bonus_resource,
                 "bonus_percent": o.bonus_percent,
                 "defense_strength": o.defense_strength,
+                "oasis_type": o.oasis_type,
                 "is_free": o.owner_village_id is None,
                 "owner_name": o.owner_village.name if o.owner_village else None,
             }
             for o in oases
         ])
+
+
+FIELD_TYPE_DISTRIBUTIONS = {
+    1: {"wood": 3, "clay": 3, "iron": 3, "crop": 9},
+    2: {"wood": 3, "clay": 4, "iron": 5, "crop": 6},
+    3: {"wood": 4, "clay": 4, "iron": 4, "crop": 6},
+    4: {"wood": 4, "clay": 5, "iron": 3, "crop": 6},
+    5: {"wood": 5, "clay": 3, "iron": 4, "crop": 6},
+    6: {"wood": 1, "clay": 1, "iron": 1, "crop": 15},
+    7: {"wood": 4, "clay": 4, "iron": 3, "crop": 7},
+    8: {"wood": 3, "clay": 4, "iron": 4, "crop": 7},
+    9: {"wood": 4, "clay": 3, "iron": 4, "crop": 7},
+    10: {"wood": 3, "clay": 5, "iron": 4, "crop": 6},
+    11: {"wood": 4, "clay": 3, "iron": 5, "crop": 6},
+    12: {"wood": 5, "clay": 4, "iron": 3, "crop": 6},
+}
+
+
+class PositionDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            x = int(request.query_params.get('x', 0))
+            y = int(request.query_params.get('y', 0))
+        except (TypeError, ValueError):
+            return Response({"error": "مختصات نامعتبر است."}, status=400)
+
+        village = Village.objects.filter(x_coord=x, y_coord=y).select_related('player').first()
+        oasis = None
+        if not village:
+            from .models import Oasis
+            oasis = Oasis.objects.filter(x_coord=x, y_coord=y).select_related('owner_village__player').first()
+
+        if village:
+            from .utils import calculate_village_population
+            wall_level = 0
+            vb = VillageBuilding.objects.filter(
+                village=village, building_type__provides_wall_defense=True, level__gt=0
+            ).first()
+            if vb:
+                wall_level = vb.level
+
+            return Response({
+                "type": "village",
+                "id": village.id,
+                "name": village.name,
+                "x_coord": village.x_coord,
+                "y_coord": village.y_coord,
+                "owner": village.player.username,
+                "owner_id": village.player.id,
+                "tribe": village.player.tribe,
+                "alliance_id": village.player.alliance_id,
+                "population": calculate_village_population(village),
+                "wall_level": wall_level,
+                "field_type": village.field_type,
+                "field_distribution": FIELD_TYPE_DISTRIBUTIONS.get(village.field_type, None),
+                "is_capital": village.is_capital,
+                "is_natar": village.player.username == "Natars",
+            })
+        elif oasis:
+            return Response({
+                "type": "oasis",
+                "id": oasis.id,
+                "x_coord": oasis.x_coord,
+                "y_coord": oasis.y_coord,
+                "oasis_type": oasis.oasis_type,
+                "bonus_resource": oasis.bonus_resource,
+                "bonus_percent": oasis.bonus_percent,
+                "defense_strength": oasis.defense_strength,
+                "is_free": oasis.owner_village_id is None,
+                "owner_name": oasis.owner_village.name if oasis.owner_village else None,
+                "owner_tribe": oasis.owner_village.player.tribe if oasis.owner_village else None,
+            })
+        else:
+            return Response({
+                "type": "empty",
+                "x_coord": x,
+                "y_coord": y,
+            })
 
 
 class OasisAttackView(APIView):

@@ -37,9 +37,9 @@ function formatCountdown(seconds) {
     const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
-    if (d > 0) return `${d}d ${h}h ${m}m`;
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    if (m > 0) return `${m}m ${s}s`;
+    if (d > 0) return `${d}روز و  ${h}:${m}`;
+    if (h > 0) return `${h}:${m}:${s}`;
+    if (m > 0) return `${m}:${s}`;
     return `${s}s`;
 }
 
@@ -279,44 +279,6 @@ export default function ResourceFields() {
             )}
 
             <div id="map_details" style={{ marginTop: '20px' }}>
-                {movements.length > 0 && (
-                    <div className="boxes villageList movements">
-                        <div className="boxes-tl"></div>
-                        <div className="boxes-tr"></div>
-                        <div className="boxes-tc"></div>
-                        <div className="boxes-ml"></div>
-                        <div className="boxes-mr"></div>
-                        <div className="boxes-mc"></div>
-                        <div className="boxes-bl"></div>
-                        <div className="boxes-br"></div>
-                        <div className="boxes-bc"></div>
-                        <div className="boxes-contents">
-                            <table id="movements" cellPadding="1" cellSpacing="1">
-                                <thead>
-                                    <tr><th colSpan="3">حرکت نیروها</th></tr>
-                                </thead>
-                                <tbody>
-                                    {movements.map((m, i) => {
-                                        const info = getMovementInfo(m);
-                                        const remaining = m.remaining_seconds || 0;
-                                        return (
-                                            <tr key={i}>
-                                                <td className="typ"><span className={info.aclass}>&raquo;</span></td>
-                                                <td>
-                                                    <div className="mov"><span className={info.aclass}>{(m.troops_payload ? Object.values(m.troops_payload).reduce((a,b)=>a+b, 0) : 1)} {info.label}</span></div>
-                                                    <div className="dur_r">&nbsp;<span>{formatCountdown(remaining)}</span>&nbsp;ساعت</div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                
-
                 {villageInfo && (
                     <div className="boxes villageList production">
                         <div className="boxes-tl"></div>
@@ -405,6 +367,43 @@ export default function ResourceFields() {
                                             <td className="un">{t.name}</td>
                                         </tr>
                                     ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {movements.length > 0 && (
+                    <div className="boxes villageList movements">
+                        <div className="boxes-tl"></div>
+                        <div className="boxes-tr"></div>
+                        <div className="boxes-tc"></div>
+                        <div className="boxes-ml"></div>
+                        <div className="boxes-mr"></div>
+                        <div className="boxes-mc"></div>
+                        <div className="boxes-bl"></div>
+                        <div className="boxes-br"></div>
+                        <div className="boxes-bc"></div>
+                        <div className="boxes-contents">
+                            <table id="movements" cellPadding="1" cellSpacing="1">
+                                <thead>
+                                    <tr><th colSpan="3">حرکت نیروها</th></tr>
+                                </thead>
+                                <tbody>
+                                    {movements.map((m, i) => {
+                                        const info = getMovementInfo(m.movement_type);
+                                        const remaining = m.remaining_seconds || 0;
+                                        return (
+                                            <tr key={i}>
+                                                <td className="typ"><span className={info.aclass}>&raquo;</span></td>
+                                                <td>
+                                                    {info.label}
+                                                    <div className="mov"><span className={info.aclass}>{(m.troops_payload ? Object.values(m.troops_payload).reduce((a,b)=>a+b, 0) : 1)}:<span>{formatCountdown(remaining)}</span></span></div>
+                                                    <div className="dur_r"></div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
