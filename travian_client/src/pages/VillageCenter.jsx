@@ -263,7 +263,7 @@ export default function VillageCenter() {
                                 onMouseMove={(e)=>setTooltipPos({x:e.clientX,y:e.clientY})}
                                 onMouseLeave={()=>setHoveredSlot(null)}
                                 style={{ position:'absolute', left:'-7.5%', top:'-7.5%', width:'115%', height:'115%',
-                                         zIndex:15, cursor:'pointer' }}
+                                         zIndex:5, cursor:'pointer', pointerEvents:'all' }}
                             />
                         )}
 

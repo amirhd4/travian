@@ -92,7 +92,7 @@ body.village1 #contentOuterContainer { width: 702px; margin-left: 92px; float: l
 body.village1 #wrapper { background-image: url('/assets/bgs/bgResources-rtl.jpg'); }
 body.village2 #contentOuterContainer, body.village2 #contentOuterContainer .contentTitle, body.village2 #contentOuterContainer .contentContainer, body.village2 #contentOuterContainer .contentFooter { background: none; padding: 0; min-height: 0; }
 body.village2 #contentOuterContainer .contentTitle, body.village2 #contentOuterContainer .contentFooter { display: none; }
-body.village2 #contentOuterContainer { width: 628px; margin-left: 166px; margin-top: 20px; float: left; }
+body.village2 #contentOuterContainer { width: 628px; margin-left: 166px; margin-top: 20px; margin-bottom: 100px; float: left; }
 body.map #contentOuterContainer, body.map #contentOuterContainer .contentTitle, body.map #contentOuterContainer .contentContainer, body.map #contentOuterContainer .contentFooter { background: none; padding: 0; min-height: 0; }
 body.map #contentOuterContainer .contentTitle, body.map #contentOuterContainer .contentFooter { display: none; }
 body.map #contentOuterContainer { width: 702px; margin-left: 92px; float: left; }
