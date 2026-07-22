@@ -205,7 +205,16 @@ class WorldMapView(APIView):
                 wall_data[vb.village_id] = vb.level
 
         from .utils import calculate_village_population
+        from apps.combat.models import TroopMovement
         population_cache = {}
+        incoming_attack_ids = set()
+        if village_ids:
+            attacks = TroopMovement.objects.filter(
+                target_village_id__in=village_ids,
+                movement_type__in=['ATTACK', 'RAID'],
+                is_completed=False,
+            ).values_list('target_village_id', flat=True)
+            incoming_attack_ids = set(attacks)
         for v in villages:
             population_cache[v.id] = calculate_village_population(v)
 
@@ -228,6 +237,7 @@ class WorldMapView(APIView):
                 "is_natar_ww_site": v.is_natar_ww_site,
                 "is_natar_plan_guard": v.is_natar_plan_guard,
                 "is_natar_artifact_site": v.is_natar_artifact_site,
+                "has_incoming_attack": v.id in incoming_attack_ids,
             }
             for v in villages
         ]
@@ -2574,6 +2584,7 @@ class PositionDetailView(APIView):
                 "field_distribution": FIELD_TYPE_DISTRIBUTIONS.get(village.field_type, None),
                 "is_capital": village.is_capital,
                 "is_natar": village.player.username == "Natars",
+                "is_mine": village.player_id == request.user.id,
             })
         elif oasis:
             return Response({
@@ -2597,10 +2608,15 @@ class PositionDetailView(APIView):
                 "bonus_percent": oasis.bonus_percent,
             })
         else:
+            import random
+            field_type = random.randint(1, 12)
             return Response({
                 "type": "empty",
                 "x_coord": x,
                 "y_coord": y,
+                "field_type": field_type,
+                "field_distribution": FIELD_TYPE_DISTRIBUTIONS.get(field_type, None),
+                "is_oasis_slot": False,
             })
 
 

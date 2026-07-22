@@ -10,7 +10,7 @@ from .views import (
     CombatReportListView, CombatReportUnreadCountView, CombatReportDetailView,
     TrappedTroopsListView, ReleaseTrappedTroopsView,
     TroopEvasionView, FarmListManageView, ReinforcementReportDetailView, ReinforcementReportListView,
-    HeroAuctionListView, HeroAuctionBidView,
+    HeroAuctionListView, HeroAuctionBidView, AcademyView,
 )
 
 urlpatterns = [
@@ -31,6 +31,7 @@ urlpatterns = [
     path('farm-list/run/', FarmListRunView.as_view(), name='farm_list_run'),
     path('farm-list/manage/', FarmListManageView.as_view(), name='farm_list_manage'),
     path('blacksmith/', BlacksmithView.as_view(), name='blacksmith'),
+    path('academy/', AcademyView.as_view(), name='academy'),
     path('hero/allocate-points/', HeroAllocatePointsView.as_view(), name='hero_allocate_points'),
     path('hero/settings/', HeroSettingsView.as_view(), name='hero_settings'),
     path('hero/revive/', HeroReviveView.as_view(), name='hero_revive'),

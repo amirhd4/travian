@@ -1046,6 +1046,35 @@ def complete_troop_upgrade(upgrade_id):
 
 
 @app.task
+def complete_academy_research(research_id):
+    """تکمیل تحقیق آکادمی — ثبت نیرو به عنوان تحقیق‌شده."""
+    from .models import AcademyResearchQueue, ResearchedTroop
+    try:
+        queue_item = AcademyResearchQueue.objects.select_for_update().get(id=research_id, is_completed=False)
+    except AcademyResearchQueue.DoesNotExist:
+        return "تحقیق یافت نشد یا قبلا انجام شده."
+
+    ResearchedTroop.objects.get_or_create(
+        village=queue_item.village,
+        troop_type=queue_item.troop_type,
+    )
+    queue_item.is_completed = True
+    queue_item.save()
+
+    GameLog.objects.create(
+        village=queue_item.village,
+        log_type='BUILDING',
+        description=f"تحقیق {queue_item.troop_type.name} در آکادمی تمام شد."
+    )
+    _notify_player(queue_item.village.player_id, "ACADEMY_RESEARCH_COMPLETED", {
+        "message": f"تحقیق {queue_item.troop_type.name} در {queue_item.village.name} تمام شد.",
+        "village_id": queue_item.village_id,
+        "troop_type_id": queue_item.troop_type_id,
+    })
+    return f"تحقیق {queue_item.troop_type.name} در {queue_item.village.name} تمام شد."
+
+
+@app.task
 def resolve_hero_auction(auction_id):
     try:
         with transaction.atomic():

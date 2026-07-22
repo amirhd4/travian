@@ -92,18 +92,28 @@ export default function Blacksmith() {
                             {data.troops.map((t) => {
                                 const remaining = t._remaining ?? Math.max(0, Math.round((new Date(t.upgrade_ends_at).getTime() - Date.now()) / 1000));
                                 const isMax = t.level >= t.max_level;
+                                const canUpgrade = t.is_researched || t.is_basic;
 
                                 return (
-                                    <div key={t.troop_type_id} className="flex items-center gap-4 bg-white/80 border border-parchment-300 rounded-xl p-3">
+                                    <div key={t.troop_type_id} className={`flex items-center gap-4 rounded-xl p-3 ${
+                                        canUpgrade ? 'bg-white/80 border border-parchment-300' : 'bg-gray-50 border border-gray-200 opacity-70'
+                                    }`}>
                                         <img
                                             src={`/assets/troops/unit-${t.troop_type_id}.gif`} alt={t.name}
-                                            className="w-14 h-14 object-contain bg-parchment-100 rounded-lg border border-parchment-300 flex-shrink-0"
+                                            className={`w-14 h-14 object-contain rounded-lg border flex-shrink-0 ${
+                                                canUpgrade ? 'bg-parchment-100 border-parchment-300' : 'bg-gray-100 border-gray-200 grayscale'
+                                            }`}
                                             onError={(e) => { e.target.style.display='none'; }}
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-bold text-ink-800">{t.name}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-ink-800">{t.name}</p>
+                                                {t.is_basic && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold">پایه</span>}
+                                                {t.is_researched && !t.is_basic && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-bold">✅</span>}
+                                                {!canUpgrade && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">🔒</span>}
+                                            </div>
                                             <p className="text-xs text-ink-500">سطح فعلی: {t.level} از {t.max_level}</p>
-                                            {!isMax && t.next_level_cost && (
+                                            {!isMax && t.next_level_cost && canUpgrade && (
                                                 <p className="text-[10px] text-ink-600 mt-1 flex gap-3 flex-wrap">
                                                     <span>🪵 {t.next_level_cost.wood}</span>
                                                     <span>🧱 {t.next_level_cost.clay}</span>
@@ -113,7 +123,9 @@ export default function Blacksmith() {
                                             )}
                                         </div>
                                         <div className="text-center min-w-[140px] flex-shrink-0">
-                                            {isMax ? (
+                                            {!canUpgrade ? (
+                                                <span className="text-xs text-red-500 font-bold">🔒 تحقیق نشده</span>
+                                            ) : isMax ? (
                                                 <span className="badge-green">🏆 حداکثر لول</span>
                                             ) : t.is_upgrading ? (
                                                 <span className="font-mono font-bold text-blue-700 text-sm" dir="ltr">{formatDuration(remaining)}</span>

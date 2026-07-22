@@ -333,6 +333,33 @@ class TrainingQueue(models.Model):
         return f"{self.village.name} - {self.count}x {self.troop_type.name} (تا {self.finishes_at})"
 
 
+class ResearchedTroop(models.Model):
+    """Tracks which troop types have been researched at the Academy for each village."""
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='researched_troops')
+    troop_type = models.ForeignKey(TroopType, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ('village', 'troop_type')
+
+    def __str__(self):
+        return f"{self.village.name} - {self.troop_type.name} (تحقیق شده)"
+
+
+class AcademyResearchQueue(models.Model):
+    """Active research in the Academy (one at a time per village)."""
+    village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='academy_research_queue')
+    troop_type = models.ForeignKey(TroopType, on_delete=models.CASCADE)
+    started_at = models.DateTimeField(auto_now_add=True)
+    finishes_at = models.DateTimeField()
+    is_completed = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['finishes_at']
+
+    def __str__(self):
+        return f"{self.village.name} - تحقیق {self.troop_type.name} (تا {self.finishes_at})"
+
+
 class Adventure(models.Model):
     """نقاط ماجراجویی که به‌صورت دوره‌ای نزدیک دهکده هر بازیکن ظاهر می‌شوند."""
     DIFFICULTY_CHOICES = [

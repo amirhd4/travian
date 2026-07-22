@@ -108,6 +108,15 @@ class BarracksTrainView(APIView):
                             status=400
                         )
 
+                # ✅ جدید: بررسی تحقیق آکادمی - نیروهای غیرپایه باید تحقیق شده باشند
+                from .research_data import is_troop_basic
+                if not is_troop_basic(troop_info):
+                    if not ResearchedTroop.objects.filter(village=village, troop_type=troop_info).exists():
+                        return Response(
+                            {"error": f"{troop_info.name} هنوز در آکادمی تحقیق نشده است."},
+                            status=400
+                        )
+
                 # بررسی دقیق موجودی
                 if (village.wood < total_cost['wood'] or
                         village.clay < total_cost['clay'] or
@@ -181,6 +190,21 @@ class TroopTypeCatalogView(APIView):
     def get(self, request):
         # ✅ فقط نیروهای متعلق به نژاد خود بازیکن (ناتار هرگز نمایش داده نمی‌شود)
         troop_types = TroopType.objects.filter(tribe=request.user.tribe).order_by('id')
+
+        # Check research status if village_id provided
+        village_id = request.query_params.get('village_id')
+        researched_ids = set()
+        if village_id:
+            try:
+                village = Village.objects.get(id=village_id, player=request.user)
+                researched_ids = set(
+                    ResearchedTroop.objects.filter(village=village).values_list('troop_type_id', flat=True)
+                )
+            except (Village.DoesNotExist, ValueError):
+                pass
+
+        from .research_data import is_troop_basic
+
         return Response([
             {
                 "id": t.id,
@@ -203,6 +227,8 @@ class TroopTypeCatalogView(APIView):
                 "is_cavalry": t.is_cavalry,
                 "required_building": " یا ".join(get_required_training_buildings(t)),
                 "required_academy_level": t.required_academy_level,
+                "is_basic": is_troop_basic(t),
+                "is_researched": is_troop_basic(t) or t.id in researched_ids,
             }
             for t in troop_types
         ])
@@ -753,12 +779,19 @@ class BlacksmithView(APIView):
 
         troop_types = TroopType.objects.filter(tribe=request.user.tribe)
         upgrades = {u.troop_type_id: u for u in TroopUpgrade.objects.filter(village=village)}
+        researched_ids = set(
+            ResearchedTroop.objects.filter(village=village).values_list('troop_type_id', flat=True)
+        )
+
+        from .research_data import is_troop_basic
 
         data = []
         for t in troop_types:
             existing = upgrades.get(t.id)
             level = existing.level if existing else 0
             is_upgrading = existing.is_upgrading if existing else False
+            basic = is_troop_basic(t)
+            researched = basic or t.id in researched_ids
             data.append({
                 "troop_type_id": t.id,
                 "name": t.name,
@@ -766,6 +799,8 @@ class BlacksmithView(APIView):
                 "max_level": TroopUpgrade.MAX_LEVEL,
                 "is_upgrading": is_upgrading,
                 "upgrade_ends_at": existing.upgrade_ends_at if existing else None,
+                "is_researched": researched,
+                "is_basic": basic,
                 "next_level_cost": None if level >= TroopUpgrade.MAX_LEVEL else {
                     "wood": int(t.wood_cost * 1.6 * (level + 1)),
                     "clay": int(t.clay_cost * 1.6 * (level + 1)),
@@ -794,6 +829,15 @@ class BlacksmithView(APIView):
                 troop_type = TroopType.objects.get(id=troop_type_id, tribe=request.user.tribe)
             except TroopType.DoesNotExist:
                 return Response({"error": "این نیرو مختص نژاد شما نیست."}, status=400)
+
+            # ✅ جدید: بررسی تحقیق - ارتقا فقط برای نیروهای تحقیق‌شده
+            from .research_data import is_troop_basic
+            if not is_troop_basic(troop_type):
+                if not ResearchedTroop.objects.filter(village=village, troop_type=troop_type).exists():
+                    return Response(
+                        {"error": f"{troop_type.name} هنوز در آکادمی تحقیق نشده است."},
+                        status=400
+                    )
 
             upgrade, _ = TroopUpgrade.objects.select_for_update().get_or_create(
                 village=village, troop_type=troop_type
@@ -827,6 +871,180 @@ class BlacksmithView(APIView):
             ))
 
         return Response({"message": f"ارتقای {troop_type.name} به لول {next_level} آغاز شد."})
+
+
+class AcademyView(APIView):
+    """آکادمی: تحقیق نیروهای جدید قبل از آموزش در پادگان/اصطبل/کارگاه."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.game_engine.models import Village, VillageBuilding
+        from .research_data import (
+            is_troop_basic, is_troop_researchable, get_research_cost,
+            get_research_prerequisites, check_research_prerequisites
+        )
+
+        village_id = request.query_params.get('village_id')
+        if not village_id:
+            return Response({"error": "village_id لازم است."}, status=400)
+
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد."}, status=404)
+
+        academy = VillageBuilding.objects.filter(
+            village=village, building_type__name="آکادمی"
+        ).first()
+        if not academy or academy.level == 0:
+            return Response({"has_academy": False, "academy_level": 0, "troops": [], "active_research": None})
+
+        academy_level = academy.level
+        tribe = request.user.tribe
+        tribe_troops = TroopType.objects.filter(tribe=tribe).exclude(
+            is_scout=True, is_settler=True, is_chief=True
+        ).exclude(is_settler=True).exclude(is_chief=True)
+
+        # Get researched troops for this village
+        researched_ids = set(
+            ResearchedTroop.objects.filter(village=village).values_list('troop_type_id', flat=True)
+        )
+
+        troops_data = []
+        for troop in tribe_troops:
+            basic = is_troop_basic(troop)
+            researched = basic or troop.id in researched_ids
+            cost = get_research_cost(troop.id)
+            prereqs = get_research_prerequisites(troop.id)
+            met, error = check_research_prerequisites(village, troop.id, academy_level) if prereqs else (True, None)
+
+            troops_data.append({
+                "troop_type_id": troop.id,
+                "name": troop.name,
+                "is_researched": researched,
+                "is_basic": basic,
+                "can_research": not researched and met and cost is not None,
+                "prerequisites": {
+                    "academy_level": prereqs[0] if prereqs else 0,
+                    "buildings": prereqs[1] if prereqs else {},
+                },
+                "prereq_met": met,
+                "prereq_error": error,
+                "research_cost": {
+                    "wood": cost[0], "clay": cost[1], "iron": cost[2], "crop": cost[3], "time": cost[4]
+                } if cost else None,
+            })
+
+        # Active research
+        active = AcademyResearchQueue.objects.filter(
+            village=village, is_completed=False
+        ).first()
+        active_research = None
+        if active:
+            from django.utils import timezone
+            remaining = max(0, int((active.finishes_at - timezone.now()).total_seconds()))
+            active_research = {
+                "troop_name": active.troop_type.name,
+                "troop_type_id": active.troop_type_id,
+                "finishes_at": active.finishes_at.isoformat(),
+                "remaining_seconds": remaining,
+            }
+
+        return Response({
+            "has_academy": True,
+            "academy_level": academy_level,
+            "troops": troops_data,
+            "active_research": active_research,
+        })
+
+    def post(self, request):
+        from apps.game_engine.models import Village, VillageBuilding
+        from .research_data import (
+            is_troop_basic, is_troop_researchable, get_research_cost,
+            check_research_prerequisites, calculate_research_time
+        )
+        from apps.game_engine.engine import schedule_game_event
+
+        village_id = request.data.get('village_id')
+        troop_type_id = request.data.get('troop_type_id')
+
+        if not village_id or not troop_type_id:
+            return Response({"error": "village_id و troop_type_id لازم است."}, status=400)
+
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد."}, status=404)
+
+        academy = VillageBuilding.objects.filter(
+            village=village, building_type__name="آکادمی"
+        ).first()
+        if not academy or academy.level == 0:
+            return Response({"error": "آکادمی ساخته نشده."}, status=400)
+
+        try:
+            troop_type = TroopType.objects.get(id=troop_type_id, tribe=request.user.tribe)
+        except TroopType.DoesNotExist:
+            return Response({"error": "نیرو یافت نشد."}, status=404)
+
+        if is_troop_basic(troop_type):
+            return Response({"error": "نیروی پایه نیازی به تحقیق ندارد."}, status=400)
+
+        if not is_troop_researchable(troop_type):
+            return Response({"error": "این نیرو قابل تحقیق نیست."}, status=400)
+
+        if ResearchedTroop.objects.filter(village=village, troop_type=troop_type).exists():
+            return Response({"error": "این نیرو قبلا تحقیق شده."}, status=400)
+
+        # Check prerequisites
+        met, error = check_research_prerequisites(village, troop_type.id, academy.level)
+        if not met:
+            return Response({"error": error}, status=400)
+
+        # Check no active research
+        if AcademyResearchQueue.objects.filter(village=village, is_completed=False).exists():
+            return Response({"error": "یک تحقیق در حال انجام است. صبر کنید تا تمام شود."}, status=400)
+
+        cost = get_research_cost(troop_type.id)
+        if not cost:
+            return Response({"error": "هزینه تحقیق تعریف نشده."}, status=400)
+
+        wood, clay, iron, crop, base_time = cost
+
+        # Check resources
+        if village.wood < wood or village.clay < clay or village.iron < iron or village.crop < crop:
+            return Response({"error": "منابع کافی نیست."}, status=400)
+
+        # Deduct resources
+        village.wood -= wood
+        village.clay -= clay
+        village.iron -= iron
+        village.crop -= crop
+        village.save()
+
+        # Calculate research time with Academy speed bonus
+        research_time = calculate_research_time(base_time, academy.level)
+
+        from django.utils import timezone
+        import datetime
+        finishes_at = timezone.now() + datetime.timedelta(seconds=research_time)
+
+        queue_item = AcademyResearchQueue.objects.create(
+            village=village,
+            troop_type=troop_type,
+            finishes_at=finishes_at,
+        )
+
+        # Schedule Celery task
+        from .tasks import complete_academy_research
+        transaction.on_commit(lambda: complete_academy_research.apply_async(
+            args=[queue_item.id], eta=finishes_at
+        ))
+
+        return Response({
+            "message": f"تحقیق {troop_type.name} آغاز شد. زمان باقی‌مانده: {research_time} ثانیه.",
+            "finishes_at": finishes_at.isoformat(),
+        })
 
 
 class HeroAllocatePointsView(APIView):

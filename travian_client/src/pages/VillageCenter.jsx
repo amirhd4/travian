@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -9,8 +10,8 @@ const SLOT_POSITIONS = {
     20: { left: 205, top: 45,  size: 95 },
     21: { left: 110, top: 90,  size: 95 },
     22: { left: 290, top: 45,  size: 95 },
-    23: { left: 450, top: 290, size: 95 },
-    24: { left: 380, top: 54, size: 95 },
+    23: { left: 370, top: 50, size: 95 },
+    // 24: { left: 380, top: 54, size: 95 },
     25: { left: 434, top: 104, size: 95 },
     // 26: { left: 490, top: 155, size: 95 },
     27: { left: 458, top: 210, size: 95 },
@@ -77,6 +78,7 @@ function formatCountdown(seconds) {
 }
 
 export default function VillageCenter() {
+    const navigate = useNavigate();
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const user = useGameStore((state) => state.user);
     const { lastMessage } = useGameWebSocket();
@@ -330,6 +332,22 @@ export default function VillageCenter() {
                     <button onClick={handleUpgrade} disabled={selectedSlot.is_upgrading||upgrading||selectedSlot.is_max_level||!canAfford(selectedSlot)} style={{ width:'100%', padding:10, background:(selectedSlot.is_upgrading||upgrading||selectedSlot.is_max_level||!canAfford(selectedSlot))?'#ccc':'#73b544', color:'#fff', border:'none', borderRadius:4, fontWeight:'bold', cursor:(selectedSlot.is_upgrading||upgrading||selectedSlot.is_max_level||!canAfford(selectedSlot))?'not-allowed':'pointer' }}>
                         {upgrading ? 'صبر کنید...' : `ارتقا به سطح ${selectedSlot.level+1}`}
                     </button>
+                    {/* Navigation links for special buildings */}
+                    {selectedSlot.level > 0 && (() => {
+                        const navMap = {
+                            'آکادمی': '/academy',
+                            'پادگان': '/barracks',
+                            'آهنگری': '/blacksmith',
+                            'سفارتخانه': '/embassy',
+                        };
+                        const target = navMap[selectedSlot.name];
+                        if (!target) return null;
+                        return (
+                            <button onClick={() => { setSelectedSlot(null); navigate(target); }} style={{ width:'100%', padding:8, marginTop:8, background:'#498843', color:'#fff', border:'none', borderRadius:4, fontWeight:'bold', cursor:'pointer', fontSize:12 }}>
+                                رفتن به صفحه {selectedSlot.name}
+                            </button>
+                        );
+                    })()}
                 </div></div></div>}
 
             {/* Building Selection Modal for empty slots */}

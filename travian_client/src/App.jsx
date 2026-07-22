@@ -8,6 +8,7 @@ import Marketplace from "./pages/Marketplace.jsx";
 import WorldWonder from "./pages/WorldWonder.jsx";
 import Messages from "./pages/Messages.jsx";
 import Barracks from "./pages/Barracks.jsx";
+import Academy from "./pages/Academy.jsx";
 import Embassy from "./pages/Embassy.jsx";
 import Register from "./pages/Register.jsx";
 import useGameStore from "./store/useGameStore.js";
@@ -106,6 +107,7 @@ function App() {
                     <Route path="/world-wonder" element={<WorldWonder />} />
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/barracks" element={<Barracks />} />
+                    <Route path="/academy" element={<Academy />} />
                     <Route path="/embassy" element={<Embassy />} />
                     <Route path="/movements" element={<Movements />} />
                     <Route path="/hero" element={<Hero />} />

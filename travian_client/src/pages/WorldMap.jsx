@@ -10,9 +10,6 @@ const ROWS = 7;
 const TILE_SIZE = 60;
 const OASIS_CAPTURE_MAX_DISTANCE = 10;
 
-const TRIBE_MAP = { ROMAN: 1, TEUTON: 2, GAUL: 3 };
-const WALL_TRIBE_GID = { ROMAN: 31, TEUTON: 32, GAUL: 33 };
-
 const FIELD_DISTRIBUTIONS = {
   1: '3-3-3-9', 2: '3-4-5-6', 3: '4-4-4-6', 4: '4-5-3-6',
   5: '5-3-4-6', 6: '1-1-1-15', 7: '4-4-3-7', 8: '3-4-4-7',
@@ -60,6 +57,13 @@ function getTerrainColor(x, y) {
   return TERRAIN_COLORS[idx];
 }
 
+// Deterministic field type (1-9) for empty village slots, like PHP Travian's wdata table
+// Only 9 terrain images exist (t1-t9), so we map to 1-9
+function getEmptySlotFieldType(x, y) {
+  const hash = ((x * 2654435761) ^ (y * 2246822519)) & 0x7fffffff;
+  return (hash % 9) + 1;
+}
+
 function BonusBadge({ resource, percent }) {
   const colors = { wood: '#4a7c3f', clay: '#b87333', iron: '#666', crop: '#daa520' };
   return (
@@ -72,7 +76,7 @@ function BonusBadge({ resource, percent }) {
 export default function WorldMap() {
   const navigate = useNavigate();
   const villages = useGameStore((s) => s.villages);
-  const activeVillageId = useGameStore((s) => s.activeVillageId);
+  const activeVillageId = useGameStore((state) => state.activeVillageId);
   const activeVillage = villages.find((v) => v.id === activeVillageId);
 
   const [center, setCenter] = useState({ x: 0, y: 0 });
@@ -142,22 +146,27 @@ export default function WorldMap() {
           oasisType = oasis.oasis_type || 1;
         } else if (village) {
           fieldType = village.field_type || 0;
+        } else if (!isNatarCenter) {
+          // Empty village slot - assign deterministic field type like PHP Travian
+          fieldType = getEmptySlotFieldType(x, y);
         }
 
-        // Distance from active village
         let distance = null;
         if (activeVillage) {
           distance = Math.sqrt((x - activeVillage.x_coord) ** 2 + (y - activeVillage.y_coord) ** 2);
         }
 
+        const isMine = village ? village.id === activeVillageId : false;
+
         grid.push({
           x, y, row, col, village, oasis,
           isNatarCenter, volcanoClass, isGrayTile,
           fieldType, oasisType, distance,
-          isMine: village ? village.id === activeVillageId : false,
+          isMine,
           isNatar: village ? village.is_natar : false,
           isWwSite: village ? village.is_natar_ww_site : false,
           isArtifactSite: village ? village.is_natar_artifact_site : false,
+          isEmptySlot: !village && !oasis && !isNatarCenter,
         });
       }
     }
@@ -221,10 +230,15 @@ export default function WorldMap() {
     }
   };
 
+  const handleFoundVillage = () => {
+    if (!positionDetail) return;
+    navigate('/colonize', { state: { targetX: positionDetail.x_coord, targetY: positionDetail.y_coord } });
+  };
+
   const grid = buildGrid();
 
   const renderTile = (cell) => {
-    const { x, y, village, oasis, isNatarCenter, volcanoClass, isGrayTile, isMine, isNatar } = cell;
+    const { x, y, village, oasis, isNatarCenter, volcanoClass, isGrayTile, isMine, isNatar, isEmptySlot, fieldType } = cell;
 
     let bgColor = getTerrainColor(x, y);
     if (isGrayTile) bgColor = '#9aa59d';
@@ -235,7 +249,7 @@ export default function WorldMap() {
     }
 
     const borderClass = getBorderClass(cell);
-    const wallLevel = village ? (village.wall_level || 0) : 0;
+    const wallLevel = village ? Math.min(village.wall_level || 0, 5) : 0;
     const pop = village ? (village.population || 0) : 0;
     const hasVillage = !!village;
     const hasOasis = !!oasis;
@@ -250,7 +264,7 @@ export default function WorldMap() {
         onMouseLeave={() => setHoveredTile(null)}
         style={{
           background: bgColor,
-          cursor: hasVillage || hasOasis ? 'pointer' : 'default',
+          cursor: 'pointer',
           overflow: 'hidden',
           position: 'relative',
         }}
@@ -260,14 +274,14 @@ export default function WorldMap() {
           <img src={MAP.getTileBg(tileBgPattern)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
 
-        {/* Layer 2: Terrain type (oasis tiles) */}
-        {hasOasis && cell.oasisType > 0 && (
-          <img src={MAP.getTerrain(cell.oasisType)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
-        )}
-
-        {/* Layer 3: Volcano */}
+        {/* Layer 2: Volcano */}
         {isNatarCenter && volcanoClass && (
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', backgroundImage: `url(${MAP.volcano})`, backgroundPosition: `0 ${-(parseInt(volcanoClass.replace('volcano', '')) - 1) * 60}px`, backgroundRepeat: 'no-repeat' }} />
+        )}
+
+        {/* Layer 3: Empty village slot - terrain image */}
+        {isEmptySlot && !isGrayTile && fieldType > 0 && (
+          <img src={MAP.getTerrain(fieldType)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
 
         {/* Layer 4: Oasis overlay */}
@@ -315,6 +329,15 @@ export default function WorldMap() {
           <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
             <div style={{ fontSize: 9, fontWeight: 'bold', color: isMine ? '#006600' : isNatar ? '#cc0000' : '#333', textShadow: '0 0 2px #fff, 0 0 2px #fff', lineHeight: '11px', maxWidth: 58, margin: '0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {village.name}
+            </div>
+          </div>
+        )}
+
+        {/* Empty slot label */}
+        {isEmptySlot && !isGrayTile && (
+          <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
+            <div style={{ fontSize: 8, color: '#555', textShadow: '0 0 2px #fff', opacity: 0.8 }}>
+              خالی
             </div>
           </div>
         )}
@@ -383,8 +406,9 @@ export default function WorldMap() {
         <span style={{ margin: '0 6px' }}>● <span style={{ color: '#8b7355' }}>بازیکن دیگر</span></span>
         <span style={{ margin: '0 6px' }}>● <span style={{ color: '#cc3333' }}>ناتار</span></span>
         <span style={{ margin: '0 6px' }}>● <span style={{ color: '#9966cc' }}>شگفتی جهان</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#5a8a3a' }}>آبادی آزاد</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#3a6a2a' }}>آبادی اشغال‌شده</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#5a8a3a' }}>اوسیس آزاد</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#3a6a2a' }}>اوسیس اشغال‌شده</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#7a9a6a' }}>خانه خالی</span></span>
       </div>
 
       {/* Hover tooltip */}
@@ -408,19 +432,18 @@ export default function WorldMap() {
               <div>جمعیت: {hoveredTile.village.population?.toLocaleString()}</div>
               {hoveredTile.village.wall_level > 0 && <div>دیوار: سطح {hoveredTile.village.wall_level}</div>}
               {hoveredTile.village.is_capital && <div style={{ color: '#f88c1f' }}>پایتخت</div>}
+              {hoveredTile.isMine && <div style={{ color: '#66ff66' }}>دهکده شما</div>}
             </>
           ) : hoveredTile.oasis ? (
             <>
-              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4 }}>آبادی</div>
+              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4 }}>اوسیس</div>
               <div>({hoveredTile.y}|{hoveredTile.x})</div>
-              {/* Multi-bonus display */}
               <div style={{ margin: '3px 0' }}>
                 {hoveredTile.oasis.bonuses?.map((b, i) => (
                   <span key={i} style={{ fontSize: 10, marginRight: 4 }}>{OASIS_BONUS_LABELS[b[0]] || b[0]} {b[1]}%</span>
                 )) || <span>{OASIS_BONUS_LABELS[hoveredTile.oasis.bonus_resource]} {hoveredTile.oasis.bonus_percent}%</span>}
               </div>
               <div>دفاع: {hoveredTile.oasis.defense_strength}</div>
-              {/* Nature troops */}
               {hoveredTile.oasis.nature_troops?.length > 0 && (
                 <div style={{ marginTop: 3, borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 3 }}>
                   {hoveredTile.oasis.nature_troops.map((t, i) => (
@@ -429,12 +452,21 @@ export default function WorldMap() {
                 </div>
               )}
               <div>{hoveredTile.oasis.is_free ? 'آزاد' : `مالک: ${hoveredTile.oasis.owner_name}`}</div>
-              {/* Distance */}
               {hoveredTile.distance != null && (
                 <div style={{ color: hoveredTile.distance > OASIS_CAPTURE_MAX_DISTANCE ? '#ff6666' : '#66ff66', marginTop: 2 }}>
                   فاصله: {hoveredTile.distance.toFixed(1)} {hoveredTile.distance > OASIS_CAPTURE_MAX_DISTANCE ? '(خارج از محدوده)' : ''}
                 </div>
               )}
+            </>
+          ) : hoveredTile.isEmptySlot ? (
+            <>
+              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4, color: '#aaffaa' }}>خانه خالی</div>
+              <div>({hoveredTile.y}|{hoveredTile.x})</div>
+              {hoveredTile.fieldType > 0 && FIELD_DISTRIBUTIONS[hoveredTile.fieldType] && (
+                <div style={{ marginTop: 2, color: '#99cc99', fontSize: 10 }}>توزیع: {FIELD_DISTRIBUTIONS[hoveredTile.fieldType]}</div>
+              )}
+              <div style={{ marginTop: 4, color: '#ccc' }}>این موقعیت هنوز تسخیر نشده</div>
+              <div style={{ color: '#aaa', fontSize: 10 }}>برای تاسیس دهکده کلیک کنید</div>
             </>
           ) : (
             <div>({hoveredTile.y}|{hoveredTile.x})</div>
@@ -472,16 +504,23 @@ export default function WorldMap() {
                           {positionDetail.is_capital && <tr><td style={{ padding: '4px 0', color: '#f88c1f', fontWeight: 'bold' }} colSpan={2}>پایتخت</td></tr>}
                         </tbody>
                       </table>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                        <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/send-troops', { state: { targetVillageId: positionDetail.id, targetName: positionDetail.name } }); }} style={{ flex: 1, padding: 8, background: '#498843', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>ارسال نیرو</button>
-                        <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/marketplace', { state: { targetX: selectedTile.x, targetY: selectedTile.y } }); }} style={{ flex: 1, padding: 8, background: '#F88C1F', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>ارسال منابع</button>
-                      </div>
+                      {/* Only show action buttons if this is NOT our own village */}
+                      {!positionDetail.is_mine && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                          <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/send-troops', { state: { targetVillageId: positionDetail.id, targetName: positionDetail.name } }); }} style={{ flex: 1, padding: 8, background: '#498843', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>ارسال نیرو</button>
+                          <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/marketplace', { state: { targetX: selectedTile.x, targetY: selectedTile.y } }); }} style={{ flex: 1, padding: 8, background: '#F88C1F', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>ارسال منابع</button>
+                        </div>
+                      )}
+                      {positionDetail.is_mine && (
+                        <div style={{ marginTop: 12, padding: 8, background: '#e8f5e9', borderRadius: 4, textAlign: 'center', fontSize: 12, color: '#2e7d32', fontWeight: 'bold' }}>
+                          این دهکده متعلق به شماست
+                        </div>
+                      )}
                     </>
                   )}
                   {positionDetail.type === 'oasis' && (
                     <>
-                      <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>آبادی</h3>
-                      {/* Bonus badges */}
+                      <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>اوسیس</h3>
                       <div style={{ marginBottom: 8 }}>
                         {positionDetail.bonuses?.map((b, i) => (
                           <BonusBadge key={i} resource={b[0]} percent={b[1]} />
@@ -491,14 +530,8 @@ export default function WorldMap() {
                         <tbody>
                           <tr><td style={{ padding: '4px 0', color: '#666' }}>قدرت دفاعی</td><td>{positionDetail.defense_strength}</td></tr>
                           <tr><td style={{ padding: '4px 0', color: '#666' }}>وضعیت</td><td>{positionDetail.is_free ? 'آزاد' : `مالک: ${positionDetail.owner_name}`}</td></tr>
-                          {positionDetail.distance != null && (
-                            <tr><td style={{ padding: '4px 0', color: '#666' }}>فاصله</td><td style={{ color: positionDetail.distance > OASIS_CAPTURE_MAX_DISTANCE ? '#DE0000' : '#228B22', fontWeight: 'bold' }}>
-                              {positionDetail.distance.toFixed(1)} خانه {positionDetail.distance > OASIS_CAPTURE_MAX_DISTANCE && '(خارج از محدوده)'}
-                            </td></tr>
-                          )}
                         </tbody>
                       </table>
-                      {/* Nature troops */}
                       {positionDetail.nature_troops?.length > 0 && (
                         <div style={{ marginTop: 8, padding: 8, background: '#fff8f0', borderRadius: 4, border: '1px solid #f0d0a0' }}>
                           <div style={{ fontSize: 11, fontWeight: 'bold', color: '#8B4513', marginBottom: 4 }}>نیروهای مدافع طبیعت:</div>
@@ -513,7 +546,19 @@ export default function WorldMap() {
                     </>
                   )}
                   {positionDetail.type === 'empty' && (
-                    <p style={{ textAlign: 'center', color: '#666' }}>این موقعیت خالی است.</p>
+                    <>
+                      <h3 style={{ margin: '0 0 8px', fontSize: 15, color: '#5a8a3a' }}>خانه خالی</h3>
+                      <p style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>این موقعیت هنوز تسخیر نشده است.</p>
+                      {positionDetail.field_distribution && (
+                        <div style={{ padding: 8, background: '#f0f8e8', borderRadius: 4, marginBottom: 8 }}>
+                          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#498843' }}>توزیع منابع: {positionDetail.field_distribution}</div>
+                        </div>
+                      )}
+                      <button onClick={handleFoundVillage} style={{ width: '100%', padding: 10, background: '#498843', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>
+                        🏠 تاسیس دهکده جدید
+                      </button>
+                      <p style={{ fontSize: 10, color: '#999', marginTop: 6, textAlign: 'center' }}>نیازمند ۳ مهاجر و امتیاز فرهنگی کافی</p>
+                    </>
                   )}
                 </div>
               ) : (
@@ -529,11 +574,10 @@ export default function WorldMap() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#FFF', border: '2px solid #C9C9C9', borderRadius: 8, maxWidth: 400, width: '100%', boxShadow: '0 8px 16px rgba(0,0,0,0.3)' }}>
             <div style={{ background: '#498843', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '6px 6px 0 0' }}>
-              <span style={{ fontWeight: 'bold', fontSize: 14, color: '#fff' }}>آبادی ({selectedOasis.x_coord}|{selectedOasis.y_coord})</span>
+              <span style={{ fontWeight: 'bold', fontSize: 14, color: '#fff' }}>اوسیس ({selectedOasis.x_coord}|{selectedOasis.y_coord})</span>
               <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff' }}>&#10006;</button>
             </div>
             <div style={{ padding: 14 }}>
-              {/* Bonus display */}
               <div style={{ marginBottom: 8 }}>
                 {selectedOasis.bonuses?.map((b, i) => (
                   <BonusBadge key={i} resource={b[0]} percent={b[1]} />
@@ -542,18 +586,15 @@ export default function WorldMap() {
               <p style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
                 قدرت دفاعی: {selectedOasis.defense_strength}
               </p>
-              {/* Nature troops defense info */}
               {selectedOasis.nature_troops?.length > 0 && (
                 <div style={{ padding: 8, background: '#fff8f0', borderRadius: 4, border: '1px solid #f0d0a0', marginBottom: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 'bold', color: '#8B4513', marginBottom: 4 }}>نیروهای مدافع:</div>
                   {selectedOasis.nature_troops.map((t, i) => (
-                    <div key={i} style={{ fontSize: 10, color: '#5a3a1a' }}>
-                      {t.name}: {t.count}
-                    </div>
+                    <div key={i} style={{ fontSize: 10, color: '#5a3a1a' }}>{t.name}: {t.count}</div>
                   ))}
                 </div>
               )}
-              {oasisAlert && <p style={{ fontSize: 11, fontWeight: 'bold', color: '#228B22', marginBottom: 8 }}>{oasisAlert}</p>}
+              {oasisAlert && <p style={{ fontSize: 11, fontWeight: 'bold', color: oasisAlert.includes('شکست') ? '#DE0000' : '#228B22', marginBottom: 8 }}>{oasisAlert}</p>}
               <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 8 }}>
                 {availableTroops.map((t) => (
                   <div key={t.troop_type_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, padding: '4px 0', borderBottom: '1px solid #EEE' }}>
@@ -564,7 +605,7 @@ export default function WorldMap() {
                   </div>
                 ))}
               </div>
-              <button onClick={handleOasisAttack} disabled={attackingOasis} style={{ width: '100%', padding: 10, background: attackingOasis ? '#ccc' : '#DE0000', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: attackingOasis ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
+              <button onClick={handleOasisAttack} disabled={attackingOasis || Object.values(oasisTroops).every(v => !v)} style={{ width: '100%', padding: 10, background: (attackingOasis || Object.values(oasisTroops).every(v => !v)) ? '#ccc' : '#DE0000', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: (attackingOasis || Object.values(oasisTroops).every(v => !v)) ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
                 {attackingOasis ? '...' : 'حمله به آبادی (فوری)'}
               </button>
               <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ width: '100%', padding: 8, background: '#eee', color: '#333', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }}>بستن</button>

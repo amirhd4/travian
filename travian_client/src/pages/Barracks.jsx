@@ -54,10 +54,11 @@ export default function Barracks() {
 
     const fetchCatalog = useCallback(async () => {
         try {
-            const { data } = await api.get('combat/troop-types/');
+            const params = activeVillageId ? { village_id: activeVillageId } : {};
+            const { data } = await api.get('combat/troop-types/', { params });
             setCatalog(data);
         } catch (error) { console.error(error); }
-    }, []);
+    }, [activeVillageId]);
 
     const fetchQueue = useCallback(async () => {
         if (!activeVillageId) return;
@@ -128,11 +129,14 @@ export default function Barracks() {
                         {catalog.map((unit) => {
                             const maxUnits = calculateMaxPossible(unit.costs);
                             const quantity = trainQty[unit.id] || 0;
+                            const canTrain = unit.is_researched || unit.is_basic;
 
                             return (
-                                <div key={unit.id} className="rounded-xl border border-parchment-300 bg-parchment-50 p-4 flex flex-col md:flex-row gap-4 items-center">
+                                <div key={unit.id} className={`rounded-xl border p-4 flex flex-col md:flex-row gap-4 items-center ${
+                                    canTrain ? 'border-parchment-300 bg-parchment-50' : 'border-gray-200 bg-gray-50 opacity-70'
+                                }`}>
                                     <div className="w-16 h-16 rounded-xl bg-white border border-parchment-300 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                        <img src={`/assets/troops/unit-${unit.id}.gif`} alt={unit.name} className="w-full h-full object-contain" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                                        <img src={`/assets/troops/unit-${unit.id}.gif`} alt={unit.name} className={`w-full h-full object-contain ${!canTrain ? 'grayscale' : ''}`} onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                                         <div className="w-full h-full items-center justify-center text-3xl hidden">{unitIcon(unit)}</div>
                                     </div>
 
@@ -141,10 +145,15 @@ export default function Barracks() {
                                         <p className="text-[11px] text-ink-500 mt-0.5">
                                             حمله {unit.attack_power} · دفاع پیاده {unit.defense_infantry} · دفاع سواره {unit.defense_cavalry} · هر واحد {formatDuration(unit.base_train_time)}
                                         </p>
-                                        <span className="badge-gold mt-1">🏗️ نیازمند: {unit.required_building}</span>
-                                        {unit.required_academy_level > 0 && (
-                                            <span className="badge-gold mt-1">🎓 نیازمند آکادمی سطح {unit.required_academy_level}</span>
-                                        )}
+                                        <div className="flex gap-1.5 mt-1 flex-wrap">
+                                            <span className="badge-gold">🏗️ {unit.required_building}</span>
+                                            {unit.required_academy_level > 0 && (
+                                                <span className="badge-gold">🎓 آکادمی سطح {unit.required_academy_level}</span>
+                                            )}
+                                            {unit.is_basic && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-bold">پایه</span>}
+                                            {unit.is_researched && !unit.is_basic && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-bold">✅</span>}
+                                            {!canTrain && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">🔒 تحقیق نشده</span>}
+                                        </div>
                                         <div className="flex gap-3 mt-2 text-[11px] font-bold text-ink-600">
                                             <span>🪵 {unit.costs.wood}</span>
                                             <span>🧱 {unit.costs.clay}</span>
@@ -154,28 +163,34 @@ export default function Barracks() {
                                     </div>
 
                                     <div className="flex items-center gap-3 w-full md:w-auto bg-white p-3 rounded-xl border border-parchment-300">
-                                        <div className="flex flex-col items-center">
-                                            <input
-                                                type="number" min="0" max={maxUnits}
-                                                value={quantity || ''}
-                                                onChange={(e) => setTrainQty((prev) => ({ ...prev, [unit.id]: Math.max(0, parseInt(e.target.value) || 0) }))}
-                                                className="field w-20 text-center font-bold"
-                                                placeholder="تعداد"
-                                            />
-                                            <button
-                                                onClick={() => setTrainQty((prev) => ({ ...prev, [unit.id]: maxUnits }))}
-                                                className="text-[10px] text-brand-600 hover:underline mt-1 font-bold"
-                                            >
-                                                حداکثر: {maxUnits}
-                                            </button>
-                                        </div>
-                                        <button
-                                            onClick={() => handleTrain(unit)}
-                                            disabled={submitting === unit.id || quantity <= 0 || !activeVillageId}
-                                            className="btn-gold whitespace-nowrap"
-                                        >
-                                            {submitting === unit.id ? '...' : 'آموزش'}
-                                        </button>
+                                        {canTrain ? (
+                                            <>
+                                                <div className="flex flex-col items-center">
+                                                    <input
+                                                        type="number" min="0" max={maxUnits}
+                                                        value={quantity || ''}
+                                                        onChange={(e) => setTrainQty((prev) => ({ ...prev, [unit.id]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                                                        className="field w-20 text-center font-bold"
+                                                        placeholder="تعداد"
+                                                    />
+                                                    <button
+                                                        onClick={() => setTrainQty((prev) => ({ ...prev, [unit.id]: maxUnits }))}
+                                                        className="text-[10px] text-brand-600 hover:underline mt-1 font-bold"
+                                                    >
+                                                        حداکثر: {maxUnits}
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleTrain(unit)}
+                                                    disabled={submitting === unit.id || quantity <= 0 || !activeVillageId}
+                                                    className="btn-gold whitespace-nowrap"
+                                                >
+                                                    {submitting === unit.id ? '...' : 'آموزش'}
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <span className="text-xs text-red-500 font-bold">🔒 ابتدا در آکادمی تحقیق کنید</span>
+                                        )}
                                     </div>
                                 </div>
                             );
