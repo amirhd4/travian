@@ -1,218 +1,227 @@
-import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import api from "../api/axiosConfig";
-import useGameStore from "../store/useGameStore";
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import useGameStore from '../store/useGameStore';
+import api from '../api/axiosConfig';
 
 export default function Login() {
-    const [login, setLogin] = useState("");
-    const [password, setPassword] = useState("");
-    const [captchaAnswer, setCaptchaAnswer] = useState("");
-    const [captcha, setCaptcha] = useState({ token: "", image: "" });
-    const [captchaLoading, setCaptchaLoading] = useState(true);
-    const [error, setError] = useState("");
+    const navigate = useNavigate();
+    const accessToken = useGameStore((s) => s.accessToken);
+    const setAccessToken = useGameStore((s) => s.setAccessToken);
+    const setUser = useGameStore((s) => s.setUser);
+    const setVillages = useGameStore((s) => s.setVillages);
+    const setActiveVillageId = useGameStore((s) => s.setActiveVillageId);
+
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const [showForgot, setShowForgot] = useState(false);
-    const [forgotEmail, setForgotEmail] = useState("");
-    const [forgotMsg, setForgotMsg] = useState({ type: "", text: "" });
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotMsg, setForgotMsg] = useState('');
 
-    const navigate = useNavigate();
-    const setUser = useGameStore((s) => s.setUser);
-    const setAccessToken = useGameStore((s) => s.setAccessToken);
+    const [captchaImage, setCaptchaImage] = useState('');
+    const [captchaToken, setCaptchaToken] = useState('');
+    const [captchaAnswer, setCaptchaAnswer] = useState('');
 
-    const fetchCaptcha = useCallback(async () => {
-        setCaptchaLoading(true);
-        setCaptchaAnswer("");
-        try {
-            const { data } = await api.get("auth/captcha/");
-            setCaptcha(data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setCaptchaLoading(false);
-        }
+
+    const loadCaptcha = async () => {
+        const { data } = await api.get('auth/captcha/');
+        setCaptchaImage(data.image);
+        setCaptchaToken(data.token);
+    };
+
+    useEffect(() => {
+        loadCaptcha();
     }, []);
 
     useEffect(() => {
-        fetchCaptcha();
-    }, [fetchCaptcha]);
+        document.body.className = 'v35 webkit chrome login';
+        if (accessToken) navigate('/village', { replace: true });
+        return () => { document.body.className = ''; };
+    }, [accessToken, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setError("");
+        if (!username || !password) { setError('نام کاربری و رمز عبور را وارد کنید.'); return; }
         setLoading(true);
+        setError('');
         try {
-            const { data } = await api.post("auth/login/", {
-                username: login,
-                password,
-                captcha_token: captcha.token,
-                captcha_answer: captchaAnswer,
-            });
+            const { data } = await api.post('auth/login/', { username, password , captcha_token: captchaToken, captcha_answer: captchaAnswer,});
             setAccessToken(data.access);
-            setUser(data.user);
-            navigate("/village");
+            const me = await api.get('auth/me/');
+            setUser(me.data);
+            const villagesRes = await api.get('game/villages/');
+            setVillages(villagesRes.data);
+            const capital = villagesRes.data.find((v) => v.is_capital) || villagesRes.data[0];
+            if (capital) setActiveVillageId(capital.id);
+            navigate('/village', { replace: true });
         } catch (err) {
-            if (err.response?.status === 429) {
-                setError("تعداد تلاش‌های شما زیاد بوده؛ لطفا کمی صبر کنید.");
-            } else {
-                setError(
-                    err.response?.data?.captcha_answer?.[0] ||
-                    err.response?.data?.non_field_errors?.[0] ||
-                    "نام کاربری یا رمز عبور اشتباه است"
-                );
-            }
-            fetchCaptcha();
-        } finally {
-            setLoading(false);
-        }
+            setError(err.response?.data?.detail || 'نام کاربری یا رمز عبور اشتباه است.');
+            loadCaptcha();
+            setCaptchaAnswer('');
+        } finally { setLoading(false); }
     };
 
-    const handleForgotPassword = async (e) => {
+    const handleForgot = async (e) => {
         e.preventDefault();
-        setForgotMsg({ type: "", text: "" });
+        if (!forgotEmail) return;
         try {
-            await api.post("auth/forgot-password/", { email: forgotEmail });
-            setForgotMsg({ type: "success", text: "ایمیل بازیابی رمز عبور برای شما ارسال شد." });
-        } catch (err) {
-            setForgotMsg({
-                type: "error",
-                text: err.response?.data?.error || "خطا در ارسال ایمیل"
-            });
+            await api.post('auth/password-reset/', { email: forgotEmail });
+            setForgotMsg('ایمیل بازیابی رمز عبور ارسال شد.');
+        } catch {
+            setForgotMsg('خطا در ارسال ایمیل.');
         }
     };
 
     return (
-        <div id="wrapper">
-            <div className="bodyWrapper">
-                <div id="header">
-                    <div id="mtop">
-                        <a id="logo" href="/" title="Travian"></a>
-                        <div className="clear"></div>
-                    </div>
-                </div>
-                <div id="mid">
-                    <div className="contentTitle">&nbsp;</div>
-                    <div className="contentContainer" style={{ padding: '20px' }}>
-                        <div id="content">
-                            <div className="outerLoginBox">
-                                <h2 className="titleInHeader">ورود به بازی</h2>
-
-                                {error && (
-                                    <div style={{ padding: '8px', marginBottom: '12px', background: '#fcd1d1', border: '1px solid #DE0000', color: '#DE0000', fontWeight: 'bold', fontSize: '11px' }}>
-                                        {error}
-                                    </div>
-                                )}
-
-                                <div className="innerLoginBox">
-                                    <form onSubmit={handleLogin}>
-                                        <table className="loginTable">
-                                            <tbody>
-                                                <tr className="top">
-                                                    <td className="accountNameOrEmailAddress">نام کاربری</td>
-                                                    <td>
-                                                        <input
-                                                            type="text"
-                                                            value={login}
-                                                            onChange={(e) => setLogin(e.target.value)}
-                                                            className="text"
-                                                            dir="ltr"
-                                                            required
-                                                        />
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>رمز عبور</td>
-                                                    <td>
-                                                        <input
-                                                            type="password"
-                                                            maxLength={20}
-                                                            value={password}
-                                                            onChange={(e) => setPassword(e.target.value)}
-                                                            className="text"
-                                                            dir="ltr"
-                                                            required
-                                                        />
-                                                    </td>
-                                                </tr>
-                                                <tr>
-                                                    <td>کد امنیتی</td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                            <div style={{ width: '120px', height: '40px', background: '#F5F5F5', border: '1px solid #CCC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                {captchaLoading ? (
-                                                                    <span style={{ color: '#777', fontSize: '10px' }}>...</span>
-                                                                ) : (
-                                                                    <img src={captcha.image} alt="کپچا" style={{ maxWidth: '100%', maxHeight: '100%' }} />
-                                                                )}
-                                                            </div>
-                                                            <button type="button" onClick={fetchCaptcha} disabled={captchaLoading} className="refreshCaptcha">
-                                                                تغییر تصویر
-                                                            </button>
-                                                        </div>
-                                                        <input
-                                                            type="text"
-                                                            required
-                                                            value={captchaAnswer}
-                                                            onChange={(e) => setCaptchaAnswer(e.target.value)}
-                                                            placeholder="کد داخل تصویر را وارد کنید"
-                                                            className="text"
-                                                            dir="ltr"
-                                                            style={{ marginTop: '4px' }}
-                                                        />
-                                                    </td>
-                                                </tr>
-                                                <tr className="btm">
-                                                    <td></td>
-                                                    <td>
-                                                        <button type="submit" disabled={loading || !login || !password || !captchaAnswer} className="btn-primary" style={{ marginTop: '4px' }}>
-                                                            {loading ? "در حال ورود..." : "ورود"}
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </form>
-                                </div>
-
-                                <div style={{ marginTop: '10px' }}>
-                                    <button onClick={() => setShowForgot(!showForgot)} className="refreshCaptcha">
-                                        {showForgot ? 'بازگشت' : 'رمز عبور خود را فراموش کرده‌اید؟'}
-                                    </button>
-
-                                    {showForgot && (
-                                        <form onSubmit={handleForgotPassword} style={{ marginTop: '10px', padding: '8px', background: '#F5F5F5', border: '1px dashed #C0C0C0' }}>
-                                            <p style={{ fontSize: '11px', marginBottom: '8px' }}>
-                                                ایمیل متصل به حساب کاربری خود را وارد کنید:
-                                            </p>
-                                            <div style={{ display: 'flex', gap: '4px' }}>
-                                                <input
-                                                    type="email"
-                                                    required
-                                                    value={forgotEmail}
-                                                    onChange={(e) => setForgotEmail(e.target.value)}
-                                                    placeholder="ایمیل شما"
-                                                    className="text"
-                                                    dir="ltr"
-                                                    style={{ flex: 1 }}
-                                                />
-                                                <button type="submit" className="btn-primary">ارسال</button>
-                                            </div>
-                                            {forgotMsg.text && (
-                                                <p style={{ marginTop: '8px', fontSize: '11px', fontWeight: 'bold', color: forgotMsg.type === 'success' ? '#228B22' : '#DE0000' }}>
-                                                    {forgotMsg.text}
-                                                </p>
-                                            )}
-                                        </form>
-                                    )}
-                                </div>
-
-                                <div style={{ marginTop: '15px', fontSize: '11px' }}>
-                                    <a href="/register" style={{ color: '#99C01A' }}>ثبت‌نام در بازی</a>
-                                </div>
-                            </div>
+        <div className="v35 webkit chrome login">
+            <div id="wrapper">
+                <img id="staticElements" alt="" />
+                <div className="bodyWrapper">
+                    <div id="header">
+                        <div id="mtop">
+                            <a id="logo" href="/" title="Travian"></a>
+                            <div className="clear"></div>
                         </div>
                     </div>
-                    <div className="contentFooter">&nbsp;</div>
+                    <div id="mid">
+                        <div id="side_navi">
+                            <ul>
+                                <li><a href="/" title="خانه">خانه</a></li>
+                                <li className="active"><a href="/login" title="ورود">ورود</a></li>
+                                <li><a href="/register" title="ثبت نام">ثبت نام</a></li>
+                                <li className="support"><a href="#" title="پشتیبانی">پشتیبانی</a></li>
+                            </ul>
+                        </div>
+                        <div className="clear"></div>
+                        <div id="contentOuterContainer">
+                            <div className="contentTitle">&nbsp;</div>
+                            <div className="contentContainer">
+                                <div id="content" className="login">
+                                    <h1 className="titleInHeader">ورود</h1>
+
+                                    <div className="outerLoginBox">
+                                        <h2>به بازی خوش آمدید</h2>
+                                        <div className="innerLoginBox">
+                                            <form onSubmit={handleLogin}>
+                                                <table className="transparent loginTable">
+                                                    <tbody>
+                                                        <tr className="account">
+                                                            <td className="accountNameOrEmailAddress">نام کاربری</td>
+                                                            <td>
+                                                                <input type="text" className="text" value={username} onChange={(e) => setUsername(e.target.value)} maxLength={20} autoFocus />
+                                                            </td>
+                                                        </tr>
+                                                        <tr className="pass">
+                                                            <td>رمز عبور</td>
+                                                            <td>
+                                                                <input type="password" className="text" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={20} />
+                                                            </td>
+                                                        </tr>
+                                                        {error && (
+                                                            <tr>
+                                                                <td></td>
+                                                                <td><div style={{ color: '#DE0000', fontSize: 11, fontWeight: 'bold', marginTop: 4 }}>{error}</div></td>
+                                                            </tr>
+                                                        )}
+                                                        <tr>
+    <td>کپچا</td>
+    <td>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <img
+                src={captchaImage}
+                alt="captcha"
+                onClick={loadCaptcha}
+                style={{ cursor: 'pointer', height: 40, borderRadius: 4, border: '1px solid #ccc' }}
+            />
+            <button type="button" onClick={loadCaptcha} style={{ background: '#498843', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 'bold' }} title="بروزرسانی کپچا">بروزرسانی</button>
+        </div>
+        <input
+            type="text"
+            className="text"
+            value={captchaAnswer}
+            onChange={(e) => setCaptchaAnswer(e.target.value)}
+            placeholder="اعداد را وارد کنید"
+        />
+    </td>
+</tr>
+                                                        <tr>
+                                                            <td></td>
+                                                            <td>
+                                                                <button type="submit" disabled={loading} style={{
+                                                                    background: loading ? '#ccc' : '#498843',
+                                                                    color: '#fff',
+                                                                    border: 'none',
+                                                                    borderRadius: 4,
+                                                                    padding: '8px 24px',
+                                                                    fontWeight: 'bold',
+                                                                    fontSize: 13,
+                                                                    cursor: loading ? 'not-allowed' : 'pointer',
+                                                                    marginTop: 8,
+                                                                }}>
+                                                                    {loading ? 'در حال ورود...' : 'ورود'}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </form>
+                                        </div>
+                                    </div>
+
+                                    <div className="greenbox passwordForgotten">
+                                        <div className="greenbox-top"></div>
+                                        <div className="greenbox-content">
+                                            <div className="passwordForgottenLink">
+                                                <a onClick={() => setShowForgot(!showForgot)} href="#" className="showPWForgottenLink" style={{ cursor: 'pointer' }}>
+                                                    {showForgot ? '▲' : '▼'} رمز عبور را فراموش کرده‌اید؟
+                                                </a>
+                                            </div>
+                                            {showForgot && (
+                                                <div className="showPasswordForgotten">
+                                                    {forgotMsg ? (
+                                                        <div style={{ color: '#008000', padding: '8px 0', fontWeight: 'bold' }}>{forgotMsg}</div>
+                                                    ) : (
+                                                        <form onSubmit={handleForgot}>
+                                                            <div className="forgotPasswordDescription">ایمیل خود را وارد کنید تا لینک بازیابی رمز عبور برایتان ارسال شود.</div>
+                                                            <table className="transparent pwForgottenTable" cellPadding="0" cellSpacing="0">
+                                                                <tbody>
+                                                                    <tr className="mail">
+                                                                        <th>ایمیل</th>
+                                                                        <td>
+                                                                            <input className="text" type="email" value={forgotEmail} onChange={(e) => setForgotEmail(e.target.value)} style={{ background: '#F8F8F8', border: '1px solid #99C01A', fontSize: 11, padding: '2px 4px', width: 200 }} />
+                                                                        </td>
+                                                                    </tr>
+                                                                    <tr>
+                                                                        <td></td>
+                                                                        <td>
+                                                                            <button type="submit" style={{ background: '#498843', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 16px', fontWeight: 'bold', fontSize: 12, cursor: 'pointer', marginTop: 6 }}>ارسال</button>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </form>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="greenbox-bottom"></div>
+                                        <div className="clear"></div>
+                                    </div>
+
+                                    <div className="clear" style={{ marginTop: 16 }}></div>
+
+                                    <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12 }}>
+                                        حساب کاربری ندارید؟{' '}
+                                        <Link to="/register" style={{ color: '#99C01A', fontWeight: 'bold' }}>ثبت نام کنید</Link>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="contentFooter">&nbsp;</div>
+                        </div>
+                    </div>
                 </div>
+                <div id="ce"></div>
             </div>
         </div>
     );
