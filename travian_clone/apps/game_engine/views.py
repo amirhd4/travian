@@ -2145,6 +2145,11 @@ class GoldTroopShopView(APIView):
     permission_classes = [IsAuthenticated]
     TROOP_GOLD_MULTIPLIER = 2
 
+    @staticmethod
+    def _troop_gold_price(troop):
+        total_cost = troop.wood_cost + troop.clay_cost + troop.iron_cost + troop.crop_cost
+        return max(1, int((total_cost / 1000) * GoldTroopShopView.TROOP_GOLD_MULTIPLIER))
+
     def get(self, request):
         from apps.combat.models import TroopType, Animal
         from apps.game_engine.economy import SILVER_PER_GOLD
@@ -2156,13 +2161,25 @@ class GoldTroopShopView(APIView):
 
         troops_data = []
         for troop in tribe_troops:
-            total_cost = troop.wood_cost + troop.clay_cost + troop.iron_cost + troop.crop_cost
-            gold_price = max(1, int((total_cost / 1000) * self.TROOP_GOLD_MULTIPLIER))
+            gold_price = self._troop_gold_price(troop)
             troops_data.append({
                 "id": troop.id, "name": troop.name, "type": "troop",
                 "attack_power": troop.attack_power,
                 "defense_infantry": troop.defense_infantry,
                 "defense_cavalry": troop.defense_cavalry,
+                "speed": troop.speed,
+                "carry_capacity": troop.carry_capacity,
+                "crop_upkeep": troop.crop_upkeep,
+                "base_train_time": troop.base_train_time,
+                "is_cavalry": troop.is_cavalry,
+                "is_siege_weapon": troop.is_siege_weapon,
+                "is_ram": troop.is_ram,
+                "is_catapult": troop.is_catapult,
+                "required_academy_level": troop.required_academy_level,
+                "wood_cost": troop.wood_cost,
+                "clay_cost": troop.clay_cost,
+                "iron_cost": troop.iron_cost,
+                "crop_cost": troop.crop_cost,
                 "gold_price": gold_price,
                 "silver_price": gold_price * SILVER_PER_GOLD,
             })
@@ -2265,6 +2282,166 @@ class GoldTroopShopView(APIView):
             })
 
         return Response({"error": "نوع آیتم نامعتبر است."}, status=400)
+
+
+class BulkAnimalBuyView(APIView):
+    """خرید دسته‌ای حیوانات نگهبان — یک تراکنش اتمیک برای چند نوع حیوان."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.combat.models import Animal, VillageAnimal
+        from apps.game_engine.economy import charge_player, SILVER_PER_GOLD
+
+        village_id = request.data.get('village_id')
+        items = request.data.get('items', [])  # [{animal_id, quantity}, ...]
+        currency = request.data.get('currency', 'gold')
+
+        if not items:
+            return Response({"error": "لیست خرید خالی است."}, status=400)
+        if currency not in ('gold', 'silver'):
+            return Response({"error": "واحد پول نامعتبر است."}, status=400)
+
+        player = request.user
+        try:
+            village = Village.objects.get(id=village_id, player=player)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        # Validate and compute total cost
+        animal_map = {}
+        total_gold = 0
+        for item in items:
+            aid = item.get('animal_id')
+            qty = int(item.get('quantity', 0))
+            if qty <= 0:
+                continue
+            try:
+                animal = Animal.objects.get(id=aid)
+            except Animal.DoesNotExist:
+                return Response({"error": f"حیوان با id={aid} یافت نشد."}, status=404)
+            animal_map[aid] = (animal, qty)
+            total_gold += animal.gold_price * qty
+
+        if total_gold <= 0:
+            return Response({"error": "تعداد نامعتبر است."}, status=400)
+
+        total_in_currency = total_gold if currency == 'gold' else total_gold * SILVER_PER_GOLD
+        unit_label = "طلا" if currency == 'gold' else "نقره"
+
+        with transaction.atomic():
+            try:
+                village = Village.objects.select_for_update().get(id=village_id, player=player)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد."}, status=404)
+
+            try:
+                charge_player(player, total_in_currency, currency)
+            except ValidationError as e:
+                return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
+
+            total_animals = 0
+            for animal, qty in animal_map.values():
+                va, _ = VillageAnimal.objects.select_for_update().get_or_create(
+                    village=village, animal=animal, defaults={'count': 0}
+                )
+                va.count += qty
+                va.save()
+                total_animals += qty
+
+        description_parts = ", ".join(
+            f"{qty} {a.name}" for a, qty in animal_map.values()
+        )
+        GameLog.objects.create(
+            village=village, log_type='SYSTEM',
+            description=f"خرید دسته‌ای: {description_parts} ({total_in_currency} {unit_label})."
+        )
+
+        return Response({
+            "message": f"{total_animals} حیوان با موفقیت خریداری شد!",
+            "gold_coins": player.gold_coins,
+            "silver_coins": player.silver_coins,
+        })
+
+
+class BulkTroopBuyView(APIView):
+    """خرید دسته‌ای نیروها — یک تراکنش اتمیک برای چند نوع نیرو."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from apps.combat.models import TroopType, VillageTroop
+        from apps.game_engine.economy import charge_player, SILVER_PER_GOLD
+
+        village_id = request.data.get('village_id')
+        items = request.data.get('items', [])  # [{troop_id, quantity}, ...]
+        currency = request.data.get('currency', 'gold')
+
+        if not items:
+            return Response({"error": "لیست خرید خالی است."}, status=400)
+        if currency not in ('gold', 'silver'):
+            return Response({"error": "واحد پول نامعتبر است."}, status=400)
+
+        player = request.user
+        try:
+            village = Village.objects.get(id=village_id, player=player)
+        except Village.DoesNotExist:
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        troop_map = {}
+        total_gold = 0
+        for item in items:
+            tid = item.get('troop_id')
+            qty = int(item.get('quantity', 0))
+            if qty <= 0:
+                continue
+            try:
+                troop = TroopType.objects.get(id=tid, tribe=player.tribe)
+            except TroopType.DoesNotExist:
+                return Response({"error": f"نیرو با id={tid} یافت نشد."}, status=404)
+            if troop.is_scout or troop.is_settler or troop.is_chief:
+                return Response({"error": f"{troop.name} در فروشگاه طلایی قابل خرید نیست."}, status=400)
+            gold_price = self._troop_gold_price(troop)
+            troop_map[tid] = (troop, qty, gold_price)
+            total_gold += gold_price * qty
+
+        if total_gold <= 0:
+            return Response({"error": "تعداد نامعتبر است."}, status=400)
+
+        total_in_currency = total_gold if currency == 'gold' else total_gold * SILVER_PER_GOLD
+        unit_label = "طلا" if currency == 'gold' else "نقره"
+
+        with transaction.atomic():
+            try:
+                village = Village.objects.select_for_update().get(id=village_id, player=player)
+            except Village.DoesNotExist:
+                return Response({"error": "دهکده یافت نشد."}, status=404)
+
+            try:
+                charge_player(player, total_in_currency, currency)
+            except ValidationError as e:
+                return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
+
+            total_troops = 0
+            for troop, qty, _ in troop_map.values():
+                vt, _ = VillageTroop.objects.select_for_update().get_or_create(
+                    village=village, troop_type=troop, defaults={'count': 0}
+                )
+                vt.count += qty
+                vt.save()
+                total_troops += qty
+
+        description_parts = ", ".join(
+            f"{qty} {t.name}" for t, qty, _ in troop_map.values()
+        )
+        GameLog.objects.create(
+            village=village, log_type='SYSTEM',
+            description=f"خرید دسته‌ای نیرو: {description_parts} ({total_in_currency} {unit_label})."
+        )
+
+        return Response({
+            "message": f"{total_troops} نیرو با موفقیت خریداری شد!",
+            "gold_coins": player.gold_coins,
+            "silver_coins": player.silver_coins,
+        })
 
 
 ADMIN_USERNAME = "admin"

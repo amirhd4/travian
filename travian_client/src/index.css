@@ -108,14 +108,14 @@ div.village2 #village_map { width: 540px; height: 448px; position: relative; mar
 div.village2 #village_map img { position: absolute; width: 120px; height: 120px; cursor: pointer; }
 div.village2 #village_map img.wall-top,
 div.village2 #village_map img.wall-bottom {
-    width: 115% !important;
-    height: 115% !important;
+    width: 123% !important;
+    height: 123% !important;
     max-width: none !important;
     max-height: none !important;
     cursor: default !important;
     object-fit: fill !important;
-    left: -7.5% !important;
-    top: -7.5% !important;
+    left: -11.1% !important;
+    top: -11.9% !important;
 }
 div.village2 #village_map img.dx1 { width: 120px; height: 160px; }
 div.village1 .level { position: absolute; width: 26px; height: 26px; font-size: 11px; text-align: center; border-radius: 50%; line-height: 23px; border: 1px solid #506d00; background-image: linear-gradient(to top, #7da100, #c7e94f); margin: 1px; }
