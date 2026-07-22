@@ -1036,7 +1036,8 @@ def complete_troop_upgrade(upgrade_id):
 @app.task
 def resolve_hero_auction(auction_id):
     try:
-        auction = HeroAuction.objects.select_for_update().get(id=auction_id, is_completed=False)
+        with Transaction.atomic():
+            auction = HeroAuction.objects.select_for_update().get(id=auction_id, is_completed=False)
     except HeroAuction.DoesNotExist:
         return "این حراجی یافت نشد یا قبلا پردازش شده است."
 

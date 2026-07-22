@@ -26,6 +26,12 @@ def check_server_timeline():
             and not active_server.artifacts_unlocked):
         active_server.artifacts_unlocked = True
         active_server.save()
+
+    if (age_days >= (active_server.duration_days * (active_server.catapult_release_duration_percent / 100))
+            and not active_server.catapult_unlocked):
+        active_server.catapult_unlocked = True
+        active_server.save()
+
         from apps.game_engine.artifacts import spawn_artifact_sites
         spawn_artifact_sites()
 

@@ -221,11 +221,21 @@ export const UI = {
 export const MAP = {
   getDirection: (code) => `/assets/map/d${String(code).padStart(2, '0')}.gif`,
   getOasis: (id) => `/assets/map/oasis-${id}.gif`,
+  getOasisTile: (id) => `/assets/map/o${id}.gif`,
+  getOasisOccupied: (id) => `/assets/map/o${id}o.gif`,
   getWater: (id) => `/assets/map/water-${id}.jpg`,
   getTribe: (id) => `/assets/map/tribe-${id}.gif`,
+  getWall: (level) => `/assets/map/wall${Math.min(level, 5)}.gif`,
+  getPop: (pop) => pop < 100 ? '/assets/map/pop99.gif' : pop < 250 ? '/assets/map/pop249.gif' : pop < 500 ? '/assets/map/pop499.gif' : '/assets/map/pop500.gif',
+  getTerrain: (type) => `/assets/map/t${type}.gif`,
+  getTileBg: (pattern) => `/assets/map/tilespbgimg${pattern}.gif`,
+  getBorder: (type) => `/assets/map/border${type}.gif`,
+  volcano: '/assets/map/volcano.gif',
   marker: '/assets/map/marker.gif',
   dir: '/assets/map/dir.gif',
   mapBg: '/assets/map/map-bg.jpg',
+  att1: '/assets/map/matt.gif',
+  cropfinder: '/assets/map/cropfinder-btn.gif',
 };
 
 // Navigation icons (from gpack/travian_default/img/a/)

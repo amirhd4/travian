@@ -67,6 +67,11 @@ class BarracksTrainView(APIView):
 
         try:
             troop_info = TroopType.objects.get(id=troop_type_id, tribe=request.user.tribe)
+
+            if troop_info.is_siege_weapon:
+                server_settings = ServerSetting.objects.filter(is_active=True).first()
+                if server_settings and not server_settings.catapult_unlocked:
+                    return Response({"error": "منجنیق/قوچ هنوز روی این سرور آزاد نشده است."}, status=400)
         except TroopType.DoesNotExist:
             return Response({"error": "این نیرو مختص نژاد شما نیست یا وجود ندارد."}, status=400)
 

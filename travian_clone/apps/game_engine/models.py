@@ -59,6 +59,9 @@ class ServerSetting(models.Model):
 
     culture_point_speed = models.BigIntegerField(default=1)
 
+    # apps/game_engine/models.py -> class ServerSetting
+    catapult_unlocked = models.BooleanField(default=False)
+    catapult_release_duration_percent = models.FloatField(default=30)
 
 
 class Village(models.Model):

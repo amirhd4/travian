@@ -1186,6 +1186,11 @@ class ServerStatusView(APIView):
             "artifacts_unlocked": active_server.artifacts_unlocked,
         }
 
+        if not active_server.catapult_unlocked:
+            data["catapult_release_at"] = active_server.start_date + datetime.timedelta(
+                days=active_server.duration_days * (active_server.catapult_release_duration_percent / 100)
+            )
+
         if not active_server.ww_unlocked:
             data["ww_plans_release_at"] = active_server.start_date + datetime.timedelta(
                 days=active_server.duration_days * 0.7

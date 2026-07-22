@@ -89,14 +89,12 @@ export default function SideInfoBoards() {
 
     if (!user) return null;
 
-    const nowSec = Math.floor(now / 1000);
-    const cataTime = serverConfig?.catapult_release_time || 0;
-    const katibeTime = serverConfig?.inscription_release_time || 0;
-    const wwPlanTime = serverConfig?.ww_plan_release_time || 0;
-
-    const cataRemaining = cataTime > nowSec ? cataTime - nowSec : 0;
-    const katibeRemaining = katibeTime > nowSec ? katibeTime - nowSec : 0;
-    const wwPlanRemaining = wwPlanTime > nowSec ? wwPlanTime - nowSec : 0;
+    const cataRemaining = serverConfig?.catapult_release_at
+      ? Math.max(0, Math.floor((new Date(serverConfig.catapult_release_at) - now) / 1000)) : 0;
+    const katibeRemaining = serverConfig?.artifacts_release_at
+      ? Math.max(0, Math.floor((new Date(serverConfig.artifacts_release_at) - now) / 1000)) : 0;
+    const wwPlanRemaining = serverConfig?.ww_plans_release_at
+      ? Math.max(0, Math.floor((new Date(serverConfig.ww_plans_release_at) - now) / 1000)) : 0;
 
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
