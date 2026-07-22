@@ -18,7 +18,7 @@ div.clear, span.clear { clear: both !important; width: 0 !important; height: 0 !
 #header { height: 115px; }
 #mtop { margin: 0 auto; width: 990px; position: relative; }
 #mid { margin: 0 auto 10px auto; min-height: 660px; width: 990px; position: relative; }
-#staticElements { background-image: url('/assets/layout/bgIngameStaticElements-rtl.png'); background-position: center top; position: absolute; height: 730px; width: 100%; pointer-events: none; z-index: 0; }
+/*#staticElements { background-image: url('/assets/layout/bgIngameStaticElements-rtl.png'); background-position: center top; position: absolute; height: 730px; width: 100%; pointer-events: none; z-index: 0; }*/
 div#ce { clear: both; height: 0; line-height: 0; }
 #logo { float: left; display: block; height: 43px; margin: 24px 16px 0 7px; width: 124px; background: url('/assets/layout/logoSmall.png') no-repeat; }
 body.login #logo, body.signup #logo { background-image: url('/assets/layout/logoBig.png'); margin: 15px 195px 0 0; height: 86px; width: 238px; }
@@ -220,24 +220,24 @@ div.map { padding: 12px 14px 0; }
 #mapContainer img { border: 0; }
 #mapContainer > div > div { transition: background-color 0.2s; }
 #mapContainer > div > div:hover { filter: brightness(1.1); }
-body.login, body.signup { background-image: url('/assets/bgs/bgO.jpg'); }
-body.login #wrapper, body.signup #wrapper { background-image: url('/assets/bgs/bgOutside-rtl.jpg'); }
+body.login, body.signup { background-image: url('/assets/bgs/login-rtl.jpg'); background-size: cover; background-position: center; }
+body.login #wrapper, body.signup #wrapper { background-image: none; }
 body.login #wrapper .bodyWrapper, body.signup #wrapper .bodyWrapper { background-image: none; }
 body.login #mid, body.signup #mid { margin-top: 9px; }
 body.login #side_info, body.signup #side_info { top: -74px; }
 .outerLoginBox { width: 551px; margin-bottom: 10px; }
 .outerLoginBox h2 { color: #393939; margin-bottom: 15px; }
-.outerLoginBox .innerLoginBox { width: 551px; min-height: 235px; background: url('/assets/layout/bgLogin-rtl.png') no-repeat; margin-bottom: 10px; }
+.outerLoginBox .innerLoginBox { width: 551px; min-height: 235px; background: url('/assets/layout/bgLogin-rtl.png') no-repeat left top; margin-bottom: 10px; }
 .outerLoginBox table.loginTable { vertical-align: top; width: 400px; position: relative; top: 10px; margin-right: 6px; }
 .outerLoginBox table.loginTable td { text-align: right; padding: 2px 6px; font-size: 11px; }
 .outerLoginBox table.loginTable td.accountNameOrEmailAddress { width: 115px; font-weight: bold; }
 .outerLoginBox input.text { background-color: #F8F8F8; border: 1px solid #99C01A; font-size: 11px; margin: 0; padding: 1px 2px; width: 175px; }
 .greenbox { width: 551px; position: relative; }
 .greenbox .greenbox-top, .greenbox .greenbox-content, .greenbox .greenbox-bottom { float: right; }
-.greenbox .greenbox-top, .greenbox .greenbox-bottom { height: 10px; width: 551px; background: url('/assets/layout/contentTitle.png') repeat-x; }
+.greenbox .greenbox-top, .greenbox .greenbox-bottom { height: 10px; width: 551px; background-color: #498843; background-image: url('/assets/layout/contentTitle.png'); background-repeat: repeat-x; }
 .greenbox .greenbox-content { min-height: 10px; width: 551px; padding: 0; background: #E5EECC; }
 .greenbox .greenbox-bottom { background: url('/assets/layout/contentFooter.png') no-repeat; }
-h4.round, div.round { display: block; width: 531px; height: 16px; padding: 4px 15px; background: url('/assets/layout/contentTitle.png') repeat-x; background-color: #498843; color: #FFF; font-weight: bold; margin-bottom: 12px; position: relative; left: -5px; }
+h4.round, div.round { display: block; width: 531px; height: 16px; padding: 4px 15px; background-color: #498843; background-image: url('/assets/layout/contentTitle.png'); background-repeat: repeat-x; background-position: top left; color: #FFF; font-weight: bold; margin-bottom: 12px; position: relative; left: -5px; }
 .refreshCaptcha { background: none; border: none; color: #99C01A; font-size: 11px; font-weight: bold; cursor: pointer; padding: 4px 8px; }
 .refreshCaptcha:hover { color: #00BC00; }
 div.village2 #village_map .d1 { z-index: 6; left: 115px; top: 52px; }

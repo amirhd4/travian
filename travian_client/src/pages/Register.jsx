@@ -1,282 +1,273 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import api from "../api/axiosConfig.js";
-import { AlertModal } from "../components/Modal";
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import useGameStore from '../store/useGameStore';
+import api from '../api/axiosConfig';
 
-// ================= Data Constants ================= //
 const TRIBES = [
-    { value: "ROMAN", label: "رومی‌ها", image: "/assets/tribes/roman-splash.gif", fallback: "/assets/tribes/roman.png", desc: "متعادل و مناسب برای تازه‌کارها" },
-    { value: "TEUTON", label: "توتون‌ها", image: "/assets/tribes/teuton-splash.gif", fallback: "/assets/tribes/teuton.png", desc: "هجومی و غارتگر" },
-    { value: "GAUL", label: "گل‌ها", image: "/assets/tribes/gaul-splash.gif", fallback: "/assets/tribes/gaul.png", desc: "مدافعین سرسخت و سریع" },
+    { id: 'ROMAN', name: 'رومیان', desc: 'ارتش منظم و ساختمان‌های قوی', img: '/assets/tribes/roman-splash.gif' },
+    { id: 'TEUTON', name: 'توتون‌ها', desc: 'جنگجویان قدرتمند و مهاجم', img: '/assets/tribes/teuton-splash.gif' },
+    { id: 'GAUL', name: 'گل‌ها', desc: 'دفاع قوی و سرعت بالا', img: '/assets/tribes/gaul-splash.gif' },
 ];
 
-const STARTING_LOCATIONS = [
-    { value: "RANDOM", label: "انتخاب تصادفی" },
-    { value: "NW", label: "شمال غرب" },
-    { value: "NE", label: "شمال شرق" },
-    { value: "SW", label: "جنوب غرب" },
-    { value: "SE", label: "جنوب شرق" },
+const LOCATIONS = [
+    { id: 'RANDOM', label: 'تصادفی' },
+    { id: 'NW', label: 'شمال غرب' },
+    { id: 'NE', label: 'شمال شرق' },
+    { id: 'SW', label: 'جنوب غرب' },
+    { id: 'SE', label: 'جنوب شرق' },
 ];
 
-// ================= Reusable Components ================= //
-const GreenBox = ({ title, children }) => (
-    <div className="greenbox" style={{ width: '600px', marginBottom: '12px' }}>
-        <div className="greenbox-top"></div>
-        <div className="greenbox-content" style={{ padding: '12px' }}>
-            <h4 style={{ marginBottom: '8px' }}>{title}</h4>
-            {children}
-        </div>
-        <div className="greenbox-bottom"></div>
-    </div>
-);
-
-// ================= Helper Functions ================= //
-const getErrorMessage = (err) => {
-    if (err.response?.status === 429) {
-        return "تعداد درخواست‌های شما زیاد بوده؛ لطفا کمی صبر کنید.";
-    }
-    const data = err.response?.data;
-    if (data) {
-        const errorFields = ['username', 'email', 'password', 'captcha_answer', 'accept_terms', 'non_field_errors'];
-        for (const field of errorFields) {
-            if (data[field]?.[0]) return data[field][0];
-        }
-    }
-    return "خطا در ارتباط با سرور. لطفا مجددا تلاش کنید.";
-};
-
-// ================= Main Component ================= //
 export default function Register() {
     const navigate = useNavigate();
+    const accessToken = useGameStore((s) => s.accessToken);
 
-    const [formData, setFormData] = useState({
-        username: "", email: "", password: "",
-        tribe: "ROMAN", starting_location: "RANDOM",
-    });
-    const [acceptTerms, setAcceptTerms] = useState(false);
-    const [captcha, setCaptcha] = useState({ token: "", image: "", answer: "" });
-    const [status, setStatus] = useState({ error: "", loading: false, captchaLoading: true, successMsg: null });
+    const [form, setForm] = useState({ username: '', email: '', password: '', phone_number: '' });
+    const [tribe, setTribe] = useState('');
+    const [startingLocation, setStartingLocation] = useState('RANDOM');
+    const [agreed, setAgreed] = useState(false);
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [showRules, setShowRules] = useState(false);
+    const [captchaImg, setCaptchaImg] = useState('');
+    const [captchaKey, setCaptchaKey] = useState('');
+    const [captchaAnswer, setCaptchaAnswer] = useState('');
 
-    const fetchCaptcha = useCallback(async () => {
-        setStatus(prev => ({ ...prev, captchaLoading: true }));
-        setCaptcha(prev => ({ ...prev, answer: "" }));
+    const fetchCaptcha = async () => {
         try {
-            const { data } = await api.get("auth/captcha/");
-            setCaptcha(prev => ({ ...prev, token: data.token, image: data.image }));
-        } catch (err) {
-            console.error("Error fetching captcha:", err);
-        } finally {
-            setStatus(prev => ({ ...prev, captchaLoading: false }));
-        }
-    }, []);
+            const { data } = await api.get('auth/captcha/');
+            setCaptchaImg(data.image);
+            setCaptchaKey(data.token);
+        } catch { /* ignore */ }
+    };
 
     useEffect(() => {
+        document.body.className = 'v35 webkit chrome signup';
+        if (accessToken) { navigate('/village', { replace: true }); return; }
         fetchCaptcha();
-    }, [fetchCaptcha]);
+        return () => { document.body.className = ''; };
+    }, [accessToken, navigate]);
 
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
     const handleRegister = async (e) => {
         e.preventDefault();
-        setStatus(prev => ({ ...prev, error: "" }));
+        setError('');
 
-        if (!acceptTerms) {
-            return setStatus(prev => ({ ...prev, error: "برای ثبت‌نام باید قوانین بازی را بپذیرید." }));
+        if (!form.username || !form.email || !form.password) {
+            setError('لطفا تمام فیلدها را پر کنید.');
+            return;
         }
-        if (!captcha.answer) {
-            return setStatus(prev => ({ ...prev, error: "لطفا کد امنیتی تصویر را وارد کنید." }));
+        if (!tribe) {
+            setError('لطفا یک نژاد انتخاب کنید.');
+            return;
+        }
+        if (!agreed) {
+            setError('باید قوانین بازی را بپذیرید.');
+            return;
         }
 
-        setStatus(prev => ({ ...prev, loading: true }));
+        setLoading(true);
         try {
-            const { data } = await api.post("auth/register/", {
-                ...formData,
-                phone_number: "0",
-                accept_terms: acceptTerms,
-                captcha_token: captcha.token,
-                captcha_answer: captcha.answer,
+            await api.post('auth/register/', {
+                username: form.username,
+                email: form.email,
+                password: form.password,
+                phone_number: form.phone_number || '',
+                tribe: tribe,
+                starting_location: startingLocation,
+                accept_terms: agreed,
+                captcha_token: captchaKey,
+                captcha_answer: captchaAnswer,
             });
-            setStatus(prev => ({ ...prev, successMsg: data.message || "ثبت‌نام شما با موفقیت انجام شد." }));
+            navigate('/login', { replace: true });
         } catch (err) {
-            setStatus(prev => ({ ...prev, error: getErrorMessage(err) }));
-            fetchCaptcha(); // Reload captcha on failure
-        } finally {
-            setStatus(prev => ({ ...prev, loading: false }));
-        }
+            const data = err.response?.data;
+            if (data) {
+                const msgs = Object.values(data).flat().join(' ');
+                setError(msgs || 'خطا در ثبت نام.');
+                fetchCaptcha();
+            } else {
+                setError('خطا در ثبت نام.');
+            }
+        } finally { setLoading(false); }
     };
 
+    const inputStyle = { background: '#F8F8F8', border: '1px solid #99C01A', fontSize: 11, padding: '2px 4px', width: 200 };
+
     return (
-        <div id="wrapper">
-            <AlertModal
-                open={!!status.successMsg}
-                tone="success"
-                title="ثبت‌نام موفق"
-                message={status.successMsg}
-                onClose={() => navigate("/login")}
-            />
-
-            <div className="bodyWrapper">
-                <div id="header">
-                    <div id="mtop">
-                        <Link id="logo" to="/" title="Travian"></Link>
-                        <div className="clear"></div>
+        <div className="v35 webkit chrome signup">
+            <div id="wrapper">
+                <img id="staticElements" alt="" />
+                <div className="bodyWrapper">
+                    <div id="header">
+                        <div id="mtop">
+                            <a id="logo" href="/" title="Travian"></a>
+                            <div className="clear"></div>
+                        </div>
                     </div>
-                </div>
+                    <div id="mid">
+                        <div id="side_navi">
+                            <ul>
+                                <li><a href="/" title="خانه">خانه</a></li>
+                                <li><a href="/login" title="ورود">ورود</a></li>
+                                <li className="active"><a href="/register" title="ثبت نام">ثبت نام</a></li>
+                                <li className="support"><a href="#" title="پشتیبانی">پشتیبانی</a></li>
+                            </ul>
+                        </div>
+                        <div className="clear"></div>
+                        <div id="contentOuterContainer">
+                            <div className="contentTitle">&nbsp;</div>
+                            <div className="contentContainer">
+                                <div id="content" className="signup">
+                                    <h1 className="titleInHeader">ثبت نام</h1>
 
-                <div id="mid">
-                    <div className="contentTitle">&nbsp;</div>
-                    <div className="contentContainer" style={{ padding: '20px' }}>
-                        <div id="content">
-                            <div className="outerLoginBox" style={{ width: '600px' }}>
-                                <h2 className="titleInHeader">ثبت‌نام در بازی</h2>
-
-                                {status.error && (
-                                    <div style={{ padding: '8px', marginBottom: '12px', background: '#fcd1d1', border: '1px solid #DE0000', color: '#DE0000', fontWeight: 'bold', fontSize: '11px' }}>
-                                        {status.error}
-                                    </div>
-                                )}
-
-                                <form onSubmit={handleRegister}>
-
-                                    {/* اطلاعات کاربری */}
-                                    <GreenBox title="اطلاعات کاربری">
-                                        <table className="transparent" style={{ width: '100%' }}>
+                                    <form onSubmit={handleRegister}>
+                                        <h4 className="round">اطلاعات کاربری</h4>
+                                        <table cellPadding="1" cellSpacing="1" id="sign_input" className="transparent" style={{ width: '100%' }}>
                                             <tbody>
-                                                <tr>
-                                                    <td style={{ width: '120px', fontWeight: 'bold', fontSize: '11px' }}>
-                                                        <label htmlFor="username">نام کاربری:</label>
-                                                    </td>
-                                                    <td>
-                                                        <input id="username" type="text" name="username" value={formData.username} onChange={handleChange} maxLength={15} className="text" dir="ltr" required style={{ width: '200px' }} />
-                                                    </td>
+                                                <tr className="top">
+                                                    <th style={{ width: 120, textAlign: 'right', paddingRight: 8 }}>نام کاربری</th>
+                                                    <td><input className="text" type="text" name="username" value={form.username} onChange={handleChange} maxLength={15} style={inputStyle} /></td>
                                                 </tr>
                                                 <tr>
-                                                    <td style={{ fontWeight: 'bold', fontSize: '11px' }}>
-                                                        <label htmlFor="email">پست الکترونیک:</label>
-                                                    </td>
-                                                    <td>
-                                                        <input id="email" type="email" name="email" value={formData.email} onChange={handleChange} maxLength={40} className="text" dir="ltr" required style={{ width: '200px' }} />
-                                                    </td>
+                                                    <th style={{ textAlign: 'right', paddingRight: 8 }}>ایمیل</th>
+                                                    <td><input className="text" type="email" name="email" value={form.email} onChange={handleChange} maxLength={40} style={inputStyle} /></td>
                                                 </tr>
                                                 <tr>
-                                                    <td style={{ fontWeight: 'bold', fontSize: '11px' }}>
-                                                        <label htmlFor="password">رمز عبور:</label>
-                                                    </td>
+                                                    <th style={{ textAlign: 'right', paddingRight: 8 }}>رمز عبور</th>
+                                                    <td><input className="text" type="password" name="password" value={form.password} onChange={handleChange} maxLength={20} style={inputStyle} /></td>
+                                                </tr>
+                                                <tr>
+                                                    <th style={{ textAlign: 'right', paddingRight: 8 }}>شماره تلفن</th>
+                                                    <td><input className="text" type="text" name="phone_number" value={form.phone_number} onChange={handleChange} maxLength={15} style={inputStyle} placeholder="اختیاری" /></td>
+                                                </tr>
+                                                <tr>
+                                                    <th style={{ textAlign: 'right', paddingRight: 8 }}>کد امنیتی</th>
                                                     <td>
-                                                        <input id="password" type="password" name="password" value={formData.password} onChange={handleChange} maxLength={20} minLength={8} className="text" dir="ltr" required style={{ width: '200px' }} />
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                                            {captchaImg ? (
+                                                                <img src={captchaImg} alt="captcha" onClick={fetchCaptcha} title="کلیک برای بروزرسانی"
+                                                                    style={{ height: 40, width: 160, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', objectFit: 'contain' }} />
+                                                            ) : (
+                                                                <div style={{ height: 40, width: 160, background: '#eee', border: '1px solid #ccc', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#999' }}>در حال بارگذاری...</div>
+                                                            )}
+                                                            <button type="button" onClick={fetchCaptcha} style={{ background: '#498843', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 'bold' }} title="بروزرسانی کپچا">بروزرسانی</button>
+                                                        </div>
+                                                        <input className="text" type="text" value={captchaAnswer} onChange={(e) => setCaptchaAnswer(e.target.value)} maxLength={10} style={{ ...inputStyle, width: 120 }} placeholder="کد را وارد کنید" />
                                                     </td>
                                                 </tr>
                                             </tbody>
                                         </table>
-                                    </GreenBox>
 
-                                    {/* انتخاب نژاد */}
-                                    <GreenBox title="انتخاب نژاد">
-                                        <div className="tribeSelect">
-                                            {TRIBES.map((t) => (
-                                                <label key={t.value} className="tribe" style={{
-                                                    border: formData.tribe === t.value ? '2px solid #498843' : '2px solid #C9C9C9',
-                                                    padding: '8px',
-                                                    borderRadius: '4px',
-                                                    background: formData.tribe === t.value ? '#E5EECC' : '#FFF',
-                                                    cursor: 'pointer'
-                                                }}>
-                                                    <input
-                                                        type="radio"
-                                                        name="tribe"
-                                                        value={t.value}
-                                                        checked={formData.tribe === t.value}
-                                                        onChange={handleChange}
-                                                        style={{ display: 'none' }}
-                                                    />
-                                                    <div className="selection">
-                                                        <img src={t.image} alt={t.label} className="tribeImage"
-                                                            onError={(e) => { e.target.src = t.fallback; }} />
-                                                    </div>
-                                                    <p style={{ fontWeight: 'bold', fontSize: '12px' }}>{t.label}</p>
-                                                    <p style={{ fontSize: '10px', color: '#777' }}>{t.desc}</p>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </GreenBox>
-
-                                    {/* محل شروع */}
-                                    <GreenBox title="محل شروع">
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                            {STARTING_LOCATIONS.map((loc) => (
-                                                <label key={loc.value} style={{
-                                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                                    padding: '4px 10px', fontSize: '11px', fontWeight: 'bold',
-                                                    border: '1px solid #C9C9C9', borderRadius: '4px', cursor: 'pointer',
-                                                    background: formData.starting_location === loc.value ? '#498843' : '#FFF',
-                                                    color: formData.starting_location === loc.value ? '#FFF' : '#252525',
-                                                }}>
-                                                    <input type="radio" name="starting_location" value={loc.value}
-                                                        checked={formData.starting_location === loc.value}
-                                                        onChange={handleChange} style={{ display: 'none' }} />
-                                                    {loc.label}
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </GreenBox>
-
-                                    {/* قوانین */}
-                                    <div style={{ marginBottom: '12px', padding: '8px', background: '#F5F5F5', border: '1px dashed #C0C0C0', fontSize: '11px' }}>
-                                        <ul className="important" style={{ paddingInlineStart: '20px', margin: '0 0 8px 0' }}>
-                                            <li>در صورت مشاهده‌ی هرگونه توهین یا الفاظ نامناسب، اکانت بازیکن خاطی مسدود خواهد شد.</li>
-                                            <li>رمز اکانت خود را هرگز در اختیار هیچ‌کس قرار ندهید.</li>
-                                        </ul>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-                                            <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
-                                            من قوانین را خوانده‌ام و آن‌ها را می‌پذیرم.
-                                        </label>
-                                    </div>
-
-                                    {/* کد امنیتی */}
-                                    <div style={{ marginBottom: '12px' }}>
-                                        <label htmlFor="captchaInput" style={{ fontWeight: 'bold', fontSize: '11px' }}>کد امنیتی:</label>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                            <div style={{ width: '120px', height: '40px', background: '#F5F5F5', border: '1px solid #CCC', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                                                {status.captchaLoading ? (
-                                                    <span style={{ color: '#777', fontSize: '10px' }}>...</span>
-                                                ) : (
-                                                    <img src={captcha.image} alt="کپچا" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                                )}
+                                        <h4 className="round" style={{ marginTop: 16 }}>یک نژاد انتخاب کنید</h4>
+                                        <div className="boxes boxGrey boxesColor gray" style={{ width: '100%' }}>
+                                            <div className="boxes-tl"></div><div className="boxes-tr"></div><div className="boxes-tc"></div>
+                                            <div className="boxes-ml"></div><div className="boxes-mr"></div><div className="boxes-mc"></div>
+                                            <div className="boxes-bl"></div><div className="boxes-br"></div><div className="boxes-bc"></div>
+                                            <div className="boxes-contents">
+                                                <div className="tribeSelect" style={{ display: 'flex', gap: 12, padding: '8px 0' }}>
+                                                    {TRIBES.map((t) => (
+                                                        <div key={t.id} className={`tribe ${t.id.toLowerCase()}`}
+                                                            onClick={() => setTribe(t.id)}
+                                                            style={{
+                                                                textAlign: 'center', cursor: 'pointer', flex: 1,
+                                                                border: tribe === t.id ? '3px solid #99C01A' : '3px solid transparent',
+                                                                borderRadius: 6, padding: 8, transition: 'all 0.2s',
+                                                                background: tribe === t.id ? 'rgba(153,192,26,0.1)' : 'transparent',
+                                                            }}>
+                                                            <input type="radio" name="vid" value={t.id} checked={tribe === t.id} onChange={() => setTribe(t.id)} style={{ display: 'none' }} />
+                                                            <img src={t.img} alt={t.name} style={{ width: '100%', height: 80, objectFit: 'contain', marginBottom: 4 }} />
+                                                            <div style={{ fontWeight: 'bold', fontSize: 13, color: tribe === t.id ? '#498843' : '#333' }}>{t.name}</div>
+                                                            <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{t.desc}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                            <button type="button" onClick={fetchCaptcha} disabled={status.captchaLoading} className="refreshCaptcha" style={{ fontSize: '11px', cursor: 'pointer' }}>
-                                                تغییر تصویر
-                                            </button>
-                                            <input
-                                                id="captchaInput"
-                                                type="text"
-                                                required
-                                                value={captcha.answer}
-                                                onChange={(e) => setCaptcha(prev => ({ ...prev, answer: e.target.value }))}
-                                                placeholder="کد را وارد کنید"
-                                                className="text"
-                                                dir="ltr"
-                                                style={{ width: '100px' }}
-                                                autoComplete="off"
-                                            />
                                         </div>
+
+                                        <h4 className="round" style={{ marginTop: 16 }}>موقعیت شروع</h4>
+                                        <div className="boxes boxGrey boxesColor gray" style={{ width: '100%' }}>
+                                            <div className="boxes-tl"></div><div className="boxes-tr"></div><div className="boxes-tc"></div>
+                                            <div className="boxes-ml"></div><div className="boxes-mr"></div><div className="boxes-mc"></div>
+                                            <div className="boxes-bl"></div><div className="boxes-br"></div><div className="boxes-bc"></div>
+                                            <div className="boxes-contents">
+                                                <div style={{ padding: '8px 0', display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                                                    {LOCATIONS.map((loc) => (
+                                                        <label key={loc.id} style={{ cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <input type="radio" name="kid" value={loc.id} checked={startingLocation === loc.id} onChange={() => setStartingLocation(loc.id)} />
+                                                            {loc.label}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <h4 className="round" style={{ marginTop: 16, cursor: 'pointer' }} onClick={() => setShowRules(!showRules)}>
+                                            {showRules ? '▼' : '▶'} مهم: قبل از ثبت نام با دقت بخوانید
+                                        </h4>
+                                        {showRules && (
+                                            <div className="boxes boxGrey boxesColor gray" style={{ width: '100%', marginBottom: 12 }}>
+                                                <div className="boxes-tl"></div><div className="boxes-tr"></div><div className="boxes-tc"></div>
+                                                <div className="boxes-ml"></div><div className="boxes-mr"></div><div className="boxes-mc"></div>
+                                                <div className="boxes-bl"></div><div className="boxes-br"></div><div className="boxes-bc"></div>
+                                                <div className="boxes-contents">
+                                                    <div style={{ height: 300, overflow: 'auto', border: '1px dashed #999', padding: 12, fontSize: 12, lineHeight: '20px', textAlign: 'justify' }}>
+                                                        <p><b>§1 رمز اکانت، ثبت نام و مالکیت</b></p>
+                                                        <p>هر بازیکنی تنها می‌تواند یک اکانت در هر جهان بازی (سرور) داشته باشد.</p>
+                                                        <p><br/></p>
+                                                        <p><b>§1.1 ثبت نام</b></p>
+                                                        <p>ایمیلی که برای ثبت نام استفاده می‌شود باید یک ایمیل شخصی بوده و ثبت نام کننده باید دسترسی کامل و کنترل کامل این ایمیل را داشته باشد.</p>
+                                                        <p><br/></p>
+                                                        <p><b>§1.2 رمز اکانت</b></p>
+                                                        <p>صاحب اکانت نمی‌تواند رمز خود را به بازیکنی که در همان جهان بازی (سرور) اکانت دارد بدهد.</p>
+                                                        <p><br/></p>
+                                                        <p><b>§3 استفاده از برنامه‌های خارجی</b></p>
+                                                        <p>استفاده از هر نرم افزار جهت ارسال کلیک و انجام بازی به صورت اتوماتیک ممنوع بوده و اکانت فرد خاطی مسدود خواهد شد.</p>
+                                                        <p><br/></p>
+                                                        <p><b>§5 تبادل پول</b></p>
+                                                        <p>هر گونه خرید و فروش که در آن پول واقعی رد و بدل شود خلاف است.</p>
+                                                        <p><br/></p>
+                                                        <p><b>§6 رفتار و رعایت حقوق اجتماعی</b></p>
+                                                        <p>تمامی افراد باید با لفظی مودبانه با یکدیگر برخورد کنند. زبان فارسی و انگلیسی تنها زبان‌های قابل قبول می‌باشند.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="checks" style={{ margin: '12px 0', fontSize: 12 }}>
+                                            <label style={{ cursor: 'pointer' }}>
+                                                <input type="checkbox" className="check" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ marginLeft: 6 }} />
+                                                من قوانین را خوانده و قبول دارم.
+                                            </label>
+                                        </div>
+
+                                        {error && <div style={{ color: '#DE0000', fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>{error}</div>}
+
+                                        <div className="btn" style={{ textAlign: 'center', marginTop: 16 }}>
+                                            <button type="submit" disabled={loading} style={{
+                                                background: loading ? '#ccc' : '#498843', color: '#fff', border: 'none',
+                                                borderRadius: 4, padding: '10px 32px', fontWeight: 'bold', fontSize: 14,
+                                                cursor: loading ? 'not-allowed' : 'pointer',
+                                            }}>
+                                                {loading ? 'در حال ثبت نام...' : 'ثبت نام'}
+                                            </button>
+                                        </div>
+                                    </form>
+
+                                    <div className="clear" style={{ marginTop: 16 }}></div>
+                                    <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12 }}>
+                                        قبلا ثبت نام کرده‌اید؟{' '}
+                                        <Link to="/login" style={{ color: '#99C01A', fontWeight: 'bold' }}>وارد شوید</Link>
                                     </div>
-
-                                    <button type="submit" disabled={status.loading || !acceptTerms || !captcha.answer} className="btn-primary" style={{ padding: '6px 30px', cursor: 'pointer' }}>
-                                        {status.loading ? "در حال پردازش..." : "تکمیل ثبت‌نام"}
-                                    </button>
-                                </form>
-
-                                <div style={{ marginTop: '15px', fontSize: '11px' }}>
-                                    <Link to="/login" style={{ color: '#99C01A' }}>قبلا ثبت‌نام کرده‌اید؟ وارد شوید</Link>
                                 </div>
                             </div>
+                            <div className="contentFooter">&nbsp;</div>
                         </div>
                     </div>
-                    <div className="contentFooter">&nbsp;</div>
                 </div>
+                <div id="ce"></div>
             </div>
         </div>
     );
