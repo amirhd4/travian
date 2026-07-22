@@ -122,12 +122,8 @@ def _get_hero_resource_bonus(village):
 def _get_oasis_bonus_multipliers(village):
     multipliers = {'wood': 1.0, 'clay': 1.0, 'iron': 1.0, 'crop': 1.0}
     for oasis in village.oases.all():
-        pct = oasis.bonus_percent / 100
-        if oasis.bonus_resource == 'all':
-            for key in multipliers:
-                multipliers[key] += pct
-        else:
-            multipliers[oasis.bonus_resource] += pct
+        for resource, pct in oasis.bonuses:
+            multipliers[resource] += pct / 100
     return multipliers
 
 

@@ -227,16 +227,20 @@ export const MAP = {
   dir: '/assets/map/dir.gif',
   mapBg: '/assets/map/map-bg.jpg',
   cropfinder: '/assets/map/cropfinder-btn.gif',
-  // ✅ اضافه‌شده — نبودشان باعث کرش کامل صفحه‌ی نقشه می‌شد
-  getTileBg: (pattern) => `/assets/map/bg-${pattern}.png`,
-  getTerrain: (type) => `/assets/map/terrain-${type}.gif`,
-  getOasisTile: (type) => `/assets/map/oasis-free-${type}.gif`,
-  getOasisOccupied: (type) => `/assets/map/oasis-occupied-${type}.gif`,
-  getBorder: (cls) => `/assets/map/border-${cls}.png`,
-  getWall: (level) => `/assets/map/wall-${level}.png`,
-  getPop: (pop) => `/assets/map/pop-${Math.min(10, Math.ceil(pop / 1000))}.gif`,
-  att1: '/assets/map/attack1.gif',
-  volcano: '/assets/map/volcano.png',
+  getTileBg: (pattern) => `/assets/map/tilespbgimg${pattern}.gif`,
+  getTerrain: (type) => `/assets/map/t${type}.gif`,
+  getOasisTile: (type) => `/assets/map/o${type}.gif`,
+  getOasisOccupied: (type) => `/assets/map/o${type}o.gif`,
+  getBorder: (cls) => `/assets/map/${cls}.gif`,
+  getWall: (level) => `/assets/map/wall${level}.gif`,
+  getPop: (pop) => {
+    if (pop < 100) return '/assets/map/pop99.gif';
+    if (pop < 250) return '/assets/map/pop249.gif';
+    if (pop < 500) return '/assets/map/pop499.gif';
+    return '/assets/map/pop500.gif';
+  },
+  att1: '/assets/map/matt.gif',
+  volcano: '/assets/map/volcano.gif',
 };
 
 // Navigation icons (from gpack/travian_default/img/a/)

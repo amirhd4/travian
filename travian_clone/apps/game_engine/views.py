@@ -2500,12 +2500,18 @@ class OasisMapView(APIView):
                 "id": o.id,
                 "x_coord": o.x_coord,
                 "y_coord": o.y_coord,
-                "bonus_resource": o.bonus_resource,
-                "bonus_percent": o.bonus_percent,
-                "defense_strength": o.defense_strength,
                 "oasis_type": o.oasis_type,
+                "bonuses": o.bonuses,
+                "bonus_display": o.bonus_display,
+                "defense_strength": o.defense_strength,
                 "is_free": o.owner_village_id is None,
                 "owner_name": o.owner_village.name if o.owner_village else None,
+                "nature_troops": [
+                    {"name": ot.troop_type.name_fa, "count": ot.count}
+                    for ot in o.troops.select_related('troop_type').all()
+                ],
+                "bonus_resource": o.bonus_resource,
+                "bonus_percent": o.bonus_percent,
             }
             for o in oases
         ])
@@ -2576,12 +2582,19 @@ class PositionDetailView(APIView):
                 "x_coord": oasis.x_coord,
                 "y_coord": oasis.y_coord,
                 "oasis_type": oasis.oasis_type,
-                "bonus_resource": oasis.bonus_resource,
-                "bonus_percent": oasis.bonus_percent,
+                "bonuses": oasis.bonuses,
+                "bonus_display": oasis.bonus_display,
                 "defense_strength": oasis.defense_strength,
                 "is_free": oasis.owner_village_id is None,
                 "owner_name": oasis.owner_village.name if oasis.owner_village else None,
                 "owner_tribe": oasis.owner_village.player.tribe if oasis.owner_village else None,
+                "nature_troops": [
+                    {"name": ot.troop_type.name_fa, "count": ot.count, "attack": ot.troop_type.attack,
+                     "defense_infantry": ot.troop_type.defense_infantry, "defense_cavalry": ot.troop_type.defense_cavalry}
+                    for ot in oasis.troops.select_related('troop_type').all()
+                ],
+                "bonus_resource": oasis.bonus_resource,
+                "bonus_percent": oasis.bonus_percent,
             })
         else:
             return Response({
@@ -2593,16 +2606,18 @@ class PositionDetailView(APIView):
 
 class OasisAttackView(APIView):
     """
-    ۱) اوسیس آزاد (owner_village=None): تلاش برای «تصاحب» - نیازمند عمارت
+    ۱) آبادی آزاد (owner_village=None): تلاش برای «تصاحب» - نیازمند عمارت
        قهرمان و سقف ۳ آبادی. در پیروزی، مالک می‌شود.
-    ۲) اوسیس متعلق به بازیکن دیگر: «غارت» - نیازی به عمارت قهرمان ندارد،
+    ۲) آبادی متعلق به بازیکن دیگر: «غارت» - نیازی به عمارت قهرمان ندارد،
        مالکیت عوض نمی‌شود، فقط ۲۵٪ منابع دهکده‌ی متصل غارت می‌شود.
     """
     permission_classes = [IsAuthenticated]
     MAX_OASES_PER_PLAYER = 3
     OASIS_RAID_PERCENT = 0.25
+    OASIS_CAPTURE_MAX_DISTANCE = 10
 
     def post(self, request):
+        import math
         from .models import Oasis
         from apps.combat.models import TroopType, VillageTroop
         from apps.combat.engine import calculate_combat
@@ -2612,7 +2627,7 @@ class OasisAttackView(APIView):
         troops_payload = request.data.get('troops_payload', {})
 
         if not troops_payload or not any(int(v or 0) > 0 for v in troops_payload.values()):
-            return Response({"error": "حداقل یک نوع نیرو برای حمله به اوسیس انتخاب کنید."}, status=400)
+            return Response({"error": "حداقل یک نوع نیرو برای حمله به آبادی انتخاب کنید."}, status=400)
 
         with transaction.atomic():
             try:
@@ -2623,19 +2638,34 @@ class OasisAttackView(APIView):
             try:
                 oasis = Oasis.objects.select_for_update().get(id=oasis_id)
             except Oasis.DoesNotExist:
-                return Response({"error": "اوسیس یافت نشد."}, status=404)
+                return Response({"error": "آبادی یافت نشد."}, status=404)
 
             if oasis.owner_village_id == village.id:
-                return Response({"error": "این اوسیس همین الان متعلق به همین دهکده است."}, status=400)
+                return Response({"error": "این آبادی همین الان متعلق به همین دهکده است."}, status=400)
 
             is_conquest_attempt = oasis.owner_village_id is None
 
             if is_conquest_attempt:
-                has_hero_mansion = VillageBuilding.objects.filter(
-                    village=village, building_type__name="عمارت قهرمان", level__gt=0
-                ).exists()
-                if not has_hero_mansion:
-                    return Response({"error": "برای تصاحب اوسیس ابتدا باید عمارت قهرمان بسازید."}, status=400)
+                # Distance check
+                dist = math.sqrt((oasis.x_coord - village.x_coord) ** 2 + (oasis.y_coord - village.y_coord) ** 2)
+                if dist > self.OASIS_CAPTURE_MAX_DISTANCE:
+                    return Response({
+                        "error": f"آبادی خارج از محدوده است (فاصله: {dist:.1f}، حداکثر: {self.OASIS_CAPTURE_MAX_DISTANCE})."
+                    }, status=400)
+
+                # Hero Mansion level → slots: (level-5)//5, max 3
+                mansion = VillageBuilding.objects.filter(
+                    village=village, building_type__name="عمارت قهرمان"
+                ).first()
+                if not mansion or mansion.level < 6:
+                    return Response({"error": "برای تصاحب آبادی به عمارت قهرمان سطح ۶ یا بالاتر نیاز دارید."}, status=400)
+
+                max_slots = min((mansion.level - 5) // 5, 3)
+                used_slots = village.oases.count()
+                if used_slots >= max_slots:
+                    return Response({
+                        "error": f"تمام {max_slots} اسلات آبادی پر است. سطح عمارت قهرمان را افزایش دهید."
+                    }, status=400)
 
                 player_village_ids = Village.objects.filter(player=request.user).values_list('id', flat=True)
                 owned_count = Oasis.objects.filter(owner_village_id__in=player_village_ids).count()
@@ -2664,9 +2694,24 @@ class OasisAttackView(APIView):
                 attack_power += qty * troop_type.attack_power
                 village_troops[vt] = qty
 
+            # Calculate defense from nature troops
+            def_inf = 0
+            def_cav = 0
+            nature_troops_data = []
+            for ot in oasis.troops.select_related('troop_type').all():
+                if ot.count <= 0:
+                    continue
+                nature_troops_data.append({"name": ot.troop_type.name_fa, "count": ot.count})
+                def_inf += ot.count * ot.troop_type.defense_infantry
+                def_cav += ot.count * ot.troop_type.defense_cavalry
+
+            # Fallback to defense_strength if no nature troops
+            if def_inf == 0 and def_cav == 0:
+                def_inf = oasis.defense_strength
+
             combat_result = calculate_combat(
                 {"points_attack": attack_power},
-                {"points_def_infantry": oasis.defense_strength, "points_def_cavalry": 0},
+                {"points_def_infantry": def_inf, "points_def_cavalry": def_cav},
                 wall_level=0,
             )
 
@@ -2682,7 +2727,7 @@ class OasisAttackView(APIView):
                 if is_conquest_attempt:
                     oasis.owner_village = village
                     oasis.save()
-                    message = f"🌿 اوسیس ({oasis.x_coord}|{oasis.y_coord}) با موفقیت تصاحب شد!"
+                    message = f"🌿 آبادی ({oasis.x_coord}|{oasis.y_coord}) با موفقیت تصاحب شد!"
                 else:
                     owner = oasis.owner_village
                     loot = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
@@ -2706,10 +2751,10 @@ class OasisAttackView(APIView):
                             village.iron = min(village.max_storage, village.iron + loot["iron"])
                             village.crop = min(village.max_granary, village.crop + loot["crop"])
                             village.save()
-                    message = (f"⚔️ اوسیس ({oasis.x_coord}|{oasis.y_coord}) غارت شد! "
+                    message = (f"⚔️ آبادی ({oasis.x_coord}|{oasis.y_coord}) غارت شد! "
                                f"🪵{loot['wood']} 🧱{loot['clay']} ⚒️{loot['iron']} 🌾{loot['crop']}")
             else:
-                message = f"شکست خوردید؛ اوسیس ({oasis.x_coord}|{oasis.y_coord}) نتیجه‌ای نداد و بخشی از نیروها را از دست دادید."
+                message = f"شکست خوردید؛ آبادی ({oasis.x_coord}|{oasis.y_coord}) نتیجه‌ای نداد و بخشی از نیروها را از دست دادید."
 
             GameLog.objects.create(village=village, log_type='COMBAT', description=message)
 
@@ -2717,6 +2762,7 @@ class OasisAttackView(APIView):
             "message": message,
             "victory": combat_result["victory"],
             "attacker_loss_percent": round(combat_result["attacker_loss_percent"], 1),
+            "nature_troops_defeated": nature_troops_data if combat_result["victory"] == "attacker" else [],
         })
 
 
@@ -2774,7 +2820,7 @@ class VillagesOverviewView(APIView):
 
 
 class OasisReleaseView(APIView):
-    """رها کردن یک اوسیس متعلق به بازیکن (از طریق عمارت قهرمان)."""
+    """رها کردن یک آبادی متعلق به بازیکن (از طریق عمارت قهرمان)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -2783,15 +2829,15 @@ class OasisReleaseView(APIView):
         try:
             oasis = Oasis.objects.select_for_update().get(id=oasis_id)
         except (Oasis.DoesNotExist, ValueError, TypeError):
-            return Response({"error": "اوسیس یافت نشد."}, status=404)
+            return Response({"error": "آبادی یافت نشد."}, status=404)
 
         if not oasis.owner_village or oasis.owner_village.player_id != request.user.id:
-            return Response({"error": "این اوسیس متعلق به شما نیست."}, status=403)
+            return Response({"error": "این آبادی متعلق به شما نیست."}, status=403)
 
         coords = f"({oasis.x_coord}|{oasis.y_coord})"
         oasis.owner_village = None
         oasis.save()
-        return Response({"message": f"اوسیس {coords} با موفقیت رها شد."})
+        return Response({"message": f"آبادی {coords} با موفقیت رها شد."})
 
 
 class ArtifactListView(APIView):

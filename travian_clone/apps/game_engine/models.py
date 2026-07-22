@@ -29,6 +29,7 @@ class ServerSetting(models.Model):
     # ✅ تنظیمات دهکده‌های فارم (تعداد و ضریب تولید، هر دو قابل تنظیم توسط ادمین موقع نصب سرور)
     farm_village_count = models.IntegerField(default=20)
     farm_village_multiplier = models.IntegerField(default=1)
+    farm_production_per_hour = models.IntegerField(default=1000000, help_text="تولید هر منبع در ساعت برای هر دهکده فارم")
 
     # ✅ مدت زمان محافظت تازه‌واردان در برابر حمله/غارت/تسخیر (به روز)، قابل تنظیم برای هر سرور
     new_player_protection_days = models.IntegerField(default=7)
@@ -349,7 +350,68 @@ class Oasis(models.Model):
         unique_together = ('x_coord', 'y_coord')
 
     def __str__(self):
-        return f"اوسیس ({self.x_coord}|{self.y_coord})"
+        return f"آبادی ({self.x_coord}|{self.y_coord})"
+
+    @property
+    def bonuses(self):
+        return OASIS_TYPE_BONUSES.get(self.oasis_type, [])
+
+    @property
+    def bonus_display(self):
+        parts = [f"{r} {p}%" for r, p in self.bonuses]
+        return " + ".join(parts) if parts else "None"
+
+
+# Maps oasis_type (1-12) → list of (resource, percent) tuples
+OASIS_TYPE_BONUSES = {
+    1:  [('wood', 25)],
+    2:  [('wood', 50)],
+    3:  [('wood', 25), ('crop', 25)],
+    4:  [('clay', 25)],
+    5:  [('clay', 50)],
+    6:  [('clay', 25), ('crop', 25)],
+    7:  [('iron', 25)],
+    8:  [('iron', 50)],
+    9:  [('iron', 25), ('crop', 25)],
+    10: [('crop', 25)],
+    11: [('crop', 25)],
+    12: [('crop', 50)],
+}
+
+OASIS_DEFENSE_RANGES = {
+    1: (50, 100), 2: (80, 150), 3: (100, 200),
+    4: (50, 100), 5: (80, 150), 6: (100, 200),
+    7: (50, 100), 8: (80, 150), 9: (100, 200),
+    10: (50, 100), 11: (50, 100), 12: (80, 150),
+}
+
+
+class NatureTroopType(models.Model):
+    name = models.CharField(max_length=50)
+    name_fa = models.CharField(max_length=50)
+    attack = models.IntegerField(default=10)
+    defense_infantry = models.IntegerField(default=25)
+    defense_cavalry = models.IntegerField(default=20)
+    speed = models.IntegerField(default=7)
+    unit_id = models.IntegerField(unique=True)
+
+    class Meta:
+        ordering = ['unit_id']
+
+    def __str__(self):
+        return f"{self.name} (u{self.unit_id})"
+
+
+class OasisTroop(models.Model):
+    oasis = models.ForeignKey(Oasis, on_delete=models.CASCADE, related_name='troops')
+    troop_type = models.ForeignKey(NatureTroopType, on_delete=models.CASCADE)
+    count = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = ('oasis', 'troop_type')
+
+    def __str__(self):
+        return f"{self.count}x {self.troop_type.name} @ ({self.oasis.x_coord}|{self.oasis.y_coord})"
 
 
 class Artifact(models.Model):

@@ -16,7 +16,7 @@ class ServerSettingAdmin(admin.ModelAdmin):
         'id', 'is_active', 'server_speed', 'troop_speed', 'building_speed',
         'troop_training_speed', 'duration_days', 'new_player_protection_days',
         'starting_max_storage', 'starting_max_granary',
-        'farm_village_count', 'farm_village_multiplier',
+        'farm_village_count', 'farm_village_multiplier', 'farm_production_per_hour',
         'start_date', 'ww_unlocked', 'artifacts_unlocked', 'artifact_release_duration_percent',
         'is_finished',
     )
@@ -25,7 +25,7 @@ class ServerSettingAdmin(admin.ModelAdmin):
         'troop_training_speed', 'new_player_protection_days', 'ww_unlocked',
         'artifacts_unlocked', 'artifact_release_duration_percent',
         'starting_max_storage', 'starting_max_granary',
-        'farm_village_count', 'farm_village_multiplier',
+        'farm_village_count', 'farm_village_multiplier', 'farm_production_per_hour',
     )
 
 

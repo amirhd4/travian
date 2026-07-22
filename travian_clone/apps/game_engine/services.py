@@ -9,11 +9,16 @@ from django.db import transaction
 
 from .models import Village, BuildingType, VillageBuilding, ServerSetting, Oasis
 
-MAP_SEARCH_RADIUS = 200
+MAP_SEARCH_RADIUS = 250
 MAX_COORDINATE_ATTEMPTS = 500
 
 SETTLERS_REQUIRED = 3
 # MAX_VILLAGES = 3
+
+NATARS_MAX_DISTANCE = 10
+WW_VILLAGE_POSITIONS = [
+    (3, 3), (-3, 3), (3, -3),
+]
 
 FIELD_DISTRIBUTIONS = {
     'NORMAL': {
@@ -100,7 +105,7 @@ EMPTY_SLOT_NAME = "خالی"
 def _find_free_coordinates(near_x=None, near_y=None, search_radius=20, quadrant=None):
     def _is_occupied(x, y):
         # ✅ FIX: قبلا فقط Village چک می‌شد؛ نتیجه‌اش این بود که دهکده‌ی جدید
-        # می‌توانست دقیقا روی مختصات یک اوسیس موجود ساخته شود.
+        # می‌توانست دقیقا روی مختصات یک آبادی موجود ساخته شود.
         return (
             Village.objects.filter(x_coord=x, y_coord=y).exists() or
             Oasis.objects.filter(x_coord=x, y_coord=y).exists()
