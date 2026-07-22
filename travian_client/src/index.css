@@ -220,11 +220,89 @@ div.map { padding: 12px 14px 0; }
 #mapContainer img { border: 0; }
 #mapContainer > div > div { transition: background-color 0.2s; }
 #mapContainer > div > div:hover { filter: brightness(1.1); }
-body.login, body.signup { background-image: url('/assets/bgs/login-rtl.jpg'); background-size: cover; background-position: center; }
-body.login #wrapper, body.signup #wrapper { background-image: none; }
-body.login #wrapper .bodyWrapper, body.signup #wrapper .bodyWrapper { background-image: none; }
-body.login #mid, body.signup #mid { margin-top: 9px; }
+/* اصلاح کامل صفحه ورود و ثبت نام */
+body.login, body.signup {
+    background-color: #A1BB79 !important;
+    background-image: none !important; /* حذف عکس عمومی bgV.jpg */
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* حذف پس‌زمینه wrapper در صفحه ورود */
+body.login #wrapper, body.signup #wrapper {
+    background-image: none !important; /* حذف bgVillage-rtl.jpg */
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* لایه اختصاصی پس‌زمینه لاگین (فقط همین تصویر نمایش داده می‌شود) */
+body.login::before, body.signup::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 800px; /* ارتفاع دلخواه شما برای عکس */
+    background-image: url('/assets/bgs/login-rtl.jpg');
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: cover;
+    z-index: 0;
+    pointer-events: none;
+}
+
+body.login #wrapper .bodyWrapper, body.signup #wrapper .bodyWrapper {
+    background-image: none !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+body.login #mid, body.signup #mid {
+    margin-top: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
 body.login #side_info, body.signup #side_info { top: -74px; }
+
+body.login #footer, body.signup #footer {
+    margin-top: auto;
+    background-color: transparent;
+}
+
+body.login #contentOuterContainer, body.signup #contentOuterContainer {
+    flex-shrink: 0;
+    width: 551px;
+}
+
+.login-layout, .register-layout {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    padding: 20px 0;
+    width: 990px;
+    margin: auto 0;
+}
+.login-signs-left, .login-signs-right { display: flex; flex-direction: column; align-items: center; gap: 15px; padding-top: 0; flex-shrink: 0; }
+.login-signs-right { padding-top: 30px; }
+.login-sign-item { position: relative; width: 178px; }
+.login-sign-item img { width: 100%; height: auto; display: block; }
+.login-sign-text { position: absolute; top: 10px; right: 10px; left: 10px; bottom: 10px; text-align: center; font-size: 11px; color: #3a2a1a; line-height: 1.8; direction: rtl; font-family: Arial, Helvetica, Verdana, sans-serif; padding: 18px 6px; overflow: hidden; }
+.login-sign-text h4 { font-size: 12px; color: #5a3a1a; margin: 0 0 4px 0; font-weight: bold; }
+.login-sign-text .sign-divider { border: none; border-top: 1px dashed #8B7355; margin: 5px 0; }
+.login-sign-text .sign-bold { font-weight: bold; font-size: 12px; }
 .outerLoginBox { width: 551px; margin-bottom: 10px; }
 .outerLoginBox h2 { color: #393939; margin-bottom: 15px; }
 .outerLoginBox .innerLoginBox { width: 551px; min-height: 235px; background: url('/assets/layout/bgLogin-rtl.png') no-repeat left top; margin-bottom: 10px; }
@@ -237,7 +315,7 @@ body.login #side_info, body.signup #side_info { top: -74px; }
 .greenbox .greenbox-top, .greenbox .greenbox-bottom { height: 10px; width: 551px; background-color: #498843; background-image: url('/assets/layout/contentTitle.png'); background-repeat: repeat-x; }
 .greenbox .greenbox-content { min-height: 10px; width: 551px; padding: 0; background: #E5EECC; }
 .greenbox .greenbox-bottom { background: url('/assets/layout/contentFooter.png') no-repeat; }
-h4.round, div.round { display: block; width: 531px; height: 16px; padding: 4px 15px; background-color: #498843; background-image: url('/assets/layout/contentTitle.png'); background-repeat: repeat-x; background-position: top left; color: #FFF; font-weight: bold; margin-bottom: 12px; position: relative; left: -5px; }
+h4.round, div.round { display: block; width: 531px; height: 16px; padding: 4px 15px; background-color: #498843; background-image: url('/assets/layout/contentTitle.png'); background-repeat: repeat-x; background-position: top left; color: #252525; font-weight: bold; margin-bottom: 12px; position: relative; left: -5px; }
 .refreshCaptcha { background: none; border: none; color: #99C01A; font-size: 11px; font-weight: bold; cursor: pointer; padding: 4px 8px; }
 .refreshCaptcha:hover { color: #00BC00; }
 div.village2 #village_map .d1 { z-index: 6; left: 115px; top: 52px; }
@@ -331,4 +409,74 @@ div.village1 table#movements .a3, div.village1 table#movements .d3 { color: #B50
     width: 59px;
     height: 59px;
     pointer-events: none;
+}
+
+
+body.login #contentOuterContainer {
+    /*margin-left: auto !important;*/
+    /*margin-right: auto !important;*/
+    margin: 80px !important;
+    float: none !important;
+}
+
+body.signup #contentOuterContainer {
+    margin: 0 170px 0 160px !important;
+    float: none !important;
+}
+
+body.signup #side_navi{
+    position: relative;
+    top: -280px;
+}
+
+body.login #side_navi{
+    position: relative;
+    top: -50px;
+    margin-bottom: 100px;
+}
+
+/* استایل کلی کانتینر منو */
+#side_navi ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* فاصله بین آیتم‌ها */
+}
+
+/* استایل هر آیتم منو */
+#side_navi ul li a {
+    display: block;
+    padding: 8px 16px;
+
+    /* رنگ آجری با شفافیت حدود ۷۵٪ (آلفا 0.75) */
+    background-color: rgba(184, 75, 41, 0.75);
+
+    color: #2b1408; /* رنگ متن قهوه‌ای تیره و خوانا */
+    font-weight: bold;
+    font-size: 13px;
+    text-decoration: none;
+    border-radius: 6px; /* گوشه‌های نرم */
+
+    /* افکت‌های ظاهری و انیمیشن */
+    border: 1px solid rgba(120, 60, 26, 0.4); /* کادر باریک ظریف */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15); /* سایه نرم زیر دکمه */
+    transition: all 0.2s ease-in-out;
+}
+
+/* افکت شناور شدن موس روی آیتم‌ها (Hover) */
+#side_navi ul li a:hover {
+    background-color: rgba(184, 75, 41, 0.95); /* پررنگ‌تر شدن آجری */
+    color: #000000; /* رنگ مشکی موقع هوور */
+    transform: translateX(-3px); /* حرکت جزیی به سمت چپ (برای RTL عالیه) */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* استایل آیتم فعال (Active) */
+#side_navi ul li.active a {
+    background-color: rgba(212, 93, 56, 0.9); /* آجری روشن‌تر برای نشان دادن فعال بودن */
+    color: #1a0a03;
+    border: 1px solid #783C1A;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2); /* سایه درونی */
 }

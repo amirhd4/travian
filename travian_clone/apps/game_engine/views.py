@@ -1181,6 +1181,7 @@ class ServerStatusView(APIView):
             "is_finished": active_server.is_finished,
             "duration_days": active_server.duration_days,
             "start_date": active_server.start_date,
+            "server_speed": active_server.server_speed,
             "new_player_protection_days": active_server.new_player_protection_days,
             "ww_unlocked": active_server.ww_unlocked,
             "artifacts_unlocked": active_server.artifacts_unlocked,

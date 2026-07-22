@@ -99,7 +99,6 @@ export default function Register() {
     return (
         <div className="v35 webkit chrome signup">
             <div id="wrapper">
-                <img id="staticElements" alt="" />
                 <div className="bodyWrapper">
                     <div id="header">
                         <div id="mtop">
@@ -108,6 +107,8 @@ export default function Register() {
                         </div>
                     </div>
                     <div id="mid">
+                        <div className="register-layout">
+
                         <div id="side_navi">
                             <ul>
                                 <li><a href="/" title="خانه">خانه</a></li>
@@ -117,6 +118,7 @@ export default function Register() {
                             </ul>
                         </div>
                         <div className="clear"></div>
+
                         <div id="contentOuterContainer">
                             <div className="contentTitle">&nbsp;</div>
                             <div className="contentContainer">
@@ -125,7 +127,7 @@ export default function Register() {
 
                                     <form onSubmit={handleRegister}>
                                         <h4 className="round">اطلاعات کاربری</h4>
-                                        <table cellPadding="1" cellSpacing="1" id="sign_input" className="transparent" style={{ width: '100%' }}>
+                                        <table cellPadding="1" cellSpacing="1" id="sign_input" className="transparent" style={{ width: '100%', marginBottom: 16 }}>
                                             <tbody>
                                                 <tr className="top">
                                                     <th style={{ width: 120, textAlign: 'right', paddingRight: 8 }}>نام کاربری</th>
@@ -149,11 +151,11 @@ export default function Register() {
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                                             {captchaImg ? (
                                                                 <img src={captchaImg} alt="captcha" onClick={fetchCaptcha} title="کلیک برای بروزرسانی"
-                                                                    style={{ height: 40, width: 160, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', objectFit: 'contain' }} />
+                                                                    style={{ height: 60, width: 220, borderRadius: 4, border: '1px solid #ccc', cursor: 'pointer', objectFit: 'contain' }} />
                                                             ) : (
                                                                 <div style={{ height: 40, width: 160, background: '#eee', border: '1px solid #ccc', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: '#999' }}>در حال بارگذاری...</div>
                                                             )}
-                                                            <button type="button" onClick={fetchCaptcha} style={{ background: '#498843', color: '#fff', border: 'none', borderRadius: 4, padding: '6px 10px', cursor: 'pointer', fontSize: 11, fontWeight: 'bold' }} title="بروزرسانی کپچا">بروزرسانی</button>
+                                                            <button type="button" onClick={fetchCaptcha} className="refreshCaptcha" title="بروزرسانی کپچا">بروزرسانی</button>
                                                         </div>
                                                         <input className="text" type="text" value={captchaAnswer} onChange={(e) => setCaptchaAnswer(e.target.value)} maxLength={10} style={{ ...inputStyle, width: 120 }} placeholder="کد را وارد کنید" />
                                                     </td>
@@ -161,25 +163,22 @@ export default function Register() {
                                             </tbody>
                                         </table>
 
-                                        <h4 className="round" style={{ marginTop: 16 }}>یک نژاد انتخاب کنید</h4>
-                                        <div className="boxes boxGrey boxesColor gray" style={{ width: '100%' }}>
-                                            <div className="boxes-tl"></div><div className="boxes-tr"></div><div className="boxes-tc"></div>
-                                            <div className="boxes-ml"></div><div className="boxes-mr"></div><div className="boxes-mc"></div>
-                                            <div className="boxes-bl"></div><div className="boxes-br"></div><div className="boxes-bc"></div>
+                                        <h4 className="round">یک نژاد انتخاب کنید</h4>
+                                        <div className="boxes boxGrey boxesColor gray" style={{ width: '100%', marginBottom: 16 }}>
                                             <div className="boxes-contents">
-                                                <div className="tribeSelect" style={{ display: 'flex', gap: 12, padding: '8px 0' }}>
+                                                <div className="tribeSelect" style={{ display: 'flex', gap: 12, padding: '4px 0', margin: 0 }}>
                                                     {TRIBES.map((t) => (
                                                         <div key={t.id} className={`tribe ${t.id.toLowerCase()}`}
                                                             onClick={() => setTribe(t.id)}
                                                             style={{
                                                                 textAlign: 'center', cursor: 'pointer', flex: 1,
-                                                                border: tribe === t.id ? '3px solid #99C01A' : '3px solid transparent',
-                                                                borderRadius: 6, padding: 8, transition: 'all 0.2s',
-                                                                background: tribe === t.id ? 'rgba(153,192,26,0.1)' : 'transparent',
+                                                                border: tribe === t.id ? '2px solid #99C01A' : '1px solid #CCC',
+                                                                borderRadius: 4, padding: 8, transition: 'all 0.2s',
+                                                                background: tribe === t.id ? '#E5EECC' : '#F8F8F8',
                                                             }}>
                                                             <input type="radio" name="vid" value={t.id} checked={tribe === t.id} onChange={() => setTribe(t.id)} style={{ display: 'none' }} />
-                                                            <img src={t.img} alt={t.name} style={{ width: '100%', height: 80, objectFit: 'contain', marginBottom: 4 }} />
-                                                            <div style={{ fontWeight: 'bold', fontSize: 13, color: tribe === t.id ? '#498843' : '#333' }}>{t.name}</div>
+                                                            <img src={t.img} alt={t.name} className="tribeImage" style={{ width: '100%', height: 70, objectFit: 'contain', marginBottom: 4 }} />
+                                                            <div style={{ fontWeight: 'bold', fontSize: 12, color: tribe === t.id ? '#498843' : '#333' }}>{t.name}</div>
                                                             <div style={{ fontSize: 10, color: '#666', marginTop: 2 }}>{t.desc}</div>
                                                         </div>
                                                     ))}
@@ -187,13 +186,10 @@ export default function Register() {
                                             </div>
                                         </div>
 
-                                        <h4 className="round" style={{ marginTop: 16 }}>موقعیت شروع</h4>
-                                        <div className="boxes boxGrey boxesColor gray" style={{ width: '100%' }}>
-                                            <div className="boxes-tl"></div><div className="boxes-tr"></div><div className="boxes-tc"></div>
-                                            <div className="boxes-ml"></div><div className="boxes-mr"></div><div className="boxes-mc"></div>
-                                            <div className="boxes-bl"></div><div className="boxes-br"></div><div className="boxes-bc"></div>
+                                        <h4 className="round">موقعیت شروع</h4>
+                                        <div className="boxes boxGrey boxesColor gray" style={{ width: '100%', marginBottom: 16 }}>
                                             <div className="boxes-contents">
-                                                <div style={{ padding: '8px 0', display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                                                <div style={{ padding: '4px 0', display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center' }}>
                                                     {LOCATIONS.map((loc) => (
                                                         <label key={loc.id} style={{ cursor: 'pointer', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
                                                             <input type="radio" name="kid" value={loc.id} checked={startingLocation === loc.id} onChange={() => setStartingLocation(loc.id)} />
@@ -204,32 +200,29 @@ export default function Register() {
                                             </div>
                                         </div>
 
-                                        <h4 className="round" style={{ marginTop: 16, cursor: 'pointer' }} onClick={() => setShowRules(!showRules)}>
-                                            {showRules ? '▼' : '▶'} مهم: قبل از ثبت نام با دقت بخوانید
+                                        <h4 className="round" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => setShowRules(!showRules)}>
+                                            {showRules ? '▼' : '◀'} مهم: قبل از ثبت نام با دقت بخوانید
                                         </h4>
                                         {showRules && (
-                                            <div className="boxes boxGrey boxesColor gray" style={{ width: '100%', marginBottom: 12 }}>
-                                                <div className="boxes-tl"></div><div className="boxes-tr"></div><div className="boxes-tc"></div>
-                                                <div className="boxes-ml"></div><div className="boxes-mr"></div><div className="boxes-mc"></div>
-                                                <div className="boxes-bl"></div><div className="boxes-br"></div><div className="boxes-bc"></div>
+                                            <div className="boxes boxGrey boxesColor gray" style={{ width: '100%', marginBottom: 16 }}>
                                                 <div className="boxes-contents">
-                                                    <div style={{ height: 300, overflow: 'auto', border: '1px dashed #999', padding: 12, fontSize: 12, lineHeight: '20px', textAlign: 'justify' }}>
-                                                        <p><b>§1 رمز اکانت، ثبت نام و مالکیت</b></p>
+                                                    <div style={{ height: 180, overflowY: 'scroll', border: '1px solid #CCC', padding: 8, fontSize: 11, lineHeight: '18px', textAlign: 'justify', background: '#F8F8F8' }}>
+                                                        <p><b>-1 رمز اکانت، ثبت نام و مالکیت</b></p>
                                                         <p>هر بازیکنی تنها می‌تواند یک اکانت در هر جهان بازی (سرور) داشته باشد.</p>
-                                                        <p><br/></p>
-                                                        <p><b>§1.1 ثبت نام</b></p>
+                                                        <br/>
+                                                        <p><b>1.1 ثبت نام</b></p>
                                                         <p>ایمیلی که برای ثبت نام استفاده می‌شود باید یک ایمیل شخصی بوده و ثبت نام کننده باید دسترسی کامل و کنترل کامل این ایمیل را داشته باشد.</p>
-                                                        <p><br/></p>
-                                                        <p><b>§1.2 رمز اکانت</b></p>
+                                                        <br/>
+                                                        <p><b>1.2 رمز اکانت</b></p>
                                                         <p>صاحب اکانت نمی‌تواند رمز خود را به بازیکنی که در همان جهان بازی (سرور) اکانت دارد بدهد.</p>
-                                                        <p><br/></p>
-                                                        <p><b>§3 استفاده از برنامه‌های خارجی</b></p>
+                                                        <br/>
+                                                        <p><b>2- استفاده از برنامه‌های خارجی</b></p>
                                                         <p>استفاده از هر نرم افزار جهت ارسال کلیک و انجام بازی به صورت اتوماتیک ممنوع بوده و اکانت فرد خاطی مسدود خواهد شد.</p>
-                                                        <p><br/></p>
-                                                        <p><b>§5 تبادل پول</b></p>
+                                                        <br/>
+                                                        <p><b>3- تبادل پول</b></p>
                                                         <p>هر گونه خرید و فروش که در آن پول واقعی رد و بدل شود خلاف است.</p>
-                                                        <p><br/></p>
-                                                        <p><b>§6 رفتار و رعایت حقوق اجتماعی</b></p>
+                                                        <br/>
+                                                        <p><b>4- رفتار و رعایت حقوق اجتماعی</b></p>
                                                         <p>تمامی افراد باید با لفظی مودبانه با یکدیگر برخورد کنند. زبان فارسی و انگلیسی تنها زبان‌های قابل قبول می‌باشند.</p>
                                                     </div>
                                                 </div>
@@ -237,20 +230,16 @@ export default function Register() {
                                         )}
 
                                         <div className="checks" style={{ margin: '12px 0', fontSize: 12 }}>
-                                            <label style={{ cursor: 'pointer' }}>
-                                                <input type="checkbox" className="check" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ marginLeft: 6 }} />
+                                            <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <input type="checkbox" className="check" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
                                                 من قوانین را خوانده و قبول دارم.
                                             </label>
                                         </div>
 
-                                        {error && <div style={{ color: '#DE0000', fontSize: 12, fontWeight: 'bold', marginBottom: 8 }}>{error}</div>}
+                                        {error && <div style={{ color: '#DE0000', fontSize: 12, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>{error}</div>}
 
                                         <div className="btn" style={{ textAlign: 'center', marginTop: 16 }}>
-                                            <button type="submit" disabled={loading} style={{
-                                                background: loading ? '#ccc' : '#498843', color: '#fff', border: 'none',
-                                                borderRadius: 4, padding: '10px 32px', fontWeight: 'bold', fontSize: 14,
-                                                cursor: loading ? 'not-allowed' : 'pointer',
-                                            }}>
+                                            <button type="submit" disabled={loading} className="btn-primary" style={{ padding: '8px 28px', fontSize: 12 }}>
                                                 {loading ? 'در حال ثبت نام...' : 'ثبت نام'}
                                             </button>
                                         </div>
@@ -267,6 +256,8 @@ export default function Register() {
                         </div>
                     </div>
                 </div>
+                </div>
+
                 <div id="ce"></div>
             </div>
         </div>

@@ -9,7 +9,7 @@ function formatCountdown(seconds) {
     const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
-    if (d > 0) return `${d}d ${h}:${m}`;
+    if (d > 0) return `${d}روز و  ${h}:${m}`;
     if (h > 0) return `${h}:${m}:${s}`;
     if (m > 0) return `${m}:${s}`;
     return `${s}s`;
