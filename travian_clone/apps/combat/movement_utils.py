@@ -39,8 +39,8 @@ def dispatch_troop_movement(
     player, source_village, target_village, movement_type, troops_payload,
     farm_list_entry=None, send_hero=False, catapult_target_building=None,
 ):
-    valid_types = dict(TroopMovement.MOVEMENT_TYPES)
-    if movement_type not in valid_types:
+    ALLOWED_MOVEMENT_TYPES = {'ATTACK', 'RAID', 'REINFORCEMENT', 'SCOUT'}  # ✅ RETURN اینجا مجاز نیست
+    if movement_type not in ALLOWED_MOVEMENT_TYPES:
         return False, "نوع عملیات تاکتیکی نامعتبر است."
 
     if not troops_payload or not any(int(v or 0) > 0 for v in troops_payload.values()):

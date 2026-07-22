@@ -2150,8 +2150,9 @@ class GoldTroopShopView(APIView):
 
         player = request.user
         tribe_troops = TroopType.objects.filter(tribe=player.tribe).exclude(
-            is_scout=True, is_settler=True, is_chief=True
-        )
+            is_scout=True
+        ).exclude(is_settler=True).exclude(is_chief=True)
+
         troops_data = []
         for troop in tribe_troops:
             total_cost = troop.wood_cost + troop.clay_cost + troop.iron_cost + troop.crop_cost
@@ -2208,6 +2209,9 @@ class GoldTroopShopView(APIView):
                 troop = TroopType.objects.get(id=item_id, tribe=player.tribe)
             except TroopType.DoesNotExist:
                 return Response({"error": "نیرو یافت نشد."}, status=404)
+
+            if troop.is_scout or troop.is_settler or troop.is_chief:
+                return Response({"error": "این نوع نیرو در فروشگاه طلایی قابل خرید نیست."}, status=400)
 
             total_cost = troop.wood_cost + troop.clay_cost + troop.iron_cost + troop.crop_cost
             gold_price = max(1, int((total_cost / 1000) * self.TROOP_GOLD_MULTIPLIER))

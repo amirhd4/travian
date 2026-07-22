@@ -590,9 +590,6 @@ def _resolve_attack_or_raid(movement):
     # ✅ جدید: عکس فوری نیروهای مدافع بعد از اعمال تلفات
     defender_troops_after_named = {vt.troop_type.name: vt.count for vt in defender_village_troops if vt.count > 0}
 
-    # ✅ جدید: عکس فوری نیروهای مدافع بعد از اعمال تلفات
-    defender_troops_after_named = {vt.troop_type.name: vt.count for vt in defender_village_troops if vt.count > 0}
-
     # ✅ جدید: ارزش جمعیتیِ نیروهای مدافع که توسط مهاجم کشته شدند (امتیاز مهاجم)
     defender_troops_killed_value = 0.0
     for vt in defender_village_troops:
@@ -958,14 +955,29 @@ def _capture_artifact_if_present(captured_village):
 
 def _convert_to_ww_site(village):
     from apps.game_engine.models import VillageBuilding
-    from apps.game_engine.services import _get_or_create_building_type
+    from apps.game_engine.services import _get_or_create_building_type, _get_or_create_empty_building_type, _WALL_DEFS, _DEFAULT_WALL_DEF, _RALLY_POINT_DEF
     from apps.world_wonder.models import WorldWonder
 
     VillageBuilding.objects.filter(village=village).exclude(building_type__category='RESOURCE').delete()
 
     ww_building_type = _get_or_create_building_type("شگفتی جهان", category='INFRASTRUCTURE', max_level=100)
     VillageBuilding.objects.create(village=village, building_type=ww_building_type, position=19, level=0)
-    WorldWonder.objects.get_or_create(village=village)
+
+    empty_type = _get_or_create_empty_building_type()
+    for pos in range(20, 39):
+        VillageBuilding.objects.get_or_create(village=village, position=pos, defaults={"building_type": empty_type, "level": 0})
+
+    rally_name, rally_level, rally_category = _RALLY_POINT_DEF
+    rally_type = _get_or_create_building_type(rally_name, category=rally_category)
+    VillageBuilding.objects.get_or_create(village=village, position=39, defaults={"building_type": rally_type, "level": rally_level})
+
+    wall_def = _WALL_DEFS.get(village.player.tribe, _DEFAULT_WALL_DEF)
+    wall_name, wall_level, wall_category = wall_def
+    wall_type = _get_or_create_building_type(wall_name, provides_wall_defense=True, category=wall_category)
+    VillageBuilding.objects.get_or_create(village=village, position=40, defaults={"building_type": wall_type, "level": wall_level})
+
+    trapper_type = _get_or_create_building_type("تله", category='MILITARY')
+    VillageBuilding.objects.get_or_create(village=village, position=41, defaults={"building_type": trapper_type, "level": 0})
 
     village.is_natar_ww_site = False
     village.name = f"شگفتی جهان ({village.x_coord}|{village.y_coord})"
@@ -1036,7 +1048,7 @@ def complete_troop_upgrade(upgrade_id):
 @app.task
 def resolve_hero_auction(auction_id):
     try:
-        with Transaction.atomic():
+        with transaction.atomic():
             auction = HeroAuction.objects.select_for_update().get(id=auction_id, is_completed=False)
     except HeroAuction.DoesNotExist:
         return "این حراجی یافت نشد یا قبلا پردازش شده است."

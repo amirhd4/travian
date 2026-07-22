@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -61,40 +62,42 @@ class UpgradeWWView(APIView):
         if active_server and active_server.is_finished:
             return Response({"error": "این سرور به پایان رسیده و دیگر ارتقای شگفتی جهان ممکن نیست."}, status=400)
 
-        village, error_response = self._get_valid_ww_village(request, request.data.get('village_id'))
-        if error_response:
-            return error_response
+        with transaction.atomic():
+            village, error_response = self._get_valid_ww_village(request, request.data.get('village_id'))
+            if error_response:
+                return error_response
 
-        ww, _ = WorldWonder.objects.get_or_create(village=village)
-        if ww.level >= 100:
-            return Response({"error": "این شگفتی جهان به حداکثر سطح (۱۰۰) رسیده است."}, status=400)
+            village = Village.objects.select_for_update().get(id=village.id)
+            ww, _ = WorldWonder.objects.select_for_update().get_or_create(village=village)
+            if ww.level >= 100:
+                return Response({"error": "این شگفتی جهان به حداکثر سطح (۱۰۰) رسیده است."}, status=400)
 
-        try:
-            validate_ww_upgrade(request.user, village, ww.level)
-            base_cost = 50000
-            req_res = int(base_cost * (1.1 ** ww.level))
+            try:
+                validate_ww_upgrade(request.user, village, ww.level)
+                base_cost = 50000
+                req_res = int(base_cost * (1.1 ** ww.level))
 
-            if village.wood < req_res or village.clay < req_res or village.iron < req_res or village.crop < req_res:
-                return Response({"error": "منابع کافی نیست."}, status=400)
+                if village.wood < req_res or village.clay < req_res or village.iron < req_res or village.crop < req_res:
+                    return Response({"error": "منابع کافی نیست."}, status=400)
 
-            village.wood -= req_res; village.clay -= req_res
-            village.iron -= req_res; village.crop -= req_res
-            village.save()
+                village.wood -= req_res; village.clay -= req_res
+                village.iron -= req_res; village.crop -= req_res
+                village.save()
 
-            ww.level += 1
-            ww.save()
+                ww.level += 1
+                ww.save()
 
-            VillageBuilding.objects.filter(
-                village=village, building_type__name="شگفتی جهان"
-            ).update(level=ww.level)
+                VillageBuilding.objects.filter(
+                    village=village, building_type__name="شگفتی جهان"
+                ).update(level=ww.level)
 
-            from apps.world_wonder.tasks import _check_for_winner
-            active_server_obj = ServerSetting.objects.filter(is_active=True).first()
-            if active_server_obj:
-                _check_for_winner(active_server_obj)
+                from apps.world_wonder.tasks import _check_for_winner
+                active_server_obj = ServerSetting.objects.filter(is_active=True).first()
+                if active_server_obj:
+                    _check_for_winner(active_server_obj)
 
-            return Response({"message": f"شگفتی جهان به سطح {ww.level} ارتقا یافت!"})
-        except ValidationError as e:
-            return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
-        except Exception as e:
-            return Response({"error": str(e)}, status=400)
+                return Response({"message": f"شگفتی جهان به سطح {ww.level} ارتقا یافت!"})
+            except ValidationError as e:
+                return Response({"error": str(e.message) if hasattr(e, "message") else str(e)}, status=400)
+            except Exception as e:
+                return Response({"error": str(e)}, status=400)

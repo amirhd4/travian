@@ -132,7 +132,7 @@ def _broadcast_server_end(winning_ww, winner_player, winner_alliance):
         if titles:
             message_text += "\n\n" + "\n".join(titles)
 
-    players = list(Player.objects.filter(is_active=True).exclude(username="Natars"))
+    players = list(Player.objects.filter(is_active=True).exclude(username__in=["Natars", "Farms"]))
 
     Message.objects.bulk_create([
         Message(sender=winner_player, receiver=p, subject="🏆 پایان بازی", body=message_text)

@@ -56,7 +56,9 @@ export default function Login() {
             if (capital) setActiveVillageId(capital.id);
             navigate('/village', { replace: true });
         } catch (err) {
-            setError(err.response?.data?.detail || 'نام کاربری یا رمز عبور اشتباه است.');
+            const data = err.response?.data;
+            const msg = data ? Object.values(data).flat().join(' ') : 'نام کاربری یا رمز عبور اشتباه است.';
+            setError(msg);
             loadCaptcha();
             setCaptchaAnswer('');
         } finally { setLoading(false); }
