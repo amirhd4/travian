@@ -18,7 +18,10 @@ div.clear, span.clear { clear: both !important; width: 0 !important; height: 0 !
 #header { height: 115px; }
 #mtop { margin: 0 auto; width: 990px; position: relative; }
 #mid { margin: 0 auto 10px auto; min-height: 660px; width: 990px; position: relative; }
-/*#staticElements { background-image: url('/assets/layout/bgIngameStaticElements-rtl.png'); background-position: center top; position: absolute; height: 730px; width: 100%; pointer-events: none; z-index: 0; }*/
+#staticElements { background-image: url('/assets/layout/bgIngameStaticElements-rtl.png'); background-position: center top; position: absolute; height: 730px; width: 100%; pointer-events: none; z-index: 0; }
+body.login #staticElements, body.signup #staticElements {
+    background-image: none;
+}
 div#ce { clear: both; height: 0; line-height: 0; }
 #logo { float: left; display: block; height: 43px; margin: 24px 16px 0 7px; width: 124px; background: url('/assets/layout/logoSmall.png') no-repeat; }
 body.login #logo, body.signup #logo { background-image: url('/assets/layout/logoBig.png'); margin: 15px 195px 0 0; height: 86px; width: 238px; }
