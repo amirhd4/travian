@@ -5,27 +5,27 @@ import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
 
 const SLOT_POSITIONS = {
-    19: { left: 265, top: 120, size: 80 },
-    20: { left: 205, top: 45,  size: 80 },
-    21: { left: 105, top: 90,  size: 80 },
-    22: { left: 290, top: 45,  size: 80 },
-    23: { left: 450, top: 290, size: 80 },
-    24: { left: 380, top: 54, size: 80 },
-    25: { left: 434, top: 104, size: 80 },
-    26: { left: 490, top: 155, size: 80 },
-    27: { left: 458, top: 210, size: 80 },
-    28: { left: 500, top: 260, size: 80 },
-    29: { left: 260, top: 356, size: 80 },
-    30: { left: 65, top: 260, size: 80 },
-    31: { left: 55, top: 145, size: 80 },
-    32: { left: 175, top: 145, size: 80 },
-    33: { left: 150, top: 185, size: 80 },
-    34: { left: 170, top: 217, size: 80 },
-    35: { left: 40, top: 200, size: 80 },
-    36: { left: 160, top: 325, size: 80 },
-    37: { left: 330, top: 335, size: 80 },
-    38: { left: 250, top: 265, size: 80 },
-    39: { left: 378, top: 205, size: 80 },
+    19: { left: 265, top: 120, size: 95 },
+    20: { left: 205, top: 45,  size: 95 },
+    21: { left: 105, top: 90,  size: 95 },
+    22: { left: 290, top: 45,  size: 95 },
+    23: { left: 450, top: 290, size: 95 },
+    24: { left: 380, top: 54, size: 95 },
+    25: { left: 434, top: 104, size: 95 },
+    26: { left: 490, top: 155, size: 95 },
+    27: { left: 458, top: 210, size: 95 },
+    28: { left: 500, top: 260, size: 95 },
+    29: { left: 260, top: 356, size: 95 },
+    30: { left: 65, top: 260, size: 95 },
+    31: { left: 55, top: 145, size: 95 },
+    32: { left: 175, top: 145, size: 95 },
+    33: { left: 150, top: 185, size: 95 },
+    34: { left: 170, top: 217, size: 95 },
+    35: { left: 40, top: 200, size: 95 },
+    36: { left: 160, top: 325, size: 95 },
+    37: { left: 330, top: 335, size: 95 },
+    38: { left: 250, top: 265, size: 95 },
+    39: { left: 370, top: 213, size: 95 },
     40: { left: 10, top: 10, size: 10 }
 };
 
@@ -71,8 +71,8 @@ function formatCountdown(seconds) {
     const h = Math.floor((seconds % 86400) / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = Math.floor(seconds % 60);
-    if (h > 0) return `${h}h ${m}m ${s}s`;
-    if (m > 0) return `${m}m ${s}s`;
+    if (h > 0) return `${h}:${m}:${s}`;
+    if (m > 0) return `${m}:${s}`;
     return `${s}s`;
 }
 
@@ -220,7 +220,7 @@ export default function VillageCenter() {
                         {rallyB && (() => {
                             const pos = SLOT_POSITIONS[39];
                             const g = rallyB.is_upgrading ? 'g16b' : (rallyB.level > 0 ? 'g16' : 'g16e');
-                            return <img key='rally' src={`/assets/buildings/${g}.png`} alt={rallyB.name} onClick={()=>handleSlotClick(rallyB)} onMouseEnter={(e)=>{setHoveredSlot(rallyB);setTooltipPos({x:e.clientX,y:e.clientY})}} onMouseMove={(e)=>setTooltipPos({x:e.clientX,y:e.clientY})} onMouseLeave={()=>setHoveredSlot(null)} onError={(e)=>{e.target.style.display='none'}} style={{ position:'absolute', left:`${pos.left}px`, top:`${pos.top}px`, width:`${pos.size}px`, transform:'translate(-50%,-50%)', cursor:'pointer', zIndex:11 }} />;
+                            return <img key='rally' src={`/assets/buildings/${g}.png`} alt={rallyB.name} onClick={()=>handleSlotClick(rallyB)} onMouseEnter={(e)=>{setHoveredSlot(rallyB);setTooltipPos({x:e.clientX,y:e.clientY})}} onMouseMove={(e)=>setTooltipPos({x:e.clientX,y:e.clientY})} onMouseLeave={()=>setHoveredSlot(null)} onError={(e)=>{e.target.style.display='none'}} style={{ position:'absolute', left:`${pos.left}px`, top:`${pos.top}px`, width:`${pos.size}px`, transform:'translate(-50%,-50%) scaleX(-1)', cursor:'pointer', zIndex:11 }} />;
                         })()}
 
                         {wallB && (wallB.level > 0 || wallB.is_upgrading) && (() => {

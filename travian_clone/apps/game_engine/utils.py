@@ -305,7 +305,7 @@ def get_effective_production_rates(village):
         'wood': speed * (village.prod_wood * oasis_mult['wood'] * gold_mult['wood'] + hero_bonus('wood')),
         'clay': speed * (village.prod_clay * oasis_mult['clay'] * gold_mult['clay'] + hero_bonus('clay')),
         'iron': speed * (village.prod_iron * oasis_mult['iron'] * gold_mult['iron'] + hero_bonus('iron')),
-        'crop': speed * (village.prod_crop * oasis_mult['crop'] * gold_mult['crop'] * mill_mult - calculate_crop_upkeep(village) + hero_bonus('crop')),
+        'crop': speed * (village.prod_crop * oasis_mult['crop'] * gold_mult['crop'] * mill_mult + hero_bonus('crop')),
     }
 
 

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -126,6 +126,9 @@ export default function ResourceBar() {
                         <img src="/assets/ui/res-5.gif" alt="تراز گندم" />
                         <span className="value">{Math.floor(cropConsumption).toLocaleString()}/{Math.floor(cropProduction).toLocaleString()}</span>
                     </p>
+                    <div className="bar-bg">
+                        <div className="bar" style={{ width: Math.min(100, Math.abs(cropNet) / (cropProduction || 1) * 100) + '%', backgroundColor: cropNet >= 0 ? '#006900' : '#DE0000' }}></div>
+                    </div>
                 </li>
             </ul>
         </>
