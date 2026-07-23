@@ -14,6 +14,7 @@ RESEARCH_COSTS = {
     5: (450, 300, 200, 120, 4800),     # قوچ آهنین (Battering Ram)
     6: (500, 650, 350, 100, 6000),     # منجنیق (Onager)
     7: (15000, 12000, 20000, 10000, 18000),  # سناتور (Senator)
+    8: (15000, 12000, 20000, 10000, 18000),  # سناتور (Senator) - chief
     # GAUL
     10: (160, 100, 150, 50, 1800),     # شمشیرزن گلی (Swordman)
     11: (120, 100, 40, 30, 2400),      # ردیاب گلی (Pathfinder)
@@ -21,6 +22,7 @@ RESEARCH_COSTS = {
     13: (450, 300, 200, 60, 4800),     # قوچ گلی (Ram)
     14: (500, 650, 350, 60, 6000),     # بالیستا گلی (Trebuchet)
     15: (15000, 12000, 20000, 10000, 18000),  # رئیس (Chieftain)
+    16: (15000, 12000, 20000, 10000, 18000),  # رئیس (Chieftain) - chief
     # TEUTON
     18: (80, 50, 60, 30, 1800),        # نیزه‌دار توتونی (Spearman)
     19: (120, 80, 40, 30, 2400),       # کاراگاه توتونی (Scout)
@@ -28,6 +30,7 @@ RESEARCH_COSTS = {
     21: (450, 300, 200, 80, 4800),     # قوچ توتونی (Ram)
     22: (500, 650, 350, 120, 6000),    # کاتاپولت توتونی (Catapult)
     23: (15000, 12000, 20000, 10000, 18000),  # رئیس توتونی (Chief)
+    24: (15000, 12000, 20000, 10000, 18000),  # رئیس توتونی (Chief) - chief
 }
 
 # Research prerequisites: {troop_type_id: (min_academy_level, {building_name: min_level})}
@@ -39,6 +42,7 @@ RESEARCH_PREREQUISITES = {
     5: (5, {'کارگاه': 1}),              # Ram - Academy 5 + Workshop 1
     6: (10, {'کارگاه': 5}),             # Onager - Academy 10 + Workshop 5
     7: (10, {'اقامتگاه': 5}),           # Senator - Academy 10 + Residence 5
+    8: (10, {'اقامتگاه': 5}),           # Senator - Academy 10 + Residence 5
     # GAUL
     10: (1, {}),                         # Swordman - Academy 1
     11: (1, {}),                         # Pathfinder - Academy 1
@@ -46,6 +50,7 @@ RESEARCH_PREREQUISITES = {
     13: (5, {'کارگاه': 1}),             # Ram - Academy 5 + Workshop 1
     14: (10, {'کارگاه': 5}),            # Trebuchet - Academy 10 + Workshop 5
     15: (10, {'اقامتگاه': 5}),          # Chieftain - Academy 10 + Residence 5
+    16: (10, {'اقامتگاه': 5}),          # Chieftain - Academy 10 + Residence 5
     # TEUTON
     18: (1, {}),                         # Spearman - Academy 1
     19: (1, {}),                         # Scout - Academy 1
@@ -53,6 +58,7 @@ RESEARCH_PREREQUISITES = {
     21: (5, {'کارگاه': 1}),             # Ram - Academy 5 + Workshop 1
     22: (10, {'کارگاه': 5}),            # Catapult - Academy 10 + Workshop 5
     23: (10, {'اقامتگاه': 5}),          # Chief - Academy 10 + Residence 5
+    24: (10, {'اقامتگاه': 5}),          # Chief - Academy 10 + Residence 5
 }
 
 # Troops that don't need research (basic infantry per tribe)

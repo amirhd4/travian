@@ -10,7 +10,7 @@ import datetime
 from .models import (
     TroopMovement, VillageTroop, TroopType, Hero, PlayerHeroItem, Animal, VillageAnimal,
     TrainingQueue, Adventure, FarmListEntry, FarmList, TroopUpgrade, CombatReport, TrappedTroop,
-    TroopEvasionSetting,
+    TroopEvasionSetting, ResearchedTroop, AcademyResearchQueue,
 )
 from .movement_utils import dispatch_troop_movement
 from .tasks import resolve_hero_adventure
@@ -935,20 +935,33 @@ class AcademyView(APIView):
                 } if cost else None,
             })
 
-        # Active research
+        # Active research — auto-complete expired entries
+        from django.utils import timezone
         active = AcademyResearchQueue.objects.filter(
             village=village, is_completed=False
         ).first()
         active_research = None
         if active:
-            from django.utils import timezone
-            remaining = max(0, int((active.finishes_at - timezone.now()).total_seconds()))
-            active_research = {
-                "troop_name": active.troop_type.name,
-                "troop_type_id": active.troop_type_id,
-                "finishes_at": active.finishes_at.isoformat(),
-                "remaining_seconds": remaining,
-            }
+            remaining = int((active.finishes_at - timezone.now()).total_seconds())
+            if remaining <= 0:
+                # Research time has passed but Celery task didn't run — auto-complete
+                ResearchedTroop.objects.get_or_create(
+                    village=active.village, troop_type=active.troop_type
+                )
+                active.is_completed = True
+                active.save()
+                # Update researched status in troops_data
+                for t in troops_data:
+                    if t["troop_type_id"] == active.troop_type_id:
+                        t["is_researched"] = True
+                        t["can_research"] = False
+            else:
+                active_research = {
+                    "troop_name": active.troop_type.name,
+                    "troop_type_id": active.troop_type_id,
+                    "finishes_at": active.finishes_at.isoformat(),
+                    "remaining_seconds": remaining,
+                }
 
         return Response({
             "has_academy": True,

@@ -120,6 +120,11 @@ CHANNEL_LAYERS = {
 
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_TASK_INCLUDE = [
+    'apps.combat.tasks',
+    'apps.game_engine.tasks.game_tasks',
+    'apps.world_wonder.tasks',
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators

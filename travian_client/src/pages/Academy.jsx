@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PageShell from '../components/PageShell';
 import WoodSign from '../components/WoodSign';
 import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
-import { useGameWebSocket } from '../hooks/useGameWebsocket';
 
 function formatDuration(totalSeconds) {
     if (totalSeconds <= 0) return '00:00:00';
@@ -16,14 +15,15 @@ function formatDuration(totalSeconds) {
 
 export default function Academy() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
-    const { lastMessage } = useGameWebSocket();
 
     const [data, setData] = useState({ has_academy: false, academy_level: 0, troops: [], active_research: null });
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(null);
     const [alertMsg, setAlertMsg] = useState(null);
+    const [fetched, setFetched] = useState(false);
 
-    const fetchData = useCallback(async () => {
+    // Fetch data - stable, no re-fetch unless manually triggered
+    const fetchData = async () => {
         if (!activeVillageId) return;
         try {
             const { data } = await api.get('combat/academy/', { params: { village_id: activeVillageId } });
@@ -32,33 +32,36 @@ export default function Academy() {
             setData({ has_academy: false, academy_level: 0, troops: [], active_research: null });
         } finally {
             setLoading(false);
+            setFetched(true);
         }
-    }, [activeVillageId]);
+    };
 
-    useEffect(() => { setLoading(true); fetchData(); }, [fetchData]);
-    useEffect(() => { if (lastMessage?.type === 'ACADEMY_RESEARCH_COMPLETED') fetchData(); }, [lastMessage, fetchData]);
+    // Fetch ONCE on mount - no dependencies that change
+    useEffect(() => {
+        if (activeVillageId && !fetched) {
+            fetchData();
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Countdown timer for active research
+    // Countdown timer - runs independently
     useEffect(() => {
         const interval = setInterval(() => {
             setData((prev) => {
                 if (!prev.active_research) return prev;
                 const remaining = Math.max(0, prev.active_research.remaining_seconds - 1);
                 if (remaining <= 0) {
-                    fetchData();
                     return { ...prev, active_research: null };
                 }
                 return { ...prev, active_research: { ...prev.active_research, remaining_seconds: remaining } };
             });
         }, 1000);
         return () => clearInterval(interval);
-    }, [fetchData]);
+    }, []);
 
-    // Poll every 20 seconds
-    useEffect(() => {
-        const interval = setInterval(fetchData, 20000);
-        return () => clearInterval(interval);
-    }, [fetchData]);
+    const handleRefresh = () => {
+        setLoading(true);
+        fetchData();
+    };
 
     const handleResearch = async (troopTypeId) => {
         setSubmitting(troopTypeId);
@@ -97,7 +100,6 @@ export default function Academy() {
                             نیروهای پایه نیازی به تحقیق ندارند. فقط یک تحقیق در هر زمان ممکن است.
                         </p>
 
-                        {/* Active Research */}
                         {data.active_research && (
                             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
                                 <div className="flex items-center justify-between">
@@ -112,7 +114,6 @@ export default function Academy() {
                             </div>
                         )}
 
-                        {/* Troop List */}
                         <div className="space-y-2">
                             {data.troops.map((t) => (
                                 <div key={t.troop_type_id} className={`flex items-center gap-3 rounded-xl p-3 border ${
