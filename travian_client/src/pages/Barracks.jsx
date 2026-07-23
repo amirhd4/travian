@@ -6,6 +6,7 @@ import LoadingState from '../components/LoadingState';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import useGameStore from '../store/useGameStore';
 import { formatDuration } from '../utils/formatter';
+import { getUnitImage } from '../constants/images';
 
 function unitIcon(unit) {
     if (unit.is_settler) return '🧑‍🌾';
@@ -146,7 +147,7 @@ export default function Barracks() {
                                     canTrain ? 'border-parchment-300 bg-parchment-50' : 'border-gray-200 bg-gray-50 opacity-70'
                                 }`}>
                                     <div className="w-16 h-16 rounded-xl bg-white border border-parchment-300 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                        <img src={`/assets/troops/unit-${unit.id}.gif`} alt={unit.name} className={`w-full h-full object-contain ${!canTrain ? 'grayscale' : ''}`} onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                                        <img src={getUnitImage(unit.id)} alt={unit.name} className={`w-full h-full object-contain ${!canTrain ? 'grayscale' : ''}`} onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                                         <div className="w-full h-full items-center justify-center text-3xl hidden">{unitIcon(unit)}</div>
                                     </div>
 

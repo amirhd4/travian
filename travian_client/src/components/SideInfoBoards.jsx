@@ -15,7 +15,7 @@ function formatCountdown(seconds) {
     return `${s}s`;
 }
 
-const TRIBE_NAMES = { 1: 'رومی‌ها', 2: 'توتون‌ها', 3: 'گل‌ها' };
+const TRIBE_NAMES = { 1: 'رومی‌ها', 2: 'توتن‌ها', 3: 'گل‌ها' };
 
 export default function SideInfoBoards() {
     const user = useGameStore((state) => state.user);

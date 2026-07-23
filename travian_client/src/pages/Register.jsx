@@ -5,7 +5,7 @@ import api from '../api/axiosConfig';
 
 const TRIBES = [
     { id: 'ROMAN', name: 'رومیان', desc: 'ارتش منظم و ساختمان‌های قوی', img: '/assets/tribes/roman-splash.gif' },
-    { id: 'TEUTON', name: 'توتون‌ها', desc: 'جنگجویان قدرتمند و مهاجم', img: '/assets/tribes/teuton-splash.gif' },
+    { id: 'TEUTON', name: 'توتن‌ها', desc: 'جنگجویان قدرتمند و مهاجم', img: '/assets/tribes/teuton-splash.gif' },
     { id: 'GAUL', name: 'گل‌ها', desc: 'دفاع قوی و سرعت بالا', img: '/assets/tribes/gaul-splash.gif' },
 ];
 

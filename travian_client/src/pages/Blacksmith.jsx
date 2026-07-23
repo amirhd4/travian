@@ -4,6 +4,7 @@ import WoodSign from '../components/WoodSign';
 import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
+import { getUnitImage } from '../constants/images';
 
 function formatDuration(totalSeconds) {
     if (totalSeconds <= 0) return '00:00:00';

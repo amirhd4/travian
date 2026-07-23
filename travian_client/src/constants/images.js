@@ -117,7 +117,7 @@ export const FIELDS = {
 };
 
 // Unit/troop image by ID
-export const getUnitImage = (id) => `/assets/troops/unit-${id}.gif`;
+export const getUnitImage = (id) => `/assets/troops/unit-${id}.png`;
 
 // Hero images
 export const HERO = {

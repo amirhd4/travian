@@ -551,7 +551,7 @@ class UpgradeBuildingView(APIView):
                 if new_building_type.name == "تله" and tribe != "GAUL":
                     return Response({"error": "تله فقط برای گول‌ها قابل ساخت است."}, status=400)
                 if new_building_type.name == "آبشخور اسب" and tribe != "TEUTON":
-                    return Response({"error": "آبشخور اسب فقط برای توتون‌ها قابل ساخت است."}, status=400)
+                    return Response({"error": "آبشخور اسب فقط برای توتن‌ها قابل ساخت است."}, status=400)
 
                 # ── محاسبه هزینه سطح ۱ ──
                 multiplier = 1.5 ** 0  # = 1.0

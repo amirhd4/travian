@@ -371,7 +371,7 @@ def _apply_hero_combat_damage(hero, is_winner):
 
 
 def _apply_trapper_capture(target_village, attacker_survivors, troop_type_cache, attacker_player):
-    """تله‌ی توتونی: وقتی مدافع پیروز می‌شود، بخشی از بازماندگان مهاجم به‌جای بازگشت
+    """تله‌ی توتنی: وقتی مدافع پیروز می‌شود، بخشی از بازماندگان مهاجم به‌جای بازگشت
     به خانه، اسیر و در دهکده‌ی مدافع نگه‌داری می‌شوند."""
     if target_village.player.tribe != 'TEUTON':
         return ""
@@ -415,7 +415,7 @@ def _apply_trapper_capture(target_village, attacker_survivors, troop_type_cache,
             captured_names.append(f"{take}x {troop_type.name}")
 
     if captured_names:
-        return f"🪤 تله‌ی توتونی {', '.join(captured_names)} از نیروهای مهاجم را اسیر کرد."
+        return f"🪤 تله‌ی توتنی {', '.join(captured_names)} از نیروهای مهاجم را اسیر کرد."
     return ""
 
 
@@ -824,7 +824,7 @@ def _resolve_attack_or_raid(movement):
         dmg, died = _apply_hero_combat_damage(defending_hero, is_winner=(victory == "defender"))
         hero_combat_summary += f"\n🦸 قهرمان مدافع {dmg} آسیب دید" + (" و از پای درآمد!" if died else ".")
 
-    # ✅ جدید: تله‌ی توتونی — فقط وقتی مدافع پیروز شده
+    # ✅ جدید: تله‌ی توتن — فقط وقتی مدافع پیروز شده
     trapped_summary = _apply_trapper_capture(target, attacker_survivors, troop_type_cache, source.player) if victory == "defender" else ""
 
     # ✅ جدید: بازماندگان اسم‌دار (بعد از تله) برای گزارش ساختاری

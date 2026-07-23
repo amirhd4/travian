@@ -422,7 +422,7 @@ class CombatReport(models.Model):
 
 
 class TrappedTroop(models.Model):
-    """نیروهای اسیرشده توسط ساختمان «تله» (فقط بازیکنان توتون واقعا از آن استفاده تاکتیکی می‌کنند)."""
+    """نیروهای اسیرشده توسط ساختمان «تله» (فقط بازیکنان توتن واقعا از آن استفاده تاکتیکی می‌کنند)."""
 
     trapper_village = models.ForeignKey(Village, on_delete=models.CASCADE, related_name='trapped_troops')
     original_owner_player = models.ForeignKey('authentication.Player', on_delete=models.CASCADE, related_name='+')

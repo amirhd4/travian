@@ -4,6 +4,7 @@ import WoodSign from '../components/WoodSign';
 import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
+import { getUnitImage } from '../constants/images';
 
 function formatDuration(totalSeconds) {
     if (totalSeconds <= 0) return '00:00:00';
@@ -142,7 +143,7 @@ export default function Academy() {
                                             onClick={() => toggleExpand(t.troop_type_id)}
                                         >
                                             <img
-                                                src={`/assets/troops/unit-${t.troop_type_id}.gif`} alt={t.name}
+                                                src={getUnitImage(t.troop_type_id)} alt={t.name}
                                                 className={`w-12 h-12 object-contain rounded-lg border flex-shrink-0 ${
                                                     t.is_researched ? 'border-green-300 bg-green-50' : 'border-parchment-300 bg-parchment-100 opacity-60'
                                                 }`}
