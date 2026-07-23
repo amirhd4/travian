@@ -190,17 +190,6 @@ def _ensure_all_building_types_exist():
     # Trapper (Gaul only)
     # _get_or_create_building_type("تله", category='MILITARY')
 
-    # Additional buildings referenced in _BUILDING_PREREQUISITES that aren't in _CITY_BUILDING_DEFS
-    # _get_or_create_building_type("آبشخور اسب", category='MILITARY')
-    # _get_or_create_building_type("پادگان بزرگ", category='MILITARY')
-    # _get_or_create_building_type("اصطبل بزرگ", category='MILITARY')
-    # _get_or_create_building_type("کوره آجرپزی", category='INFRASTRUCTURE')
-    # _get_or_create_building_type("اره‌خانه", category='INFRASTRUCTURE')
-    # _get_or_create_building_type("کوره آهنگری", category='INFRASTRUCTURE')
-    # _get_or_create_building_type("میدان تورنمنت", category='INFRASTRUCTURE')
-    # _get_or_create_building_type("نانوایی", category='INFRASTRUCTURE')
-    # _get_or_create_building_type("اداره تجارت", category='INFRASTRUCTURE')
-
 
 def _create_default_buildings(village, distribution_key='NORMAL', tribe='ROMAN'):
     if VillageBuilding.objects.filter(village=village).exists():
