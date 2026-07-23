@@ -505,16 +505,6 @@ class DailyMedal(models.Model):
 
 
 class GoldBankDeposit(models.Model):
-    """
-    انتقال طلا به «بانک»: طلا از حساب فعلی کسر می‌شود و یک کد PIN یک‌بارمصرف
-    صادر می‌شود که بعدا (روی همین حساب، حساب دیگر، یا حتی سرور/نصب دیگری از
-    همین بازی) قابل واریز است.
-
-    ⚠️ فعلا بدون اتصال به سرویس ارسال ایمیل واقعی: کد پین مستقیم در پاسخ API
-    نمایش داده می‌شود (مشابه درگاه پرداخت آزمایشی Checkout.jsx). هر وقت خواستید
-    ایمیل واقعی وصل شود، فقط کافی است همین pin_code از طریق send_email_task
-    (که در apps/game_engine/tasks/game_tasks.py از قبل وجود دارد) ارسال شود.
-    """
     email = models.EmailField()
     amount = models.PositiveIntegerField()
     pin_code = models.CharField(max_length=20, unique=True)

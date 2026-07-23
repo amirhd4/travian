@@ -203,12 +203,13 @@ class TroopTypeCatalogView(APIView):
             except (Village.DoesNotExist, ValueError):
                 pass
 
-        from .research_data import is_troop_basic
+        from .research_data import is_troop_basic, get_troop_description
 
         return Response([
             {
                 "id": t.id,
                 "name": t.name,
+                "description": get_troop_description(t.id),
                 "tribe": t.tribe,
                 "attack_power": t.attack_power,
                 "defense_infantry": t.defense_infantry,
@@ -225,6 +226,7 @@ class TroopTypeCatalogView(APIView):
                 "crop_upkeep": t.crop_upkeep,
                 "base_train_time": t.base_train_time,
                 "is_cavalry": t.is_cavalry,
+                "is_chief": t.is_chief,
                 "required_building": " یا ".join(get_required_training_buildings(t)),
                 "required_academy_level": t.required_academy_level,
                 "is_basic": is_troop_basic(t),
@@ -881,7 +883,8 @@ class AcademyView(APIView):
         from apps.game_engine.models import Village, VillageBuilding
         from .research_data import (
             is_troop_basic, is_troop_researchable, get_research_cost,
-            get_research_prerequisites, check_research_prerequisites
+            get_research_prerequisites, check_research_prerequisites,
+            get_troop_description
         )
 
         village_id = request.query_params.get('village_id')
@@ -921,6 +924,12 @@ class AcademyView(APIView):
             troops_data.append({
                 "troop_type_id": troop.id,
                 "name": troop.name,
+                "description": get_troop_description(troop.id),
+                "attack_power": troop.attack_power,
+                "defense_infantry": troop.defense_infantry,
+                "defense_cavalry": troop.defense_cavalry,
+                "speed": troop.speed,
+                "carry_capacity": troop.carry_capacity,
                 "is_researched": researched,
                 "is_basic": basic,
                 "can_research": not researched and met and cost is not None,

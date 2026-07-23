@@ -206,6 +206,10 @@ button:disabled { opacity: 0.5; cursor: not-allowed !important; }
 .wood-sign { background: #FFF; border: 1px solid #C9C9C9; margin-bottom: 12px; }
 .wood-sign h3 { background: #498843; color: #FFF; font-weight: bold; font-size: 13px; padding: 6px 12px; margin: 0; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid #3a6e35; }
 .wood-sign > div { padding: 12px; }
+.wood-sign h3 { border-radius: 0; }
+.academy-troop-card { transition: all 0.15s ease; }
+.academy-troop-card:hover { box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .progress-track { height: 8px; background: #E5E5E5; border-radius: 4px; overflow: hidden; position: relative; }
 .equip-slot { width: 100%; aspect-ratio: 1; background: #F5F5F5; border: 2px solid #C9C9C9; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: border-color 0.2s; }
 .equip-slot:hover { border-color: #F88C1F; }

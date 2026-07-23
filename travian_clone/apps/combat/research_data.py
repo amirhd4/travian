@@ -1,81 +1,141 @@
 """
 Research costs and prerequisites for the Academy system.
 Each troop type (except basic infantry) must be researched before training/upgrading.
+
+Troop IDs (from seed_game_data.py):
+  ROMAN:  1=گرزدار(Legionnaire), 2=محافظ نیزه‌دار(Praetorian), 3=امپراتوری(Imperian),
+          4=کاراگاه(Scout), 5=شوالیه سوار(Equites Imperatoris), 6=سوار سناتور(Equites Caesaris),
+          7=قوچ آهنین(Battering Ram), 8=منجنیق(Onager), 9=سناتور(Senator), 10=مهاجر(Settler)
+  GAUL:   11=جنگجوی نیزه‌دار گل(Phalanx), 12=شمشیرزن گلی(Swordsman), 13=ردیاب گلی(Pathfinder),
+          14=سوار زوبین‌انداز(Theutates Thunder), 15=سوار دروید(Druidrider), 16=سوار هیدوان(Haeduan),
+          17=قوچ گلی(Battering Ram), 18=بالیستا گلی(Ballista), 19=رئیس(Chieftain), 20=مهاجر گلی(Settler)
+  TEUTON: 21=کلوب‌دار توتونی(Clubswinger), 22=نیزه‌دار توتونی(Spearman), 23=تبردار توتونی(Axeman),
+          24=کاراگاه توتونی(Scout), 25=سوار پالادین(Paladin), 26=شوالیه توتونی(Teutonic Knight),
+          27=قوچ توتونی(Battering Ram), 28=کاتاپولت توتونی(Catapult), 29=رئیس توتونی(Chief), 30=مهاجر توتونی(Settler)
 """
 
 from apps.combat.models import TroopType
 
+# ═══════════════════════════════════════════════════════════════
 # Research costs: {troop_type_id: (wood, clay, iron, crop, time_seconds)}
+# Source: GameEngine/Data/resdata.php ($r2-$r9, $r12-$r19, $r22-$r29)
+# ═══════════════════════════════════════════════════════════════
 RESEARCH_COSTS = {
-    # ROMAN
-    2: (160, 100, 150, 50, 1800),     # محافظ نیزه‌دار (Praetorian)
-    3: (100, 120, 60, 40, 2400),       # کاراگاه (Scout)
-    4: (300, 250, 200, 80, 3600),      # شوالیه سوار (Equites Legati)
-    5: (450, 300, 200, 120, 4800),     # قوچ آهنین (Battering Ram)
-    6: (500, 650, 350, 100, 6000),     # منجنیق (Onager)
-    7: (15000, 12000, 20000, 10000, 18000),  # سناتور (Senator)
-    8: (15000, 12000, 20000, 10000, 18000),  # سناتور (Senator) - chief
-    # GAUL
-    10: (160, 100, 150, 50, 1800),     # شمشیرزن گلی (Swordman)
-    11: (120, 100, 40, 30, 2400),      # ردیاب گلی (Pathfinder)
-    12: (300, 250, 200, 80, 3600),     # سوار زوبین‌انداز (Theutates)
-    13: (450, 300, 200, 60, 4800),     # قوچ گلی (Ram)
-    14: (500, 650, 350, 60, 6000),     # بالیستا گلی (Trebuchet)
-    15: (15000, 12000, 20000, 10000, 18000),  # رئیس (Chieftain)
-    16: (15000, 12000, 20000, 10000, 18000),  # رئیس (Chieftain) - chief
-    # TEUTON
-    18: (80, 50, 60, 30, 1800),        # نیزه‌دار توتونی (Spearman)
-    19: (120, 80, 40, 30, 2400),       # کاراگاه توتونی (Scout)
-    20: (300, 250, 200, 80, 3600),     # سوار پالادین (Paladin)
-    21: (450, 300, 200, 80, 4800),     # قوچ توتونی (Ram)
-    22: (500, 650, 350, 120, 6000),    # کاتاپولت توتونی (Catapult)
-    23: (15000, 12000, 20000, 10000, 18000),  # رئیس توتونی (Chief)
-    24: (15000, 12000, 20000, 10000, 18000),  # رئیس توتونی (Chief) - chief
+    # ── ROMAN ──
+    2: (700, 620, 1480, 580, 7080),       # محافظ نیزه‌دار (Praetorian)
+    3: (1000, 740, 1880, 640, 7560),       # امپراتوری (Imperian)
+    4: (940, 740, 360, 400, 5880),         # کاراگاه (Equites Legati / Scout)
+    5: (3400, 1860, 2760, 760, 9720),      # شوالیه سوار (Equites Imperatoris)
+    6: (3400, 2660, 6600, 1240, 12360),    # سوار سناتور (Equites Caesaris)
+    7: (5500, 1540, 4200, 580, 15600),     # قوچ آهنین (Battering Ram)
+    8: (5800, 5500, 5000, 700, 28800),     # منجنیق (Fire Catapult / Onager)
+    9: (15880, 13800, 36400, 22660, 24475),  # سناتور (Senator)
+    # ── GAUL ──
+    12: (940, 700, 1680, 520, 6120),       # شمشیرزن گلی (Swordsman)
+    13: (1120, 700, 360, 400, 5880),       # ردیاب گلی (Pathfinder)
+    14: (2200, 1900, 2040, 520, 9240),     # سوار زوبین‌انداز (Theutates Thunder)
+    15: (2260, 1420, 2440, 880, 9480),     # سوار دروید (Druidrider)
+    16: (3100, 2580, 5600, 1180, 11160),   # سوار هیدوان (Haeduan)
+    17: (5800, 2320, 2840, 610, 16800),    # قوچ گلی (Battering Ram)
+    18: (5860, 5900, 5240, 700, 28800),    # بالیستا گلی (Ballista)
+    19: (15880, 22900, 25200, 22660, 24475),  # رئیس (Chieftain)
+    # ── TEUTON ──
+    22: (970, 380, 880, 400, 5160),        # نیزه‌دار توتونی (Spearman)
+    23: (1010, 940, 1390, 650, 5400),      # تبردار توتونی (Axeman)
+    24: (1220, 800, 550, 510, 5160),       # کاراگاه توتونی (Scout)
+    25: (1310, 1205, 1080, 500, 9480),     # سوار پالادین (Paladin)
+    26: (1200, 1480, 1640, 450, 11160),    # شوالیه توتونی (Teutonic Knight)
+    27: (2250, 1330, 835, 230, 16800),     # قوچ توتونی (Battering Ram)
+    28: (1135, 1710, 770, 130, 28800),     # کاتاپولت توتونی (Catapult)
+    29: (18250, 13500, 20400, 16480, 19425),  # رئیس توتونی (Chief)
 }
 
+# ═══════════════════════════════════════════════════════════════
 # Research prerequisites: {troop_type_id: (min_academy_level, {building_name: min_level})}
+# Source: Technology.php::meetRRequirement()
+# ═══════════════════════════════════════════════════════════════
 RESEARCH_PREREQUISITES = {
-    # ROMAN
-    2: (1, {}),                          # Praetorian - Academy 1
-    3: (1, {}),                          # Scout - Academy 1
-    4: (3, {'اصطبل': 1}),               # Equites Legati - Academy 3 + Stable 1
-    5: (5, {'کارگاه': 1}),              # Ram - Academy 5 + Workshop 1
-    6: (10, {'کارگاه': 5}),             # Onager - Academy 10 + Workshop 5
-    7: (10, {'اقامتگاه': 5}),           # Senator - Academy 10 + Residence 5
-    8: (10, {'اقامتگاه': 5}),           # Senator - Academy 10 + Residence 5
-    # GAUL
-    10: (1, {}),                         # Swordman - Academy 1
-    11: (1, {}),                         # Pathfinder - Academy 1
-    12: (3, {'اصطبل': 1}),              # Theutates - Academy 3 + Stable 1
-    13: (5, {'کارگاه': 1}),             # Ram - Academy 5 + Workshop 1
-    14: (10, {'کارگاه': 5}),            # Trebuchet - Academy 10 + Workshop 5
-    15: (10, {'اقامتگاه': 5}),          # Chieftain - Academy 10 + Residence 5
-    16: (10, {'اقامتگاه': 5}),          # Chieftain - Academy 10 + Residence 5
-    # TEUTON
-    18: (1, {}),                         # Spearman - Academy 1
-    19: (1, {}),                         # Scout - Academy 1
-    20: (3, {'اصطبل': 1}),              # Paladin - Academy 3 + Stable 1
-    21: (5, {'کارگاه': 1}),             # Ram - Academy 5 + Workshop 1
-    22: (10, {'کارگاه': 5}),            # Catapult - Academy 10 + Workshop 5
-    23: (10, {'اقامتگاه': 5}),          # Chief - Academy 10 + Residence 5
-    24: (10, {'اقامتگاه': 5}),          # Chief - Academy 10 + Residence 5
+    # ── ROMAN ──
+    2: (1, {}),                              # Praetorian — Academy 1
+    3: (5, {'آهنگری': 1}),                   # Imperian — Academy 5 + Blacksmith 1
+    4: (5, {'اصطبل': 1}),                    # Equites Legati — Academy 5 + Stable 1
+    5: (5, {'اصطبل': 5}),                    # Equites Imperatoris — Academy 5 + Stable 5
+    6: (5, {'اصطبل': 10}),                   # Equites Caesaris — Academy 5 + Stable 10
+    7: (10, {'کارگاه': 1}),                  # Battering Ram — Academy 10 + Workshop 1
+    8: (15, {'کارگاه': 10}),                 # Fire Catapult — Academy 15 + Workshop 10
+    9: (20, {'میدان تجمع': 10}),             # Senator — Academy 20 + Rally Point 10
+    # ── GAUL ──
+    12: (3, {'آهنگری': 1}),                  # Swordsman — Academy 3 + Blacksmith 1
+    13: (5, {'اصطبل': 1}),                   # Pathfinder — Academy 5 + Stable 1
+    14: (5, {'اصطبل': 3}),                   # Theutates Thunder — Academy 5 + Stable 3
+    15: (5, {'اصطبل': 5}),                   # Druidrider — Academy 5 + Stable 5
+    16: (15, {'اصطبل': 10}),                 # Haeduan — Academy 15 + Stable 10
+    17: (10, {'کارگاه': 1}),                 # Battering Ram — Academy 10 + Workshop 1
+    18: (15, {'کارگاه': 10}),                # Ballista — Academy 15 + Workshop 10
+    19: (20, {'میدان تجمع': 10}),            # Chieftain — Academy 20 + Rally Point 10
+    # ── TEUTON ──
+    22: (1, {'آهنگری': 3}),                  # Spearman — Academy 1 + Blacksmith 3
+    23: (3, {'پادگان': 1}),                  # Axeman — Academy 3 + Barracks 1
+    24: (1, {'ساختمان اصلی': 5}),            # Scout — Academy 1 + Main Building 5
+    25: (5, {'اصطبل': 5}),                   # Paladin — Academy 5 + Stable 5
+    26: (15, {'اصطبل': 10}),                 # Teutonic Knight — Academy 15 + Stable 10
+    27: (10, {'کارگاه': 1}),                 # Battering Ram — Academy 10 + Workshop 1
+    28: (15, {'کارگاه': 10}),                # Catapult — Academy 15 + Workshop 10
+    29: (20, {'میدان تجمع': 5}),             # Chief — Academy 20 + Rally Point 5
 }
 
-# Troops that don't need research (basic infantry per tribe)
-# ROMAN position 1 = id varies, GAUL position 1, TEUTON position 1
-# These are determined by the is_basic check below
+# ═══════════════════════════════════════════════════════════════
+# Troop descriptions (Persian) — displayed in Academy
+# ═══════════════════════════════════════════════════════════════
+TROOP_DESCRIPTIONS = {
+    # ── ROMAN ──
+    1: "سرباز پایه رومی با سپر و شمشیر. متعادل در حمله و دفاع، مناسب برای نبردهای اولیه و دفاع از روستا.",
+    2: "محافظ نخبه امپراتوری رومی با دفاع بسیار بالا در برابر پیاده‌نظام. سنگربانان امپراتور که هرگز عقب نمی‌نشینند.",
+    3: "سرباز تهاجمی رومی با قدرت حمله بالا و زره فولادی. نیروی اصلی حملات رومی که با شمشیر دو دستی می‌جنگد.",
+    4: "اسب سبک سواره رومی برای شناسایی و ارسال پیام. سرعت بالا اما بدون قدرت حمله، مناسب برای اطلاعات‌رسانی.",
+    5: "سواره سبک رومی با حمله قوی و سرعت مناسب. شوالیه‌های سواره که با نیزه و شمشیر حمله می‌کنند.",
+    6: "سواره سنگین رومی با قدرت حمله و دفاع بسیار بالا. زره‌پوشان سزار که خطوط دشمن را در هم می‌شکنند.",
+    7: "قورچ آهنین برای تخریب دیوارهای دشمن. ضروری برای حمله به شهرهای مستحکم و شکستن استحکامات.",
+    8: "منجنیق آتشین برای تخریب ساختمان‌ها و دیوارها. قدرت تخریب بسیار بالا اما زمان آموزش طولانی.",
+    9: "سناتور رومی، رهبر سیاسی قبیله. با سخنوری و نفوذ خود می‌تواند وفاداری روستاهای دشمن را کاهش دهد.",
+    10: "مهاجران رومی برای تأسیس روستای جدید. هر گروه مهاجران یک روستای جدید در سرزمینی نو تأسیس می‌کند.",
+    # ── GAUL ──
+    11: "سرباز پایه گولی با نیزه بلند و سپر چوبی. دفاع بالا در برابر سواره، مناسب برای تشکیل خط دفاعی.",
+    12: "شمشیرزن گولی با حمله قوی و سرعت مناسب. جنگجویان آزادی که با شمشیر بلند گولی می‌جنگند.",
+    13: "اسب سبک گولی برای شناسایی. سریع‌ترین نیروی شناسایی در بازی که از جنگل‌های گالیا عبور می‌کند.",
+    14: "سواره سبک گولی با حمله قوی و سرعت بسیار بالا. رعد و برق گالیا که دشمن را غافلگیر می‌کنند.",
+    15: "سواره دفاعی گولی با دفاع بسیار بالا در برابر پیاده‌نظام. درویدهای مقدس با قدرت جادویی.",
+    16: "سواره سنگین گولی با قدرت حمله و دفاع بالا. شوالیه‌های هیدوان که از خاندان‌های اشرافی گالی هستند.",
+    17: "قورچ گولی برای تخریب دیوارها. دفاع بالا در برابر سواره به لطف سپرهای بزرگ چوبی.",
+    18: "بالیستای گولی برای تخریب ساختمان‌ها و دیوارها. ماشین جنگی با دقت بالا و قدرت تخریب چشمگیر.",
+    19: "رئیس قبیله گولی، رهبر سیاسی و نظامی. با نفوذ و تجربه خود می‌تواند وفاداری روستاهای دشمن را کاهش دهد.",
+    20: "مهاجران گولی برای تأسیس روستای جدید. خانواده‌های گولی که به دنبال سرزمینی جدید هستند.",
+    # ── TEUTON ──
+    21: "سرباز پایه توتنی با گرز سنگین. حمله بالا و هزینه کم، مناسب برای حملات گروهی اولیه و غارت منابع.",
+    22: "نیزه‌دار توتنی با دفاع بسیار بالا در برابر سواره. خط اول دفاع توتن‌ها در برابر حملات سواره.",
+    23: "تبردار توتنی با حمله قوی و سرعت مناسب. جنگجویان وحشی که با تبر دو دستی خطوط دشمن را می‌شکنند.",
+    24: "جاسوس توتنی برای شناسایی و اطلاعات. سرعت متوسط اما دفاع مناسب، مناسب برای کشف نیروهای دشمن.",
+    25: "سواره توتنی با دفاع بالا و حمله مناسب. پالادین‌های مقدس با زره سنگین و شمشیر قدرتمند.",
+    26: "شوالیه توتنی با قدرت حمله بسیار بالا. قوی‌ترین نیروی تهاجمی توتن‌ها که با شمشیر و نیزه می‌جنگند.",
+    27: "قورچ توتنی برای تخریب دیوارها. حمله بالا در برابر ساختمان‌ها به لطف وزن سنگین آهنی.",
+    28: "کاتاپولت توتنی برای تخریب ساختمان‌ها و دیوارها. ماشین جنگی با قدرت تخریب بسیار بالا.",
+    29: "رئیس توتنی، رهبر سیاسی قبیله. با قدرت و نفوذ خود می‌تواند وفاداری روستاهای دشمن را کاهش دهد.",
+    30: "مهاجران توتنی برای تأسیس روستای جدید. قبیله‌های توتنی که به دنبال سرزمینی جدید هستند.",
+}
 
+# ═══════════════════════════════════════════════════════════════
+# Basic troop per tribe (no research needed)
+# ═══════════════════════════════════════════════════════════════
 TRIBE_BASIC_TROOP_OFFSET = {
-    'ROMAN': 1,   # g1 = گرزدار
-    'GAUL': 9,    # g9 = جنگجوی نیزه‌دار گل
-    'TEUTON': 17, # g17 = کلوب‌دار توتونی
+    'ROMAN': 1,   # گرزدار (Legionnaire)
+    'GAUL': 11,   # جنگجوی نیزه‌دار گل (Phalanx)
+    'TEUTON': 21, # کلوب‌دار توتونی (Clubswinger)
 }
 
 
 def get_troop_position_in_tribe(troop_type):
-    """Return the position (1-8) of a troop within its tribe."""
-    tribe_offsets = {'ROMAN': 1, 'GAUL': 9, 'TEUTON': 17}
-    offset = tribe_offsets.get(troop_type.tribe, 1)
+    """Return the position (1-10) of a troop within its tribe."""
+    offset = TRIBE_BASIC_TROOP_OFFSET.get(troop_type.tribe, 1)
     return troop_type.id - offset + 1
 
 
@@ -97,6 +157,11 @@ def get_research_cost(troop_type_id):
 def get_research_prerequisites(troop_type_id):
     """Return (min_academy_level, {building_name: min_level}) or None."""
     return RESEARCH_PREREQUISITES.get(troop_type_id)
+
+
+def get_troop_description(troop_type_id):
+    """Return Persian description for a troop type, or None."""
+    return TROOP_DESCRIPTIONS.get(troop_type_id)
 
 
 def check_research_prerequisites(village, troop_type_id, academy_level):

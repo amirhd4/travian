@@ -9,11 +9,21 @@ import { formatDuration } from '../utils/formatter';
 
 function unitIcon(unit) {
     if (unit.is_settler) return '🧑‍🌾';
+    if (unit.is_chief) return '👑';
     if (unit.is_scout) return '🔍';
     if (unit.is_siege_weapon) return '🎯';
     if (unit.is_cavalry) return '🐎';
     if (unit.defense_cavalry > unit.defense_infantry) return '🛡️';
-    return '🚷';
+    return '⚔️';
+}
+
+function troopTypeBadge(unit) {
+    if (unit.is_siege_weapon) return { label: 'محاصره', color: 'bg-red-100 text-red-700' };
+    if (unit.is_cavalry) return { label: 'سواره', color: 'bg-amber-100 text-amber-700' };
+    if (unit.is_chief) return { label: 'رهبر', color: 'bg-purple-100 text-purple-700' };
+    if (unit.is_settler) return { label: 'مهاجر', color: 'bg-teal-100 text-teal-700' };
+    if (unit.is_scout) return { label: 'شناسایی', color: 'bg-sky-100 text-sky-700' };
+    return { label: 'پیاده', color: 'bg-blue-100 text-blue-700' };
 }
 
 export default function Barracks() {
@@ -141,12 +151,21 @@ export default function Barracks() {
                                     </div>
 
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="font-bold text-ink-800">{unit.name}</h3>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="font-bold text-ink-800">{unit.name}</h3>
+                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${troopTypeBadge(unit).color}`}>{troopTypeBadge(unit).label}</span>
+                                        </div>
+                                        {unit.description && (
+                                            <p className="text-[10px] text-ink-500 mt-0.5 leading-relaxed line-clamp-1">{unit.description}</p>
+                                        )}
                                         <p className="text-[11px] text-ink-500 mt-0.5">
                                             حمله {unit.attack_power} · دفاع پیاده {unit.defense_infantry} · دفاع سواره {unit.defense_cavalry} · هر واحد {formatDuration(unit.base_train_time)}
                                         </p>
                                         <div className="flex gap-1.5 mt-1 flex-wrap">
                                             <span className="badge-gold">🏗️ {unit.required_building}</span>
+                                            {(unit.is_chief || unit.is_settler) && (
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">اقامتگاه/قصر</span>
+                                            )}
                                             {unit.required_academy_level > 0 && (
                                                 <span className="badge-gold">🎓 آکادمی سطح {unit.required_academy_level}</span>
                                             )}
