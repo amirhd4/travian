@@ -171,9 +171,43 @@ def _pick_field_distribution():
     return random.choices(keys, weights=weights, k=1)[0]
 
 
+def _ensure_all_building_types_exist():
+    """Ensure all BuildingType records exist in the database so that
+    AvailableBuildingsView can list them when a player clicks an empty slot."""
+    # City buildings from _CITY_BUILDING_DEFS
+    for name, _level, category in _CITY_BUILDING_DEFS:
+        _get_or_create_building_type(name, category=category)
+
+    # Rally point
+    # rally_name, _, rally_category = _RALLY_POINT_DEF
+    # _get_or_create_building_type(rally_name, category=rally_category)
+
+    # Tribe walls
+    # for wall_def in _WALL_DEFS.values():
+    #     wall_name, _, wall_category = wall_def
+    #     _get_or_create_building_type(wall_name, provides_wall_defense=True, category=wall_category)
+
+    # Trapper (Gaul only)
+    # _get_or_create_building_type("تله", category='MILITARY')
+
+    # Additional buildings referenced in _BUILDING_PREREQUISITES that aren't in _CITY_BUILDING_DEFS
+    # _get_or_create_building_type("آبشخور اسب", category='MILITARY')
+    # _get_or_create_building_type("پادگان بزرگ", category='MILITARY')
+    # _get_or_create_building_type("اصطبل بزرگ", category='MILITARY')
+    # _get_or_create_building_type("کوره آجرپزی", category='INFRASTRUCTURE')
+    # _get_or_create_building_type("اره‌خانه", category='INFRASTRUCTURE')
+    # _get_or_create_building_type("کوره آهنگری", category='INFRASTRUCTURE')
+    # _get_or_create_building_type("میدان تورنمنت", category='INFRASTRUCTURE')
+    # _get_or_create_building_type("نانوایی", category='INFRASTRUCTURE')
+    # _get_or_create_building_type("اداره تجارت", category='INFRASTRUCTURE')
+
+
 def _create_default_buildings(village, distribution_key='NORMAL', tribe='ROMAN'):
     if VillageBuilding.objects.filter(village=village).exists():
         return
+
+    # Ensure all BuildingType records exist so AvailableBuildingsView works
+    _ensure_all_building_types_exist()
     position = 1
     field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
     for type_name, count in field_defs.items():

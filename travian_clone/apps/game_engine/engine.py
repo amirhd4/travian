@@ -3,6 +3,7 @@ from .models import ServerSetting, Village, VillageBuilding
 from .tasks.game_tasks import process_game_event
 from apps.game_engine.models import GameLog
 from apps.combat.models import TroopType, VillageTroop
+from .utils import recalculate_village_capacities
 
 
 def schedule_game_event(village_id, event_type, base_duration_seconds, details):
