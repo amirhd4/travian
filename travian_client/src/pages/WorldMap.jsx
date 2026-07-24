@@ -94,6 +94,7 @@ export default function WorldMap() {
   const [availableTroops, setAvailableTroops] = useState([]);
   const [attackingOasis, setAttackingOasis] = useState(false);
   const [oasisAlert, setOasisAlert] = useState(null);
+  const [centerReady, setCenterReady] = useState(false);
   const mapRef = useRef(null);
 
   useEffect(() => {
@@ -107,6 +108,7 @@ export default function WorldMap() {
     if (av) {
       setCenter({ x: av.x_coord, y: av.y_coord });
       setCoordInput({ x: String(av.x_coord), y: String(av.y_coord) });
+      setCenterReady(true);
     }
   }, [villages, activeVillageId]);
 
@@ -126,7 +128,7 @@ export default function WorldMap() {
     }
   }, [center]);
 
-  useEffect(() => { fetchMap(); }, [fetchMap]);
+  useEffect(() => { if (centerReady) fetchMap(); }, [fetchMap, centerReady]);
 
   const buildGrid = () => {
     const grid = [];
