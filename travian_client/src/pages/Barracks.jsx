@@ -146,7 +146,7 @@ export default function Barracks() {
                                 <div key={unit.id} className={`rounded-xl border p-4 flex flex-col md:flex-row gap-4 items-center ${
                                     canTrain ? 'border-parchment-300 bg-parchment-50' : 'border-gray-200 bg-gray-50 opacity-70'
                                 }`}>
-                                    <div className="w-16 h-16 rounded-xl bg-white border border-parchment-300 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                    <div className="w-20 h-20 rounded-xl bg-white border border-parchment-300 flex items-center justify-center flex-shrink-0 overflow-hidden">
                                         <img src={getUnitImage(unit.id)} alt={unit.name} className={`w-full h-full object-contain ${!canTrain ? 'grayscale' : ''}`} onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                                         <div className="w-full h-full items-center justify-center text-3xl hidden">{unitIcon(unit)}</div>
                                     </div>
@@ -157,9 +157,9 @@ export default function Barracks() {
                                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${troopTypeBadge(unit).color}`}>{troopTypeBadge(unit).label}</span>
                                         </div>
                                         {unit.description && (
-                                            <p className="text-[10px] text-ink-500 mt-0.5 leading-relaxed line-clamp-1">{unit.description}</p>
+                                            <p className="text-xs text-ink-500 mt-0.5 leading-relaxed line-clamp-1">{unit.description}</p>
                                         )}
-                                        <p className="text-[11px] text-ink-500 mt-0.5">
+                                        <p className="text-xs text-ink-500 mt-0.5">
                                             حمله {unit.attack_power} · دفاع پیاده {unit.defense_infantry} · دفاع سواره {unit.defense_cavalry} · هر واحد {formatDuration(unit.base_train_time)}
                                         </p>
                                         <div className="flex gap-1.5 mt-1 flex-wrap">

@@ -144,7 +144,7 @@ export default function Academy() {
                                         >
                                             <img
                                                 src={getUnitImage(t.troop_type_id)} alt={t.name}
-                                                className={`w-12 h-12 object-contain rounded-lg border flex-shrink-0 ${
+                                                className={`w-20 h-20 object-contain rounded-lg border flex-shrink-0 ${
                                                     t.is_researched ? 'border-green-300 bg-green-50' : 'border-parchment-300 bg-parchment-100 opacity-60'
                                                 }`}
                                                 onError={(e) => { e.target.style.display='none'; }}
@@ -158,7 +158,7 @@ export default function Academy() {
                                                     {!t.is_researched && !t.is_basic && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-bold">🔒</span>}
                                                 </div>
                                                 {t.description && (
-                                                    <p className="text-[10px] text-ink-500 mt-0.5 leading-relaxed line-clamp-1">{t.description}</p>
+                                                    <p className="text-xs text-ink-500 mt-0.5 leading-relaxed line-clamp-1">{t.description}</p>
                                                 )}
                                             </div>
                                             <div className="text-center min-w-[100px] flex-shrink-0">

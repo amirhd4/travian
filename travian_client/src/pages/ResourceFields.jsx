@@ -1,8 +1,9 @@
-﻿import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
+import { getUnitImage } from '../constants/images';
 
 // مختصات جدید و کاملا قرینه شده، مخصوص زمانی که عکس پس‌زمینه scaleX(-1) دارد
 // تنظیم شده برای بوم دقیق 484x317
@@ -361,7 +362,7 @@ export default function ResourceFields() {
                                 {troops.map((t, i) => (
                                         <tr key={i}>
                                             <td className="ico">
-                                                <img className={`unit u${t.troop_type_id}`} src={`/assets/troops/unit-${t.troop_type_id}.gif`} alt={t.name} title={t.name} />
+                                                <img className={`unit u${t.troop_type_id}`} src={getUnitImage(t.troop_type_id)} alt={t.name} title={t.name} />
                                             </td>
                                             <td className="num">{t.count}</td>
                                             <td className="un">{t.name}</td>

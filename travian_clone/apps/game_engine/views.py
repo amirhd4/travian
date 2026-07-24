@@ -371,8 +371,14 @@ class AvailableBuildingsView(APIView):
 
         update_village_resources(village)
 
+        RESERVED_BUILDING_NAMES = {"شگفتی جهان"}
+
         # Get all building types (exclude resource fields and empty placeholder)
-        all_types = BuildingType.objects.exclude(category='RESOURCE').exclude(name=EMPTY_SLOT_NAME)
+        all_types = (
+            BuildingType.objects.exclude(category='RESOURCE')
+            .exclude(name=EMPTY_SLOT_NAME)
+            .exclude(name__in=RESERVED_BUILDING_NAMES)
+        )
 
         # ✅ فقط دیوار قبیله‌ای بازیکن را نشان بده
         tribe = request.user.tribe
@@ -384,6 +390,12 @@ class AvailableBuildingsView(APIView):
             name = vb.building_type.name
             if name not in existing or vb.level > existing[name]:
                 existing[name] = vb.level
+
+        # ✅ FIX: دیوار همیشه یک جایگاه ثابت (۴۰) دارد که از ابتدای بازی با
+        # سطح ۰ برایش رزرو شده. چون چک قبلی فقط "current_level > 0" بود، دیوار
+        # با سطح ۰ به‌اشتباه در اسلات‌های دیگر هم به‌عنوان «قابل‌ساخت» ظاهر
+        # می‌شد و امکان ساخت یک دیوار دوم در جایگاه اشتباه وجود داشت.
+        # existing_any_names = {vb.building_type.name for vb in VillageBuilding.objects.filter(village=village)}
 
         # Check if currently upgrading
         has_queue = VillageBuilding.objects.filter(village=village, is_upgrading=True).exists()
@@ -506,8 +518,16 @@ class UpgradeBuildingView(APIView):
                 except BuildingType.DoesNotExist:
                     return Response({"error": "نوع ساختمان نامعتبر است."}, status=400)
 
-                if new_building_type.name == EMPTY_SLOT_NAME:
-                    return Response({"error": "امکان ساخت نوع ساختمان خالی وجود ندارد."}, status=400)
+                if new_building_type.name in {"شگفتی جهان"}:
+                    return Response(
+                        {"error": "این ساختمان فقط با تسخیر یک دهکده‌ی ویرانه‌ی ناتار به دست می‌آید."},
+                        status=400
+                    )
+                if new_building_type.category == 'WALL':
+                    return Response(
+                        {"error": "دیوار در جایگاه مخصوص خودش (که در ابتدای بازی ساخته می‌شود) قرار دارد."},
+                        status=400
+                    )
 
                 # ── بررسی پیش‌نیازها ──
                 can_build, missing = _check_prerequisites(village, new_building_type.name)

@@ -100,7 +100,7 @@ export default function Blacksmith() {
                                         canUpgrade ? 'bg-white/80 border border-parchment-300' : 'bg-gray-50 border border-gray-200 opacity-70'
                                     }`}>
                                         <img
-                                            src={`/assets/troops/unit-${t.troop_type_id}.gif`} alt={t.name}
+                                            src={getUnitImage(t.troop_type_id)} alt={t.name}
                                             className={`w-14 h-14 object-contain rounded-lg border flex-shrink-0 ${
                                                 canUpgrade ? 'bg-parchment-100 border-parchment-300' : 'bg-gray-100 border-gray-200 grayscale'
                                             }`}

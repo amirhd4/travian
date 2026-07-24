@@ -25,7 +25,6 @@ export default function GameLayout() {
 
     useEffect(() => {
         document.body.className = 'v35 ' + (BODY_CLASS_MAP[location.pathname] || '');
-        return () => { document.body.className = ''; };
     }, [location.pathname]);
 
     const handleLogout = async (e) => {

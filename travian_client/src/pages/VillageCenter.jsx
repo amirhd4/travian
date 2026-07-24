@@ -122,7 +122,20 @@ export default function VillageCenter() {
         } finally { setBuildListLoading(false); }
     }, [activeVillageId]);
 
-    useEffect(() => { setLoading(true); fetchBuildings(); }, [fetchBuildings]);
+    useEffect(() => {
+        const controller = new AbortController();
+        setLoading(true);
+        fetchBuildings();
+        return () => controller.abort();
+    }, [fetchBuildings, activeVillageId]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchBuildings();
+        }, 30000);
+        return () => clearInterval(interval);
+    }, [fetchBuildings]);
+
     useEffect(() => { if (lastMessage?.type === 'building_completed') fetchBuildings(); }, [lastMessage, fetchBuildings]);
 
     const handleUpgrade = async () => {
