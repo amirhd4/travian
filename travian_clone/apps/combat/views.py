@@ -785,6 +785,15 @@ class BlacksmithView(APIView):
             ResearchedTroop.objects.filter(village=village).values_list('troop_type_id', flat=True)
         )
 
+        # Auto-complete stuck upgrades (safety net for failed Celery tasks)
+        now = timezone.now()
+        for uid, upgrade in upgrades.items():
+            if upgrade.is_upgrading and upgrade.upgrade_ends_at and upgrade.upgrade_ends_at <= now:
+                upgrade.level += 1
+                upgrade.is_upgrading = False
+                upgrade.upgrade_ends_at = None
+                upgrade.save()
+
         from .research_data import is_troop_basic
 
         data = []

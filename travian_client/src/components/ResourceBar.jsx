@@ -78,7 +78,7 @@ export default function ResourceBar() {
                     </p>
                     <p className="silver">
                         <a href="/hero" title="سکه نقره">
-                            <img src="/assets/ui/silver-icon.gif" alt="نقره" className="silver" />
+                            <img src="/assets/ui/silver-rtl.gif" alt="نقره" className="silver" />
                             <br />
                             {(user?.silver_coins ?? 0).toLocaleString()}
                         </a>

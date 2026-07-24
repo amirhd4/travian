@@ -119,6 +119,9 @@ export const FIELDS = {
 // Unit/troop image by ID
 export const getUnitImage = (id) => `/assets/troops/unit-${id}.png`;
 
+// Small unit/troop icon (GIF) for village overview tables
+export const getUnitSmallImage = (id) => `/assets/troops/unit-${id}.gif`;
+
 // Hero images
 export const HERO = {
   portrait: '/assets/hero/hero-portrait.png',

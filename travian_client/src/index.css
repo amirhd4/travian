@@ -80,7 +80,7 @@ body.login #logo, body.signup #logo { background-image: url('/assets/layout/logo
 #gs p.silver { float: left; }
 #gs p.silver img.silver { margin-top: 3px; }
 img.gold { width: 12px; height: 12px; background-image: url('/assets/ui/gold-icon.gif'); background-repeat: no-repeat; }
-img.silver { width: 10px; height: 9px; background-image: url('/assets/ui/plus-icon.gif'); background-repeat: no-repeat; }
+img.silver { width: 10px; height: 9px; background-image: url('/assets/ui/silver-rtl.gif'); background-repeat: no-repeat; }
 #stime { color: #FFF; font-size: 10px; height: 22px; position: absolute; right: 35px; top: 0; z-index: 10; }
 .stime .content { padding: 3px 5px 0 20px; background-position: left 3px; margin: 0 0 0 5px; height: 22px; position: relative; white-space: nowrap; }
 .stime .content.day { background-image: url('/assets/ui/day.gif'); }
@@ -108,14 +108,14 @@ div.village2 #village_map { width: 540px; height: 448px; position: relative; mar
 div.village2 #village_map img { position: absolute; width: 120px; height: 120px; cursor: pointer; }
 div.village2 #village_map img.wall-top,
 div.village2 #village_map img.wall-bottom {
-    width: 123% !important;
-    height: 123% !important;
+    width: 126% !important;
+    height: 126% !important;
     max-width: none !important;
     max-height: none !important;
     cursor: default !important;
     object-fit: fill !important;
-    left: -11.1% !important;
-    top: -11.9% !important;
+    left: -13.1% !important;
+    top: -13.1% !important;
 }
 div.village2 #village_map img.dx1 { width: 120px; height: 160px; }
 div.village1 .level { position: absolute; width: 26px; height: 26px; font-size: 11px; text-align: center; border-radius: 50%; line-height: 23px; border: 1px solid #506d00; background-image: linear-gradient(to top, #7da100, #c7e94f); margin: 1px; }
@@ -147,7 +147,7 @@ div.village1 .level { position: absolute; width: 26px; height: 26px; font-size: 
 .sideInfoAlly .signLink { font-weight: bold; text-align: center; position: absolute; width: 114px; height: 21px; padding-top: 9px; padding-left: 44px; top: 6px; left: 6px; color: #252525; }
 #villageList { position: relative; left: 9px; margin-top: -3px; width: 172px; }
 #villageList .head { height: 64px; background: url('/assets/layout/signVillagesTop-rtl.png') no-repeat; }
-#villageList .head a { color: #252525; font-size: 12px; position: absolute; top: 21px; left: 18px; display: block; height: 16px; padding-left: 20px; }
+#villageList .head a { color: #252525; font-size: 12px; position: absolute; top: 21px; left: 18px; display: block; height: 16px; padding-left: 20px; background-image: url('/assets/layout/icons/villageStatistics.gif'); background-repeat: no-repeat; background-position: right center; padding-right: 18px; }
 #villageList .list { min-height: 17px; padding-top: 1px; background: url('/assets/layout/signVillagesMiddle-rtl.png') repeat-y; }
 #villageList ul { margin: 0; padding-right: 20px; font-size: 12px; list-style: none; position: relative; }
 #villageList ul li { height: 14px; line-height: 14px; margin-left: 21px; margin-bottom: 4px; }
@@ -158,7 +158,7 @@ div.village1 .level { position: absolute; width: 26px; height: 26px; font-size: 
 .sideBuildingQueue-header { background: #E5E5E5; border-top: 1px solid #C9C9C9; border-left: 1px solid #C9C9C9; border-right: 1px solid #C9C9C9; padding: 4px 8px; font-weight: bold; font-size: 11px; color: #252525; }
 .sideBuildingQueue-body { background: #F5F5F5; border-left: 1px solid #C9C9C9; border-right: 1px solid #C9C9C9; border-bottom: 1px solid #C9C9C9; padding: 4px 8px; font-size: 11px; color: #252525; }
 #villageName { background: url('/assets/layout/sign_village-rtl.png') no-repeat; font-size: 14px; font-weight: bold; height: 76px; left: -65px; margin: 0; position: absolute; text-align: left; top: 150px; width: 205px; z-index: 50; }
-#villageName div { overflow: hidden; white-space: nowrap; height: 38px; width: 144px; position: relative; top: 17px; left: 0px; padding-top: 6px; text-align: center; cursor: pointer; }
+#villageName div { overflow: hidden; white-space: nowrap; height: 38px; width: 215px; position: relative; top: 17px; left: 0px; padding-top: 6px; text-align: center; cursor: pointer; }
 #villageName .loyalty { font-size: 10px; font-weight: normal; position: relative; top: -3px; }
 #footer { font-size: 11px; line-height: 11px; text-align: center; color: #FFF; background: url('/assets/layout/footer.png') no-repeat; padding: 15px 0 30px; clear: both; }
 #mfoot { margin: 0 auto; width: 990px; position: relative; }
@@ -354,10 +354,21 @@ div.village1 #map_details { width: 100%; clear: both; }
 div.village1 #map_details table { margin-bottom: 14px; background-color: #FFF; }
 div.village1 #map_details table thead th { background: #E5EECC; text-align: right; padding: 6px 9px 3px; font-weight: bold; border-bottom: 2px solid #99C01A; }
 div.village1 #map_details table tbody td { padding: 4px 8px; }
+div.village1 table#troops img.unit { width: 18px; height: 18px; }
+div.village1 table#troops img.uhero { width: 18px; height: 18px; }
+div.village1 table#troops td.ico { width: 30px; text-align: center; }
+div.village1 table#troops td.num { width: 30px; text-align: left; font-weight: bold; }
+div.village1 table#troops td.un { font-size: 12px; }
+div.village1 table#troops tr:hover { background: #f0f0f0; }
 div.village1 table#movements .a1 { color: #F00; }
 div.village1 table#movements .d1 { color: #228B22; }
 div.village1 table#movements .a2, div.village1 table#movements .d2 { color: #F2C700; }
 div.village1 table#movements .a3, div.village1 table#movements .d3 { color: #B500A3; }
+div.village1 table#movements td { padding: 1px 0; }
+div.village1 table#movements td.typ { width: 32px; vertical-align: top; font-weight: bold; }
+div.village1 table#movements td.typ img { float: right; position: relative; top: 3px; margin: 0 4px 0 1px; width: 16px; height: 16px; }
+div.village1 table#movements div.mov { float: right; font-weight: bold; white-space: nowrap; }
+div.village1 table#movements div.dur_r { float: left; padding-left: 2px; font-size: 11px; color: #6B6B6B; white-space: nowrap; }
 .tribeSelect { display: flex; gap: 12px; margin-bottom: 20px; }
 .tribeSelect .tribe { text-align: center; cursor: pointer; flex: 1; }
 .tribeSelect .tribe img.tribeImage { width: 100%; height: 80px; object-fit: contain; }

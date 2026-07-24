@@ -1,4 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils import timezone
+from datetime import timedelta
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -107,10 +109,24 @@ class MeView(APIView):
 
     def get(self, request):
         user = request.user
+        from apps.game_engine.models import ServerSetting
+        server = ServerSetting.objects.filter(is_active=True).first()
+        protection_days = server.new_player_protection_days if server else 7
+        now = timezone.now()
+        protected_until = user.date_joined + timedelta(days=protection_days)
+        is_protected = (
+            not user.has_attacked
+            and protection_days > 0
+            and now < protected_until
+        )
         return Response({
             "id": user.id, "username": user.username, "email": user.email,
             "tribe": user.tribe, "gold_coins": user.gold_coins,
             "silver_coins": user.silver_coins,
+            "has_attacked": user.has_attacked,
+            "date_joined": user.date_joined.isoformat(),
+            "is_protected": is_protected,
+            "protected_until": protected_until.isoformat() if is_protected else None,
         }, status=status.HTTP_200_OK)
 
 

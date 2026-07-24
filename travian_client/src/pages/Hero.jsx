@@ -262,7 +262,7 @@ function AuctionTab() {
 }
 
 const TABS = [
-    { key: 'attributes', label: '📊 خصیصات' },
+    { key: 'attributes', label: '📊 خصوصیات' },
     { key: 'inventory', label: '🎒 کوله‌پشتی' },
     { key: 'appearance', label: '🎨 ظاهر' },
     { key: 'auction', label: '🏺 حراجی' },

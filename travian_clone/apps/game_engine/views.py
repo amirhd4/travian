@@ -508,7 +508,7 @@ class UpgradeBuildingView(APIView):
             if building.is_upgrading:
                 return Response({"error": "این ساختمان در حال حاضر در حال ارتقا است."}, status=400)
 
-            # ─── ساخت جدید روی اسلات خالی ───
+            # ─── ساخت جدید روی محل ساخت ───
             is_empty_slot = (building.level == 0 and building.building_type.name == EMPTY_SLOT_NAME)
 
             if is_empty_slot and building_type_id:
@@ -611,7 +611,7 @@ class UpgradeBuildingView(APIView):
             # ─── ارتقای ساختمان موجود ───
             if building.building_type.name == EMPTY_SLOT_NAME:
                 return Response(
-                    {"error": "این اسلات خالی است. لطفاً ابتدا نوع ساختمان را انتخاب کنید."},
+                    {"error": "این محل ساخت است. لطفاً ابتدا نوع ساختمان را انتخاب کنید."},
                     status=400
                 )
 

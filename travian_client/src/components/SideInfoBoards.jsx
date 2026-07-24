@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -168,6 +168,17 @@ export default function SideInfoBoards() {
                 </div>
                 <div className="foot"></div>
             </div>
+
+            {user.is_protected && user.protected_until && (() => {
+                const remaining = Math.max(0, Math.floor((new Date(user.protected_until) - now) / 1000));
+                return remaining > 0 ? (
+                    <div style={{ padding: '6px 8px', background: '#E5EECC', borderTop: '1px solid #99C01A', borderBottom: '1px solid #99C01A', fontSize: '11px', textAlign: 'center' }}>
+                        <span style={{ color: '#228B22', fontWeight: 'bold' }}>🛡️ محافظت فعال</span>
+                        <br />
+                        <span style={{ color: '#666' }}>{formatCountdown(remaining)}</span>
+                    </div>
+                ) : null;
+            })()}
 
             <div id="villageList" className="listing" style={{ marginTop: '0' }}>
                 <div className="head"></div>

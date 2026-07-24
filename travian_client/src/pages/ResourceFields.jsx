@@ -3,7 +3,7 @@ import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
-import { getUnitImage } from '../constants/images';
+import { getUnitImage, getUnitSmallImage } from '../constants/images';
 
 // مختصات جدید و کاملا قرینه شده، مخصوص زمانی که عکس پس‌زمینه scaleX(-1) دارد
 // تنظیم شده برای بوم دقیق 484x317
@@ -32,6 +32,12 @@ const DORF1_SLOTS = {
     18: { x: 150, y: 165 },  // گندم زار مرکز (نزدیک دهکده)
 };
 
+const HERO_TRIBE_IMAGE = {
+    ROMAN: '/assets/hero/hero-roman.png',
+    TEUTON: '/assets/hero/hero-teuton.png',
+    GAUL: '/assets/hero/hero-gaul.png',
+};
+
 function formatCountdown(seconds) {
     if (!seconds || seconds <= 0) return null;
     const d = Math.floor(seconds / 86400);
@@ -46,6 +52,7 @@ function formatCountdown(seconds) {
 
 export default function ResourceFields() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
+    const user = useGameStore((state) => state.user);
     const { lastMessage } = useGameWebSocket();
 
     const [villageInfo, setVillageInfo] = useState(null);
@@ -59,6 +66,7 @@ export default function ResourceFields() {
 
     const [movements, setMovements] = useState([]);
     const [troops, setTroops] = useState([]);
+    const [heroData, setHeroData] = useState(null);
 
     const fetchBuildings = useCallback(async () => {
         if (!activeVillageId) { setLoading(false); return; }
@@ -89,29 +97,39 @@ export default function ResourceFields() {
         } catch { /* silent */ }
     }, [activeVillageId]);
 
+    const fetchHero = useCallback(async () => {
+        try {
+            const { data } = await api.get('combat/hero/');
+            setHeroData(data);
+        } catch { /* silent */ }
+    }, []);
+
     useEffect(() => {
         setLoading(true);
         fetchBuildings();
         fetchMovements();
         fetchTroops();
-    }, [fetchBuildings, fetchMovements, fetchTroops]);
+        fetchHero();
+    }, [fetchBuildings, fetchMovements, fetchTroops, fetchHero]);
 
     useEffect(() => {
         if (lastMessage?.type === 'building_completed') {
             fetchBuildings();
             fetchMovements();
             fetchTroops();
+            fetchHero();
         }
-    }, [lastMessage, fetchBuildings, fetchMovements, fetchTroops]);
+    }, [lastMessage, fetchBuildings, fetchMovements, fetchTroops, fetchHero]);
 
     useEffect(() => {
         const interval = setInterval(() => {
             fetchBuildings();
             fetchMovements();
             fetchTroops();
+            fetchHero();
         }, 30000);
         return () => clearInterval(interval);
-    }, [fetchBuildings, fetchMovements, fetchTroops]);
+    }, [fetchBuildings, fetchMovements, fetchTroops, fetchHero]);
 
     const handleUpgrade = async () => {
         if (!selectedSlot || !activeVillageId) return;
@@ -133,16 +151,17 @@ export default function ResourceFields() {
         return r.wood >= c.wood && r.clay >= c.clay && r.iron >= c.iron && r.crop >= c.crop;
     };
 
-    const getMovementInfo = (type) => {
-        const types = {
-            'incoming_attack': { label: 'حمله', aclass: 'a1' },
-            'incoming_reinforcement': { label: 'نیروی کمکی ورودی', aclass: 'd1' },
-            'outgoing_attack': { label: 'حمله', aclass: 'a2' },
-            'outgoing_reinforcement': { label: 'نیروی کمکی خروجی', aclass: 'd2' },
-            'new_village': { label: 'تأسیس دهکده', aclass: 'a3' },
-            'adventure': { label: 'ماجراجویی', aclass: 'a4' },
-        };
-        return types[type] || { label: type, aclass: '' };
+    const getMovementInfo = (m) => {
+        const isIncoming = m.direction === 'incoming';
+        const t = m.movement_type;
+        if (isIncoming) {
+            if (t === 'REINFORCEMENT') return { label: 'نیروی کمکی ورودی', aclass: 'd1', imgClass: 'def1' };
+            return { label: 'حمله', aclass: 'a1', imgClass: 'att1' };
+        } else {
+            if (t === 'REINFORCEMENT') return { label: 'نیروی کمکی خروجی', aclass: 'd2', imgClass: 'def2' };
+            if (t === 'RETURN') return { label: 'بازگشت', aclass: 'd2', imgClass: 'def2' };
+            return { label: 'حمله', aclass: 'a2', imgClass: 'att2' };
+        }
     };
 
     const activeSlots = buildings.filter((b) => DORF1_SLOTS[b.position]);
@@ -335,7 +354,7 @@ export default function ResourceFields() {
                     </div>
                 )}
 
-                {troops.length > 0 && (
+                {(troops.length > 0 || heroData) && (
                     <div className="boxes villageList units">
                         <div className="boxes-tl"></div>
                         <div className="boxes-tr"></div>
@@ -352,17 +371,21 @@ export default function ResourceFields() {
                                     <tr><th colSpan="3">نیروهای مستقر در دهکده</th></tr>
                                 </thead>
                                 <tbody>
-                                    {troops.length > 0 && (
-                                    <tr style={{ background: '#E5EECC' }}>
-                                        <td className="ico"><img className="unit uhero" src="/assets/troops/hero-portrait.png" alt="قهرمان" title="قهرمان" onError={(e) => { e.target.style.display = 'none'; }} /></td>
-                                        <td className="num" style={{ fontWeight: 'bold' }}>{troops.reduce((sum, t) => sum + (t.is_hero ? t.count : 0), 0) || '-'}</td>
-                                        <td className="un" style={{ fontWeight: 'bold' }}>قهرمان</td>
-                                    </tr>
-                                )}
-                                {troops.map((t, i) => (
+                                    {heroData && (() => {
+                                        const heroInVillage = heroData.is_alive && !heroData.is_away && heroData.home_village_id === activeVillageId;
+                                        const heroCount = heroInVillage ? 1 : 0;
+                                        return (
+                                            <tr>
+                                                <td className="ico"><img className="unit uhero" src={HERO_TRIBE_IMAGE[user?.tribe] || HERO_TRIBE_IMAGE.ROMAN} alt="قهرمان" title="قهرمان" onError={(e) => { e.target.style.display = 'none'; }} /></td>
+                                                <td className="num">{heroCount}</td>
+                                                <td className="un">قهرمان</td>
+                                            </tr>
+                                        );
+                                    })()}
+                                    {troops.map((t, i) => (
                                         <tr key={i}>
                                             <td className="ico">
-                                                <img className={`unit u${t.troop_type_id}`} src={getUnitImage(t.troop_type_id)} alt={t.name} title={t.name} />
+                                                <img className={`unit u${t.troop_type_id}`} src={getUnitSmallImage(t.troop_type_id)} alt={t.name} title={t.name} />
                                             </td>
                                             <td className="num">{t.count}</td>
                                             <td className="un">{t.name}</td>
@@ -392,11 +415,14 @@ export default function ResourceFields() {
                                 </thead>
                                 <tbody>
                                     {movements.map((m, i) => {
-                                        const info = getMovementInfo(m.movement_type);
+                                        const info = getMovementInfo(m);
                                         const remaining = m.remaining_seconds || 0;
                                         return (
                                             <tr key={i}>
-                                                <td className="typ"><span className={info.aclass}>&raquo;</span></td>
+                                                <td className="typ">
+                                                    <img className={info.imgClass} src={`/assets/ui/${info.imgClass}.gif`} alt="" />
+                                                    <span className={info.aclass}>&raquo;</span>
+                                                </td>
                                                 <td>
                                                     {info.label}
                                                     <div className="mov"><span className={info.aclass}>{(m.troops_payload ? Object.values(m.troops_payload).reduce((a,b)=>a+b, 0) : 1)}:<span>{formatCountdown(remaining)}</span></span></div>

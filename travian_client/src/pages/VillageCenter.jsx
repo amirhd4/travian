@@ -311,7 +311,7 @@ export default function VillageCenter() {
 
             {hoveredSlot && !showBuildList && <div style={{ position:'fixed', left:tooltipPos.x+15, top:tooltipPos.y-10, background:'rgba(0,0,0,0.85)', color:'#FFF', padding:'8px 12px', borderRadius:6, fontSize:12, zIndex:200, pointerEvents:'none', minWidth:150, lineHeight:'18px', boxShadow:'0 2px 8px rgba(0,0,0,0.4)', direction:'rtl', fontFamily:'Tahoma,Arial,sans-serif' }}>
                 <div style={{ fontWeight:'bold', fontSize:13, marginBottom:4, borderBottom:'1px solid rgba(255,255,255,0.3)', paddingBottom:4 }}>{hoveredSlot.name}</div>
-                {isEmpty(hoveredSlot) ? <div style={{ color:'#F88C1F', marginTop:4 }}>اسلات خالی - کلیک کنید</div> : <div>سطح فعلی: <b style={{ color:'#99C01A' }}>{hoveredSlot.level}</b></div>}
+                {isEmpty(hoveredSlot) ? <div style={{ color:'#F88C1F', marginTop:4 }}>محل ساخت - کلیک کنید</div> : <div>سطح فعلی: <b style={{ color:'#99C01A' }}>{hoveredSlot.level}</b></div>}
                 {hoveredSlot.is_upgrading && <div style={{ color:'#F88C1F', marginTop:4 }}>در حال ارتقا...</div>}
                 {!hoveredSlot.is_upgrading && !hoveredSlot.is_max_level && hoveredSlot.next_level_cost && <>
                     <div style={{ marginTop:4, fontSize:11, color:'#CCC' }}>هزینه {isEmpty(hoveredSlot)?'ساخت':'ارتقا'} به سطح {hoveredSlot.level+1}:</div>

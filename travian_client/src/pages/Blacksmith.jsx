@@ -40,18 +40,25 @@ export default function Blacksmith() {
     useEffect(() => { setLoading(true); fetchData(); }, [fetchData]);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setData((prev) => ({
-                ...prev,
-                troops: prev.troops.map((t) => {
+        let needsRefresh = false;
+        const ticker = setInterval(() => {
+            setData((prev) => {
+                let expired = false;
+                const troops = prev.troops.map((t) => {
                     if (!t.is_upgrading || !t.upgrade_ends_at) return t;
                     const remaining = Math.max(0, Math.round((new Date(t.upgrade_ends_at).getTime() - Date.now()) / 1000));
+                    if (remaining <= 0 && (t._remaining === undefined || t._remaining > 0)) expired = true;
                     return { ...t, _remaining: remaining };
-                }),
-            }));
+                });
+                if (expired) needsRefresh = true;
+                return { ...prev, troops };
+            });
         }, 1000);
-        return () => clearInterval(interval);
-    }, []);
+        const refresher = setInterval(() => {
+            if (needsRefresh) { needsRefresh = false; fetchData(); }
+        }, 2000);
+        return () => { clearInterval(ticker); clearInterval(refresher); };
+    }, [fetchData]);
 
     useEffect(() => {
         const interval = setInterval(fetchData, 20000);
@@ -128,7 +135,7 @@ export default function Blacksmith() {
                                                 <span className="text-xs text-red-500 font-bold">🔒 تحقیق نشده</span>
                                             ) : isMax ? (
                                                 <span className="badge-green">🏆 حداکثر لول</span>
-                                            ) : t.is_upgrading ? (
+                                            ) : t.is_upgrading && remaining > 0 ? (
                                                 <span className="font-mono font-bold text-blue-700 text-sm" dir="ltr">{formatDuration(remaining)}</span>
                                             ) : (
                                                 <button onClick={() => handleUpgrade(t.troop_type_id)} disabled={submitting === t.troop_type_id} className="btn-primary text-xs !px-4 !py-2">

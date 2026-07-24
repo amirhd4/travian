@@ -55,6 +55,18 @@ function App() {
     const setActiveVillageId = useGameStore((state) => state.setActiveVillageId);
 
     useEffect(() => {
+        const fetchTitle = async () => {
+            try {
+                const { data } = await api.get('game/server-status/');
+                document.title = data.server_speed ? `Travian - x${data.server_speed}` : 'Travian';
+            } catch {
+                document.title = 'Travian';
+            }
+        };
+        fetchTitle();
+    }, []);
+
+    useEffect(() => {
         const bootstrap = async () => {
             try {
                 const { data } = await api.post('auth/token/refresh/');
