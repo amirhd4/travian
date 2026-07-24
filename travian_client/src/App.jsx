@@ -10,6 +10,8 @@ import Messages from "./pages/Messages.jsx";
 import Barracks from "./pages/Barracks.jsx";
 import Academy from "./pages/Academy.jsx";
 import Embassy from "./pages/Embassy.jsx";
+import TownHall from "./pages/TownHall.jsx";
+import Residence from "./pages/Residence.jsx";
 import Register from "./pages/Register.jsx";
 import useGameStore from "./store/useGameStore.js";
 import { useEffect } from "react";
@@ -121,6 +123,8 @@ function App() {
                     <Route path="/barracks" element={<Barracks />} />
                     <Route path="/academy" element={<Academy />} />
                     <Route path="/embassy" element={<Embassy />} />
+                    <Route path="/town-hall" element={<TownHall />} />
+                    <Route path="/residence" element={<Residence />} />
                     <Route path="/movements" element={<Movements />} />
                     <Route path="/hero" element={<Hero />} />
                     <Route path="/colonize" element={<Colonize />} />

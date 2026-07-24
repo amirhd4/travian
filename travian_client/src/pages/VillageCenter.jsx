@@ -352,6 +352,11 @@ export default function VillageCenter() {
                             'پادگان': '/barracks',
                             'آهنگری': '/blacksmith',
                             'سفارتخانه': '/embassy',
+                            'تالار شهر': '/town-hall',
+                            'اقامتگاه': '/residence',
+                            'عمارت قهرمان': '/hero',
+                            'بازارچه': '/marketplace',
+                            'محل گردهمایی': '/movements',
                         };
                         const target = navMap[selectedSlot.name];
                         if (!target) return null;

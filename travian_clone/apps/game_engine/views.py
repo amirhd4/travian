@@ -3063,3 +3063,203 @@ class MyGoldBankDepositsView(APIView):
             }
             for d in deposits
         ])
+
+
+class ResidenceView(APIView):
+    """
+    صفحه اقامتگاه/قصر — آموزش مهاجر و چیف + امتیاز فرهنگی + وفاداری + گسترش.
+    """
+    permission_classes = [IsAuthenticated]
+
+    RESIDENCE_BUILDING_NAMES = ("اقامتگاه", "قصر")
+    SETTLERS_REQUIRED = 3
+
+    def get(self, request):
+        from apps.combat.models import TroopType, VillageTroop, TrainingQueue
+        from apps.combat.research_data import TROOP_DATA
+
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        # Find residence/palace building
+        building = VillageBuilding.objects.filter(
+            village=village, building_type__name__in=self.RESIDENCE_BUILDING_NAMES
+        ).first()
+        building_level = building.level if building else 0
+        building_name = building.building_type.name if building else None
+        is_capital = village.is_capital
+
+        # Get settler and chief troop types for this tribe
+        settler_chief_types = TroopType.objects.filter(
+            tribe=request.user.tribe,
+            is_settler=True
+        ) | TroopType.objects.filter(
+            tribe=request.user.tribe,
+            is_chief=True
+        )
+
+        # Get current counts
+        village_troops = {
+            vt.troop_type_id: vt.count
+            for vt in VillageTroop.objects.filter(village=village, troop_type__in=settler_chief_types)
+        }
+
+        # Training queue
+        queue = TrainingQueue.objects.filter(
+            village=village, troop_type__in=settler_chief_types, is_completed=False
+        ).select_related('troop_type').order_by('finishes_at')
+        now = timezone.now()
+
+        # Build trainable units list
+        trainable = []
+        for tt in settler_chief_types:
+            td = TROOP_DATA.get(tt.id, {})
+            cost = td.get('cost', {})
+            train_time = td.get('train_time', tt.base_train_time)
+            # Adjust by building level (faster training with higher level)
+            if building_level > 0:
+                train_time = int(train_time * 0.95 ** (building_level - 1))
+            trainable.append({
+                "troop_type_id": tt.id,
+                "name": tt.name,
+                "is_settler": tt.is_settler,
+                "is_chief": tt.is_chief,
+                "count_in_village": village_troops.get(tt.id, 0),
+                "cost": cost,
+                "train_time_seconds": train_time,
+            })
+
+        # Queue items
+        queue_data = []
+        for q in queue:
+            remaining = max(0, int((q.finishes_at - now).total_seconds()))
+            queue_data.append({
+                "id": q.id,
+                "troop_type_id": q.troop_type_id,
+                "troop_name": q.troop_type.name,
+                "count": q.count,
+                "remaining_seconds": remaining,
+            })
+
+        # Culture points
+        from .utils import calculate_village_culture_production
+        cp_production = calculate_village_culture_production(village)
+        player = request.user
+        total_cp = player.culture_points
+
+        # Loyalty
+        loyalty = village.loyalty
+
+        # Expansion (captured villages)
+        captured = Village.objects.filter(
+            player=player, is_capital=False
+        ).exclude(id=village.id).values('id', 'name', 'x_coord', 'y_coord')[:3]
+
+        # Settlers needed for next expansion
+        settler_count = sum(village_troops.get(tt.id, 0) for tt in settler_chief_types if tt.is_settler)
+
+        return Response({
+            "building_level": building_level,
+            "building_name": building_name,
+            "is_capital": is_capital,
+            "trainable": trainable,
+            "queue": queue_data,
+            "culture_points": {
+                "current": total_cp,
+                "village_production": cp_production,
+            },
+            "loyalty": loyalty,
+            "expansion": {
+                "captured_villages": list(captured),
+                "settlers_available": settler_count,
+                "settlers_required": self.SETTLERS_REQUIRED,
+            },
+        })
+
+    def post(self, request):
+        from apps.combat.models import TroopType, VillageTroop, TrainingQueue
+        from apps.combat.research_data import TROOP_DATA
+
+        village_id = request.data.get('village_id')
+        troop_type_id = request.data.get('troop_type_id')
+        quantity = request.data.get('quantity', 1)
+
+        if not village_id or not troop_type_id:
+            return Response({"error": "village_id و troop_type_id لازم است."}, status=400)
+
+        try:
+            quantity = max(1, int(quantity))
+        except (ValueError, TypeError):
+            return Response({"error": "تعداد نامعتبر است."}, status=400)
+
+        with transaction.atomic():
+            village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+
+            # Check building exists
+            building = VillageBuilding.objects.filter(
+                village=village, building_type__name__in=self.RESIDENCE_BUILDING_NAMES, level__gt=0
+            ).first()
+            if not building:
+                return Response({"error": "اقامتگاه یا قصری در این دهکده وجود ندارد."}, status=400)
+
+            if building.level < 10:
+                return Response({"error": "برای آموزش مهاجر/چیف به اقامتگاه سطح ۱۰ نیاز دارید."}, status=400)
+
+            # Check troop type
+            try:
+                troop_type = TroopType.objects.get(id=troop_type_id, tribe=request.user.tribe)
+            except TroopType.DoesNotExist:
+                return Response({"error": "نیروی نامعتبر."}, status=400)
+
+            if not troop_type.is_settler and not troop_type.is_chief:
+                return Response({"error": "فقط مهاجر و چیف در اقامتگاه آموزش داده می‌شوند."}, status=400)
+
+            # Check not already training
+            if TrainingQueue.objects.filter(village=village, troop_type=troop_type, is_completed=False).exists():
+                return Response({"error": "این نیرو در حال حاضر در حال آموزش است."}, status=400)
+
+            # Check resources
+            td = TROOP_DATA.get(troop_type_id, {})
+            cost = td.get('cost', {})
+            total_cost = {k: v * quantity for k, v in cost.items()}
+
+            update_village_resources(village)
+            if (village.wood < total_cost.get('wood', 0) or village.clay < total_cost.get('clay', 0) or
+                    village.iron < total_cost.get('iron', 0) or village.crop < total_cost.get('crop', 0)):
+                return Response({"error": "منابع کافی نیست."}, status=400)
+
+            # Deduct resources
+            village.wood -= total_cost.get('wood', 0)
+            village.clay -= total_cost.get('clay', 0)
+            village.iron -= total_cost.get('iron', 0)
+            village.crop -= total_cost.get('crop', 0)
+            village.save()
+
+            # Calculate duration
+            train_time = td.get('train_time', troop_type.base_train_time)
+            train_time = int(train_time * 0.95 ** (building.level - 1))
+            duration = train_time * quantity
+
+            from django.utils import timezone as tz
+            ends_at = tz.now() + datetime.timedelta(seconds=duration)
+
+            queue_item = TrainingQueue.objects.create(
+                village=village,
+                troop_type=troop_type,
+                count=quantity,
+                finishes_at=ends_at,
+            )
+
+            # Schedule completion
+            from apps.combat.tasks import complete_training
+            transaction.on_commit(lambda: complete_training.apply_async(
+                args=[queue_item.id], eta=ends_at
+            ))
+
+        return Response({
+            "message": f"آموزش {quantity} {troop_type.name} آغاز شد.",
+            "remaining_seconds": duration,
+        })
