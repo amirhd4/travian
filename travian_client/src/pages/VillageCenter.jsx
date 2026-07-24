@@ -354,9 +354,19 @@ export default function VillageCenter() {
                             'سفارتخانه': '/embassy',
                             'تالار شهر': '/town-hall',
                             'اقامتگاه': '/residence',
+                            'ساختمان اصلی': '/main-building',
                             'عمارت قهرمان': '/hero',
                             'بازارچه': '/marketplace',
                             'محل گردهمایی': '/movements',
+                            'مخفیگاه': '/hideout',
+                            'تله': '/trapper',
+                            'قصر': '/palace',
+                            'انبار': '/warehouse',
+                            'سیلوی غله': '/warehouse',
+                            'کارگاه سنگ‌تراشی': '/stonemason',
+                            'دیوار شهر': '/wall',
+                            'دیوار خاکی': '/wall',
+                            'حصار چوبی': '/wall',
                         };
                         const target = navMap[selectedSlot.name];
                         if (!target) return null;

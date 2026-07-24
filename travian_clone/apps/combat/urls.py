@@ -11,6 +11,7 @@ from .views import (
     TrappedTroopsListView, ReleaseTrappedTroopsView,
     TroopEvasionView, FarmListManageView, ReinforcementReportDetailView, ReinforcementReportListView,
     HeroAuctionListView, HeroAuctionBidView, AcademyView,
+    TrapperView,
 )
 
 urlpatterns = [
@@ -47,4 +48,5 @@ urlpatterns = [
     path('troop-evasion/', TroopEvasionView.as_view(), name='troop_evasion'),
     path('reports/reinforcements/', ReinforcementReportListView.as_view(), name='reinforcement_reports'),
     path('reports/reinforcements/<int:report_id>/', ReinforcementReportDetailView.as_view(), name='reinforcement_report_detail'),
+    path('trapper/', TrapperView.as_view(), name='trapper'),
 ]

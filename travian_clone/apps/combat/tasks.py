@@ -20,6 +20,7 @@ from apps.game_engine.utils import calculate_player_total_population, calculate_
 
 
 CRANNY_PROTECTION_PER_LEVEL = 100  # هر سطح مخفیگاه، این مقدار از هر نوع منبع را از غارت محافظت می‌کند
+CRANNY_TRIBE_MULTIPLIER = {'TEUTON': 2}  # توتن‌ها ۲ برابر ظرفیت مخفیگاه دارند
 
 # ✅ ساختمان‌هایی که هرگز نباید هدف منجنیق قرار بگیرند (دیوار جداگانه توسط
 # قوچ مدیریت می‌شود، و مزارع منابع اصلا در تراوین اصلی هدف منجنیق نیستند)
@@ -696,7 +697,8 @@ def _resolve_attack_or_raid(movement):
         cranny_levels_sum = VillageBuilding.objects.filter(
             village=target, building_type__name="مخفیگاه"
         ).aggregate(total=Sum('level'))['total'] or 0
-        protected_amount = cranny_levels_sum * CRANNY_PROTECTION_PER_LEVEL
+        tribe_mult = CRANNY_TRIBE_MULTIPLIER.get(target.player.tribe, 1)
+        protected_amount = cranny_levels_sum * CRANNY_PROTECTION_PER_LEVEL * tribe_mult
 
         total_capacity = sum(
             qty * troop_type_cache[tid].carry_capacity
@@ -712,36 +714,11 @@ def _resolve_attack_or_raid(movement):
         if total_available > 0 and total_capacity > 0:
             take_total = min(total_capacity, total_available)
             for res_name, res_amount in available.items():
-                share = min(res_amount, (res_amount / total_available) * take_total)
+                share = (res_amount / total_available) * take_total
+                share = min(res_amount, share)
                 loot[res_name] = int(share)
                 setattr(target, res_name, getattr(target, res_name) - int(share))
             target.save()
-        else:
-            # غارت عادی دهکده
-            cranny_levels_sum = VillageBuilding.objects.filter(
-                village=target, building_type__name="مخفیگاه"
-            ).aggregate(total=Sum('level'))['total'] or 0
-            protected_amount = cranny_levels_sum * CRANNY_PROTECTION_PER_LEVEL
-
-            total_capacity = sum(
-                qty * troop_type_cache[tid].carry_capacity
-                for tid, qty in attacker_survivors.items() if tid in troop_type_cache
-            )
-            available = {
-                "wood": max(0, target.wood - protected_amount),
-                "clay": max(0, target.clay - protected_amount),
-                "iron": max(0, target.iron - protected_amount),
-                "crop": max(0, target.crop - protected_amount),
-            }
-            total_available = sum(available.values())
-            if total_available > 0 and total_capacity > 0:
-                take_total = min(total_capacity, total_available)
-                for res_name, res_amount in available.items():
-                    share = (res_amount / total_available) * take_total
-                    share = min(res_amount, share)
-                    loot[res_name] = int(share)
-                    setattr(target, res_name, getattr(target, res_name) - int(share))
-                target.save()
 
     # ------- تسخیر دهکده -------
     conquered = False

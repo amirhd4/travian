@@ -3263,3 +3263,322 @@ class ResidenceView(APIView):
             "message": f"آموزش {quantity} {troop_type.name} آغاز شد.",
             "remaining_seconds": duration,
         })
+
+
+class MainBuildingView(APIView):
+    """
+    ساختمان اصلی — نمایش سرعت ساخت و تخریب ساختمان‌ها.
+    """
+    permission_classes = [IsAuthenticated]
+
+    MAIN_BUILDING_NAME = "ساختمان اصلی"
+    EXCLUDED_BUILDINGS = ("اقامتگاه", "قصر", "تالار شهر", "شگفتی جهان")
+    DEMOLISH_LEVEL_REQ = 10
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        main_building = VillageBuilding.objects.filter(
+            village=village, building_type__name=self.MAIN_BUILDING_NAME
+        ).first()
+        mb_level = main_building.level if main_building else 0
+
+        # Construction speed bonus (percentage reduction)
+        speed_bonus = mb_level * 2  # 2% per level
+
+        # List of demolishable buildings (slots 19-41, excluding special buildings)
+        demolishable = []
+        buildings = VillageBuilding.objects.filter(
+            village=village, position__gte=19, position__lte=41, level__gt=0
+        ).select_related('building_type')
+
+        for b in buildings:
+            if b.building_type.name in self.EXCLUDED_BUILDINGS:
+                continue
+            # Calculate partial resource return (50% of build cost)
+            level = b.level
+            refund = {
+                "wood": int(b.building_type.base_wood_cost * level * 0.5),
+                "clay": int(b.building_type.base_clay_cost * level * 0.5),
+                "iron": int(b.building_type.base_iron_cost * level * 0.5),
+                "crop": int(b.building_type.base_crop_cost * level * 0.5),
+            }
+            demolishable.append({
+                "position": b.position,
+                "name": b.building_type.name,
+                "level": level,
+                "refund": refund,
+            })
+
+        return Response({
+            "main_building_level": mb_level,
+            "speed_bonus_percent": speed_bonus,
+            "can_demolish": mb_level >= self.DEMOLISH_LEVEL_REQ,
+            "demolish_level_req": self.DEMOLISH_LEVEL_REQ,
+            "demolishable_buildings": demolishable,
+        })
+
+    def post(self, request):
+        """تخریب یک ساختمان (کاهش ۱ سطح)"""
+        village_id = request.data.get('village_id')
+        position = request.data.get('position')
+
+        if not village_id or position is None:
+            return Response({"error": "village_id و position لازم است."}, status=400)
+
+        with transaction.atomic():
+            village = Village.objects.select_for_update().get(id=village_id, player=request.user)
+
+            main_building = VillageBuilding.objects.filter(
+                village=village, building_type__name=self.MAIN_BUILDING_NAME
+            ).first()
+            if not main_building or main_building.level < self.DEMOLISH_LEVEL_REQ:
+                return Response(
+                    {"error": f"برای تخریب ساختمان به {self.MAIN_BUILDING_NAME} سطح {self.DEMOLISH_LEVEL_REQ} نیاز دارید."},
+                    status=400
+                )
+
+            try:
+                building = VillageBuilding.objects.select_for_update().get(
+                    village=village, position=position, level__gt=0
+                )
+            except VillageBuilding.DoesNotExist:
+                return Response({"error": "ساختمانی در این موقعیت یافت نشد."}, status=400)
+
+            if building.building_type.name in self.EXCLUDED_BUILDINGS:
+                return Response({"error": "این ساختمان قابل تخریب نیست."}, status=400)
+
+            # Calculate refund
+            refund = {
+                "wood": int(building.building_type.base_wood_cost * 0.5),
+                "clay": int(building.building_type.base_clay_cost * 0.5),
+                "iron": int(building.building_type.base_iron_cost * 0.5),
+                "crop": int(building.building_type.base_crop_cost * 0.5),
+            }
+
+            # Return resources
+            village.wood += refund['wood']
+            village.clay += refund['clay']
+            village.iron += refund['iron']
+            village.crop += refund['crop']
+
+            old_level = building.level
+            building.level -= 1
+            if building.level <= 0:
+                building.delete()
+            else:
+                building.save()
+
+            village.save()
+
+            GameLog.objects.create(
+                village=village,
+                log_type='BUILDING',
+                description=f"ساختمان {building.building_type.name} از سطح {old_level} به سطح {building.level} تخریب شد.",
+            )
+
+        return Response({
+            "message": f"ساختمان {building.building_type.name} با موفقیت تخریب شد (سطح {old_level} → {building.level}).",
+            "refund": refund,
+            "new_level": building.level,
+        })
+
+
+class CrannyView(APIView):
+    """
+    مخفیگاه — نمایش ظرفیت مخفی‌سازی منابع از غارت.
+    """
+    permission_classes = [IsAuthenticated]
+
+    CRANNY_BUILDING_NAME = "مخفیگاه"
+    PROTECTION_PER_LEVEL = 100
+    TRIBE_MULTIPLIER = {'TEUTON': 2}
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        crannies = VillageBuilding.objects.filter(
+            village=village, building_type__name=self.CRANNY_BUILDING_NAME
+        ).order_by('position')
+
+        total_level = sum(c.level for c in crannies)
+        tribe = request.user.tribe
+        tribe_mult = self.TRIBE_MULTIPLIER.get(tribe, 1)
+        total_capacity = total_level * self.PROTECTION_PER_LEVEL * tribe_mult
+        individual_capacity = self.PROTECTION_PER_LEVEL * tribe_mult
+
+        cranny_data = []
+        for c in crannies:
+            cranny_data.append({
+                "position": c.position,
+                "level": c.level,
+                "capacity": c.level * individual_capacity,
+                "next_capacity": (c.level + 1) * individual_capacity if c.level < c.building_type.max_level else None,
+            })
+
+        return Response({
+            "total_level": total_level,
+            "total_capacity": total_capacity,
+            "individual_capacity_per_level": individual_capacity,
+            "tribe": tribe,
+            "tribe_multiplier": tribe_mult,
+            "crannies": cranny_data,
+        })
+
+
+class WarehouseView(APIView):
+    """
+    انبار / سیلوی غله — نمایش ظرفیت ذخیره‌سازی و نرخ تولید.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        from .utils import update_village_resources, calculate_production_rates
+        update_village_resources(village)
+        production = calculate_production_rates(village)
+
+        warehouse = VillageBuilding.objects.filter(
+            village=village, building_type__name="انبار"
+        ).first()
+        granary = VillageBuilding.objects.filter(
+            village=village, building_type__name="سیلوی غله"
+        ).first()
+
+        warehouse_level = warehouse.level if warehouse else 0
+        granary_level = granary.level if granary else 0
+
+        # Calculate time until full for each resource
+        def time_until_full(current, max_cap, rate_per_hour):
+            if rate_per_hour <= 0:
+                return None
+            remaining = max_cap - current
+            if remaining <= 0:
+                return 0
+            return int(remaining / rate_per_hour * 3600)
+
+        resources_data = {
+            "wood": {
+                "current": int(village.wood),
+                "max": village.max_storage,
+                "production": production.get("wood", 0),
+                "time_until_full": time_until_full(village.wood, village.max_storage, production.get("wood", 0)),
+            },
+            "clay": {
+                "current": int(village.clay),
+                "max": village.max_storage,
+                "production": production.get("clay", 0),
+                "time_until_full": time_until_full(village.clay, village.max_storage, production.get("clay", 0)),
+            },
+            "iron": {
+                "current": int(village.iron),
+                "max": village.max_storage,
+                "production": production.get("iron", 0),
+                "time_until_full": time_until_full(village.iron, village.max_storage, production.get("iron", 0)),
+            },
+            "crop": {
+                "current": int(village.crop),
+                "max": village.max_granary,
+                "production": production.get("crop", 0),
+                "time_until_full": time_until_full(village.crop, village.max_granary, production.get("crop", 0)),
+            },
+        }
+
+        return Response({
+            "warehouse_level": warehouse_level,
+            "granary_level": granary_level,
+            "resources": resources_data,
+        })
+
+
+class StonemasonView(APIView):
+    """
+    کارگاه سنگ‌تراشی — نمایش درصد پایداری دیوار.
+    """
+    permission_classes = [IsAuthenticated]
+
+    BONUS_PER_LEVEL = 2  # 2% per level
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        stonemason = VillageBuilding.objects.filter(
+            village=village, building_type__name="کارگاه سنگ‌تراشی"
+        ).first()
+        level = stonemason.level if stonemason else 0
+
+        wall = VillageBuilding.objects.filter(
+            village=village, building_type__provides_wall_defense=True
+        ).first()
+        wall_level = wall.level if wall else 0
+        wall_bonus_per_level = 3  # 3% per level from combat/engine.py
+
+        current_bonus = level * self.BONUS_PER_LEVEL
+        next_bonus = (level + 1) * self.BONUS_PER_LEVEL if level < 20 else None
+        wall_defense = wall_level * wall_bonus_per_level * (1 + current_bonus / 100)
+
+        return Response({
+            "level": level,
+            "current_bonus_percent": current_bonus,
+            "next_bonus_percent": next_bonus,
+            "wall_level": wall_level,
+            "wall_defense_percent": round(wall_defense, 1),
+        })
+
+
+class WallView(APIView):
+    """
+    دیوار شهر — نمایش درصد دفاع دیوار و تعامل با سنگ‌تراشی.
+    """
+    permission_classes = [IsAuthenticated]
+
+    WALL_BONUS_PER_LEVEL = 3
+
+    def get(self, request):
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        wall = VillageBuilding.objects.filter(
+            village=village, building_type__provides_wall_defense=True
+        ).first()
+        wall_level = wall.level if wall else 0
+        wall_name = wall.building_type.name if wall else None
+
+        stonemason = VillageBuilding.objects.filter(
+            village=village, building_type__name="کارگاه سنگ‌تراشی"
+        ).first()
+        stonemason_level = stonemason.level if stonemason else 0
+        stonemason_multiplier = 1 + (stonemason_level * 2 / 100)
+
+        base_defense = wall_level * self.WALL_BONUS_PER_LEVEL
+        total_defense = base_defense * stonemason_multiplier
+
+        return Response({
+            "wall_name": wall_name,
+            "wall_level": wall_level,
+            "base_defense_percent": base_defense,
+            "stonemason_level": stonemason_level,
+            "stonemason_multiplier": round(stonemason_multiplier, 2),
+            "total_defense_percent": round(total_defense, 1),
+            "next_level_defense": round((wall_level + 1) * self.WALL_BONUS_PER_LEVEL * stonemason_multiplier, 1) if wall_level < 20 else None,
+        })

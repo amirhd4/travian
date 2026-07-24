@@ -14,7 +14,8 @@ from .views import (
     ResourceBonusView, BuyFullWarehouseView, BuyProtectionView, ExitProtectionView, InstantRallyPointView,
     BuyGoldClubView, CropperSearchView, StandardNpcTradeView, GoldToSilverExchangeView, SupportMessageView,
     InstantConstructionView, GoldTroopShopView, BulkAnimalBuyView, BulkTroopBuyView, AllianceListView, MoveCapitalView, TownHallCelebrationView,
-    AvailableBuildingsView, ResidenceView,
+    AvailableBuildingsView, ResidenceView, MainBuildingView, CrannyView,
+    WarehouseView, StonemasonView, WallView,
 )
 from ..combat.views import HeroAuctionListView, HeroAuctionBidView
 
@@ -27,6 +28,11 @@ urlpatterns = [
     path('villages/move-capital/', MoveCapitalView.as_view(), name='move_capital'),  # ✅ جدید
     path('town-hall/celebrate/', TownHallCelebrationView.as_view(), name='town_hall_celebration'),
     path('residence/', ResidenceView.as_view(), name='residence'),
+    path('main-building/', MainBuildingView.as_view(), name='main_building'),
+    path('cranny/', CrannyView.as_view(), name='cranny'),
+    path('warehouse/', WarehouseView.as_view(), name='warehouse'),
+    path('stonemason/', StonemasonView.as_view(), name='stonemason'),
+    path('wall/', WallView.as_view(), name='wall'),
     path('villages/<int:village_id>/abandon/', AbandonVillageView.as_view(), name='abandon_village'),
     path('world-map/', WorldMapView.as_view(), name='world_map'),
     path('oases/', OasisMapView.as_view(), name='oasis_map'),

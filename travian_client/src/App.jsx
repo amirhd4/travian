@@ -12,6 +12,13 @@ import Academy from "./pages/Academy.jsx";
 import Embassy from "./pages/Embassy.jsx";
 import TownHall from "./pages/TownHall.jsx";
 import Residence from "./pages/Residence.jsx";
+import MainBuilding from "./pages/MainBuilding.jsx";
+import Hideout from "./pages/Hideout.jsx";
+import Trapper from "./pages/Trapper.jsx";
+import Palace from "./pages/Palace.jsx";
+import Warehouse from "./pages/Warehouse.jsx";
+import Stonemason from "./pages/Stonemason.jsx";
+import Wall from "./pages/Wall.jsx";
 import Register from "./pages/Register.jsx";
 import useGameStore from "./store/useGameStore.js";
 import { useEffect } from "react";
@@ -125,6 +132,13 @@ function App() {
                     <Route path="/embassy" element={<Embassy />} />
                     <Route path="/town-hall" element={<TownHall />} />
                     <Route path="/residence" element={<Residence />} />
+                    <Route path="/main-building" element={<MainBuilding />} />
+                    <Route path="/hideout" element={<Hideout />} />
+                    <Route path="/trapper" element={<Trapper />} />
+                    <Route path="/palace" element={<Palace />} />
+                    <Route path="/warehouse" element={<Warehouse />} />
+                    <Route path="/stonemason" element={<Stonemason />} />
+                    <Route path="/wall" element={<Wall />} />
                     <Route path="/movements" element={<Movements />} />
                     <Route path="/hero" element={<Hero />} />
                     <Route path="/colonize" element={<Colonize />} />

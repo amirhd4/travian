@@ -408,8 +408,8 @@ export default function WorldMap() {
         <span style={{ margin: '0 6px' }}>● <span style={{ color: '#8b7355' }}>بازیکن دیگر</span></span>
         <span style={{ margin: '0 6px' }}>● <span style={{ color: '#cc3333' }}>ناتار</span></span>
         <span style={{ margin: '0 6px' }}>● <span style={{ color: '#9966cc' }}>شگفتی جهان</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#5a8a3a' }}>اوسیس آزاد</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#3a6a2a' }}>اوسیس اشغال‌شده</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#5a8a3a' }}>آبادی آزاد</span></span>
+        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#3a6a2a' }}>آبادی اشغال‌شده</span></span>
         <span style={{ margin: '0 6px' }}>● <span style={{ color: '#7a9a6a' }}>خانه خالی</span></span>
       </div>
 
@@ -438,7 +438,7 @@ export default function WorldMap() {
             </>
           ) : hoveredTile.oasis ? (
             <>
-              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4 }}>اوسیس</div>
+              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4 }}>آبادی</div>
               <div>({hoveredTile.y}|{hoveredTile.x})</div>
               <div style={{ margin: '3px 0' }}>
                 {hoveredTile.oasis.bonuses?.map((b, i) => (
@@ -522,7 +522,7 @@ export default function WorldMap() {
                   )}
                   {positionDetail.type === 'oasis' && (
                     <>
-                      <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>اوسیس</h3>
+                      <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>آبادی</h3>
                       <div style={{ marginBottom: 8 }}>
                         {positionDetail.bonuses?.map((b, i) => (
                           <BonusBadge key={i} resource={b[0]} percent={b[1]} />
@@ -576,7 +576,7 @@ export default function WorldMap() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#FFF', border: '2px solid #C9C9C9', borderRadius: 8, maxWidth: 400, width: '100%', boxShadow: '0 8px 16px rgba(0,0,0,0.3)' }}>
             <div style={{ background: '#498843', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '6px 6px 0 0' }}>
-              <span style={{ fontWeight: 'bold', fontSize: 14, color: '#fff' }}>اوسیس ({selectedOasis.x_coord}|{selectedOasis.y_coord})</span>
+              <span style={{ fontWeight: 'bold', fontSize: 14, color: '#fff' }}>آبادی ({selectedOasis.x_coord}|{selectedOasis.y_coord})</span>
               <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff' }}>&#10006;</button>
             </div>
             <div style={{ padding: 14 }}>

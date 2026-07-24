@@ -1686,3 +1686,84 @@ class ReinforcementReportDetailView(APIView):
             r.hidden_from_receiver = True
         r.save()
         return Response({"message": "گزارش حذف شد."})
+
+
+class TrapperView(APIView):
+    """
+    تله‌ساز — نمایش ظرفیت تله‌ها، نیروهای اسیر، و آموزش تله.
+    """
+    permission_classes = [IsAuthenticated]
+
+    TRAPPER_BUILDING_NAME = "تله"
+    TRAP_UNIT_ID = 199
+    TRAP_CAPACITY_PER_LEVEL = 15
+
+    def get(self, request):
+        from .models import TrappedTroop, TroopType, VillageTroop, TrainingQueue
+        from apps.game_engine.models import VillageBuilding
+
+        village_id = request.query_params.get('village_id')
+        try:
+            village = Village.objects.get(id=village_id, player=request.user)
+        except (Village.DoesNotExist, ValueError, TypeError):
+            return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
+
+        trapper = VillageBuilding.objects.filter(
+            village=village, building_type__name=self.TRAPPER_BUILDING_NAME
+        ).first()
+        trapper_level = trapper.level if trapper else 0
+        max_traps = trapper_level * self.TRAP_CAPACITY_PER_LEVEL
+
+        # Current trapped troops
+        trapped = TrappedTroop.objects.filter(
+            trapper_village=village
+        ).select_related('troop_type', 'original_owner_player')
+        trapped_count = sum(t.count for t in trapped)
+        available_traps = max(0, max_traps - trapped_count)
+
+        trapped_data = [
+            {
+                "id": t.id,
+                "troop_name": t.troop_type.name,
+                "count": t.count,
+                "original_owner": t.original_owner_player.username,
+                "captured_at": t.captured_at.isoformat(),
+            }
+            for t in trapped
+        ]
+
+        # Trap training info
+        try:
+            trap_type = TroopType.objects.get(id=self.TRAP_UNIT_ID)
+            trap_cost = {
+                "wood": trap_type.wood_cost,
+                "clay": trap_type.clay_cost,
+                "iron": trap_type.iron_cost,
+                "crop": trap_type.crop_cost,
+            }
+        except TroopType.DoesNotExist:
+            trap_cost = {"wood": 0, "clay": 0, "iron": 0, "crop": 0}
+
+        # Training queue
+        queue = TrainingQueue.objects.filter(
+            village=village, troop_type_id=self.TRAP_UNIT_ID, is_completed=False
+        ).select_related('troop_type')
+        now = timezone.now()
+        queue_data = [
+            {
+                "id": q.id,
+                "count": q.count,
+                "remaining_seconds": max(0, int((q.finishes_at - now).total_seconds())),
+            }
+            for q in queue
+        ]
+
+        return Response({
+            "trapper_level": trapper_level,
+            "max_traps": max_traps,
+            "trapped_count": trapped_count,
+            "available_traps": available_traps,
+            "trapped_troops": trapped_data,
+            "trap_cost": trap_cost,
+            "queue": queue_data,
+        })
