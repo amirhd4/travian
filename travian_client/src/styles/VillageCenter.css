@@ -1,0 +1,487 @@
+/* VillageCenter.css */
+
+.village2-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px auto;
+}
+
+#village_map {
+    position: relative;
+    width: 540px;
+    height: 448px;
+    /*background-image: url('/assets/map/village_bg.jpg');*/
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    margin: 0 auto;
+    overflow: visible;
+}
+
+.village-loading {
+    font-weight: bold;
+    padding-top: 200px;
+    color: #252525;
+    text-align: center;
+}
+
+.slot-building-img {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 10;
+    filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.4));
+}
+
+.rally-building-img {
+    position: absolute;
+    transform: translate(-50%, -50%) scaleX(-1);
+    cursor: pointer;
+    z-index: 11;
+}
+
+.wall-top {
+
+    width: 126% !important;
+    height: 126% !important;
+    max-width: none !important;
+    max-height: none !important;
+    /*cursor: default !important;*/
+    /*object-fit: fill !important;*/
+    left: -13.1% !important;
+    top: -13.1% !important;
+
+    position: absolute;
+    z-index: 14;
+    pointer-events: none;
+    transform: scaleX(-1);
+}
+
+.wall-bottom {
+
+    width: 126% !important;
+    height: 126% !important;
+    max-width: none !important;
+    max-height: none !important;
+    /*cursor: default !important;*/
+    /*object-fit: fill !important;*/
+    left: -13.1% !important;
+    top: -13.1% !important;
+
+    position: absolute;
+    z-index: 39;
+    pointer-events: none;
+    transform: scaleX(-1);
+}
+
+.wall-click-area {
+    position: absolute;
+    left: -7.5%;
+    top: -7.5%;
+    width: 115%;
+    height: 115%;
+    z-index: 5;
+    cursor: pointer;
+    pointer-events: all;
+}
+
+.wall-level-badge {
+    position: absolute;
+    left: 50%;
+    top: -5%;
+    transform: translate(-50%, -50%);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 40;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.wall-level-badge.upgrading {
+    background: linear-gradient(to top, #c9940a, #fce2a8);
+    border: 1px solid #f88c1f;
+    color: #a65a12;
+}
+
+.wall-level-badge.normal {
+    background: linear-gradient(to top, #7da100, #c7e94f);
+    border: 1px solid #506d00;
+    color: #252525;
+}
+
+.building-level-badge {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 30;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.building-level-badge.upgrading {
+    background: linear-gradient(to top, #c9940a, #fce2a8);
+    border: 1px solid #f88c1f;
+    color: #a65a12;
+}
+
+.building-level-badge.normal {
+    background: linear-gradient(to top, #7da100, #c7e94f);
+    border: 1px solid #506d00;
+    color: #252525;
+}
+
+.level-toggle-btn {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    color: #FFF;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    z-index: 40;
+    user-select: none;
+}
+
+.level-toggle-btn.active {
+    background: #c9940a;
+}
+
+.level-toggle-btn.inactive {
+    background: #7da100;
+}
+
+/* Tooltip */
+.building-tooltip {
+    position: fixed;
+    background: rgba(0,0,0,0.85);
+    color: #FFF;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    z-index: 200;
+    pointer-events: none;
+    min-width: 150px;
+    line-height: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    direction: rtl;
+    font-family: Tahoma, Arial, sans-serif;
+}
+
+.tooltip-title {
+    font-weight: bold;
+    font-size: 13px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.3);
+    padding-bottom: 4px;
+}
+
+.tooltip-empty {
+    color: #F88C1F;
+    margin-top: 4px;
+}
+
+.tooltip-upgrading {
+    color: #F88C1F;
+    margin-top: 4px;
+}
+
+.tooltip-cost-title {
+    margin-top: 4px;
+    font-size: 11px;
+    color: #CCC;
+}
+
+.tooltip-cost-grid {
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+    font-size: 11px;
+}
+
+.tooltip-max-level {
+    color: #99C01A;
+    margin-top: 4px;
+}
+
+/* Modal Overlay & Card */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.modal-card {
+    background: #FFF;
+    border: 2px solid #C9C9C9;
+    border-radius: 8px;
+    max-width: 400px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+}
+
+.modal-card.wide {
+    max-width: 700px;
+    max-height: 80vh;
+}
+
+.modal-header {
+    background: #f8f8f8;
+    padding: 12px 16px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header.green {
+    background: #498843;
+}
+
+.modal-title {
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.modal-title.white {
+    color: #FFF;
+}
+
+.modal-close-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    color: #888;
+}
+
+.modal-close-btn.white {
+    color: #FFF;
+}
+
+.modal-body {
+    padding: 16px;
+}
+
+.level-info-text {
+    font-size: 14px;
+    margin-bottom: 16px;
+    color: #333;
+}
+
+.upgrading-box {
+    padding: 12px;
+    text-align: center;
+    margin-bottom: 16px;
+    background: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 4px;
+}
+
+.upgrading-box-text {
+    font-size: 14px;
+    font-weight: bold;
+    color: #856404;
+    margin: 0;
+}
+
+.max-level-box {
+    padding: 12px;
+    text-align: center;
+    margin-bottom: 16px;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+}
+
+.max-level-box-text {
+    font-size: 14px;
+    font-weight: bold;
+    color: #155724;
+    margin: 0;
+}
+
+.upgrade-cost-box {
+    padding: 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    background: #fdfdfd;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.cost-title {
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #444;
+}
+
+.resource-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-bottom: 16px;
+    color: #222;
+}
+
+.res-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.build-time {
+    font-size: 12px;
+    color: #666;
+    margin: 0;
+}
+
+.insufficient-res {
+    font-size: 12px;
+    font-weight: bold;
+    margin-top: 12px;
+    color: #dc3545;
+    text-align: center;
+}
+
+.btn-primary-action {
+    width: 100%;
+    padding: 10px;
+    background: #73b544;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-primary-action:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.btn-nav-special {
+    width: 100%;
+    padding: 8px;
+    margin-top: 8px;
+    background: #498843;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+/* Building Search & Selection */
+.search-container {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.search-input-field {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    direction: rtl;
+    box-sizing: border-box;
+}
+
+.building-list-scroll {
+    padding: 16px;
+    overflow-y: auto;
+    max-height: calc(80vh - 120px);
+}
+
+.building-card-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.building-card-item.can-build {
+    border: 1px solid #99C01A;
+    background: #f9fbe7;
+    opacity: 1;
+}
+
+.building-card-item.cannot-build {
+    border: 1px solid #ddd;
+    background: #f9f9f9;
+    opacity: 0.7;
+}
+
+.building-card-img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    border-radius: 4px;
+    background: #fff;
+    border: 1px solid #eee;
+    flex-shrink: 0;
+}
+
+.building-card-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.building-card-title {
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 4px;
+}
+
+.building-card-resources {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.building-card-reason {
+    font-size: 11px;
+    color: #c00;
+    margin-bottom: 4px;
+}
+
+.btn-build-action {
+    padding: 4px 16px;
+    background: #73b544;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.btn-build-action:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
