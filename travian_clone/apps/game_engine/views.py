@@ -18,6 +18,7 @@ from .utils import (
     update_village_resources, calculate_crop_upkeep, calculate_building_population,
     calculate_village_population, is_server_finished, get_effective_production_rates, get_effective_max_level,
     get_main_building_speed_multiplier, get_player_best_embassy_level, get_alliance_capacity,
+    recalculate_village_capacities,
 )
 from .services import found_new_village, abandon_village, EMPTY_SLOT_NAME
 from .serializers import GameLogSerializer
@@ -3446,9 +3447,9 @@ class WarehouseView(APIView):
         except (Village.DoesNotExist, ValueError, TypeError):
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
-        from .utils import update_village_resources, calculate_production_rates
+        from .utils import update_village_resources, get_effective_production_rates
         update_village_resources(village)
-        production = calculate_production_rates(village)
+        production = get_effective_production_rates(village)
 
         warehouse = VillageBuilding.objects.filter(
             village=village, building_type__name="انبار"
