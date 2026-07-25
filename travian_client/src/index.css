@@ -569,3 +569,15 @@ body.login #side_navi{
 .res2 { background-position: 0px -22px; }
 .res3 { background-position: 0px -44px; }
 .res4 { background-position: 0px -66px; }
+
+/* ===== Message status sprites ===== */
+.msgStatus {
+    background-image: url('/assets/msg/messageStatus.gif');
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+}
+.msgStatusUnread  { background-position: 0px 0px; }
+.msgStatusRead    { background-position: -26px 0px; }
+.msgStatusReplied { background-position: -52px 0px; }

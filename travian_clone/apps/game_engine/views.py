@@ -1006,12 +1006,19 @@ class InboxView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        msgs = Message.objects.filter(
+        qs = Message.objects.filter(
             receiver=request.user, is_deleted_receiver=False,
         ).select_related('sender', 'receiver', 'parent_message__sender').order_by('-created_at')
-        msgs = _paginate_qs(request, msgs)
+        count = qs.count()
+        try:
+            limit = int(request.query_params.get('limit', 15))
+            offset = int(request.query_params.get('offset', 0))
+        except (TypeError, ValueError):
+            limit, offset = 15, 0
+        limit = min(limit, 100)
+        msgs = qs[offset:offset + limit]
         serializer = MessageSerializer(msgs, many=True, context={'request': request})
-        return Response(serializer.data)
+        return Response({"count": count, "results": serializer.data})
 
     def post(self, request):
         receiver_id = request.data.get('receiver_id')
@@ -1091,12 +1098,19 @@ class SentMessagesView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        msgs = Message.objects.filter(
+        qs = Message.objects.filter(
             sender=request.user, is_deleted_sender=False,
         ).select_related('sender', 'receiver', 'parent_message__sender').order_by('-created_at')
-        msgs = _paginate_qs(request, msgs)
+        count = qs.count()
+        try:
+            limit = int(request.query_params.get('limit', 15))
+            offset = int(request.query_params.get('offset', 0))
+        except (TypeError, ValueError):
+            limit, offset = 15, 0
+        limit = min(limit, 100)
+        msgs = qs[offset:offset + limit]
         serializer = MessageSerializer(msgs, many=True, context={'request': request})
-        return Response(serializer.data)
+        return Response({"count": count, "results": serializer.data})
 
 
 class UsernameSearchView(APIView):

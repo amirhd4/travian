@@ -4,19 +4,22 @@ import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
+import Pagination from '../components/Pagination';
 import { AlertModal, ConfirmModal } from '../components/Modal';
 
 const TABS = [
-    { key: 'inbox', label: 'صندوق ورودی', image: '/assets/ui/friends-icon.gif' },
-    { key: 'sent', label: 'پیام‌های ارسالی', image: '/assets/ui/car-icon.gif' },
-    { key: 'compose', label: 'نوشتن پیام', image: '/assets/ui/bb-buttons.png' },
+    { key: 'inbox', label: 'صندوق ورودی' },
+    { key: 'sent', label: 'پیام‌های ارسالی' },
+    { key: 'compose', label: 'نوشتن پیام' },
 ];
 
 export default function Messages() {
     const [searchParams] = useSearchParams();
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'inbox');
     const [messages, setMessages] = useState([]);
+    const [messagesCount, setMessagesCount] = useState(0);
     const [sentMessages, setSentMessages] = useState([]);
+    const [sentCount, setSentCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState(null);
 
@@ -31,11 +34,12 @@ export default function Messages() {
     const [offset, setOffset] = useState(0);
     const LIMIT = 15;
 
-    const fetchMessages = useCallback(async () => {
+    const fetchMessages = useCallback(async (fetchOffset) => {
         setLoading(true);
         try {
-            const { data } = await api.get(`game/messages/?offset=${offset}&limit=${LIMIT}`);
-            setMessages(data);
+            const { data } = await api.get(`game/messages/?offset=${fetchOffset ?? offset}&limit=${LIMIT}`);
+            setMessages(data.results);
+            setMessagesCount(data.count);
         } catch (err) {
             console.error(err);
         } finally {
@@ -43,11 +47,12 @@ export default function Messages() {
         }
     }, [offset]);
 
-    const fetchSentMessages = useCallback(async () => {
+    const fetchSentMessages = useCallback(async (fetchOffset) => {
         setLoading(true);
         try {
-            const { data } = await api.get(`game/messages/sent/?offset=${offset}&limit=${LIMIT}`);
-            setSentMessages(data);
+            const { data } = await api.get(`game/messages/sent/?offset=${fetchOffset ?? offset}&limit=${LIMIT}`);
+            setSentMessages(data.results);
+            setSentCount(data.count);
         } catch (err) {
             console.error(err);
         } finally {
@@ -131,6 +136,13 @@ export default function Messages() {
         setActiveTab('compose');
     };
 
+    const handlePageChange = (newOffset) => {
+        setOffset(newOffset);
+        setSelectedMessage(null);
+        if (activeTab === 'inbox') fetchMessages(newOffset);
+        if (activeTab === 'sent') fetchSentMessages(newOffset);
+    };
+
     return (
         <PageShell maxWidth="max-w-3xl">
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone}
@@ -143,9 +155,8 @@ export default function Messages() {
                 <div className="flex border-b border-parchment-300">
                     {TABS.map(tab => (
                         <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                            className={`flex-1 py-3 text-sm font-bold transition flex items-center justify-center gap-1.5
+                            className={`flex-1 py-3 text-sm font-bold transition
                                 ${activeTab === tab.key ? 'bg-gold-500 text-ink-900' : 'bg-parchment-100 text-ink-600 hover:bg-parchment-200'}`}>
-                            <img src={tab.image} alt="" className="w-4 h-4" onError={e => e.target.style.display='none'} />
                             {tab.label}
                         </button>
                     ))}
@@ -175,7 +186,9 @@ export default function Messages() {
                                             <tr key={msg.id} onClick={() => handleReadMessage(msg)}
                                                 className={`cursor-pointer transition border-b border-parchment-200
                                                     ${msg.is_read ? 'hover:bg-parchment-50 text-ink-600' : 'bg-gold-50 hover:bg-gold-100 font-bold text-ink-900'}`}>
-                                                <td className="p-3 text-center">{msg.is_read ? '📖' : '💌'}</td>
+                                                <td className="p-3 text-center">
+                                                    <span className={msg.is_read ? 'msgStatus msgStatusRead' : 'msgStatus msgStatusUnread'} title={msg.is_read ? 'خوانده شده' : 'خوانده نشده'} />
+                                                </td>
                                                 <td className="p-3">{msg.subject}</td>
                                                 <td className="p-3 text-sm text-blue-700">{msg.sender_name}</td>
                                                 <td className="p-3 text-xs text-left" dir="ltr">
@@ -185,6 +198,7 @@ export default function Messages() {
                                         ))}
                                     </tbody>
                                 </table>
+                                <Pagination count={messagesCount} limit={LIMIT} offset={offset} onChange={handlePageChange} />
                             </>
                         )
                     )}
@@ -219,6 +233,7 @@ export default function Messages() {
                     {activeTab === 'sent' && !selectedMessage && (
                         loading ? <LoadingState label="در حال بارگذاری پیام‌های ارسالی..." /> :
                         sentMessages.length === 0 ? <EmptyState icon="📤" title="هیچ پیام ارسالی‌ای ندارید." /> : (
+                            <>
                             <table className="w-full text-right border-collapse">
                                 <thead>
                                     <tr className="bg-parchment-100 text-ink-700 text-sm">
@@ -240,6 +255,8 @@ export default function Messages() {
                                     ))}
                                 </tbody>
                             </table>
+                            <Pagination count={sentCount} limit={LIMIT} offset={offset} onChange={handlePageChange} />
+                            </>
                         )
                     )}
 
