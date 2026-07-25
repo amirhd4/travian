@@ -20,9 +20,16 @@ def calculate_crop_upkeep(village):
         vt.count * vt.troop_type.crop_upkeep
         for vt in VillageTroop.objects.filter(village=village).select_related('troop_type')
     )
+    # ✅ FIX: مزارع منابع (چوب‌بری/گودال خاک رس/معدن آهن/مزرعه گندم) نباید
+    # مصرف گندم داشته باشند - دقیقا مثل تراوین اصلی که فقط ساختمان‌های
+    # زیرساختی/نظامی مصرف گندم دارند، نه خودِ مزارع. قبلا این ۱۸ مزرعه‌ی
+    # هر دهکده هم در این مجموع لحاظ می‌شدند و باعث قحطی زودهنگام و غیرواقعی
+    # از همان ابتدای بازی می‌شدند.
     building_upkeep = sum(
         b.building_type.crop_upkeep
-        for b in VillageBuilding.objects.filter(village=village, level__gt=0).select_related('building_type')
+        for b in VillageBuilding.objects.filter(village=village, level__gt=0)
+        .exclude(building_type__category='RESOURCE')
+        .select_related('building_type')
     )
     return troop_upkeep + building_upkeep
 
@@ -147,9 +154,15 @@ def update_village_resources(village):
     speed = settings.server_speed if settings else 1
 
     oasis_mult = _get_oasis_bonus_multipliers(village)
-    mill_mult = _get_mill_multiplier(village)  # ✅ جدید
+    mill_mult = _get_mill_multiplier(village)
+    gold_mult = _get_gold_resource_bonus_multipliers(village)  # ✅ زودتر محاسبه می‌شود
 
-    net_crop_rate = (village.prod_crop * oasis_mult['crop'] * mill_mult) - calculate_crop_upkeep(village)
+    # ✅ FIX: بونوس طلایی فقط روی جزء «تولید» گندم اعمال می‌شود، نه روی نرخ
+    # خالص (تولید منهای مصرف). قبلا اگر مصرف گندم بیشتر از تولید بود
+    # (net_crop_rate منفی)، ضرب در gold_mult کمبود گندم را بدتر می‌کرد -
+    # یعنی خرید بونوس طلایی می‌توانست باعث سریع‌تر مردن نیروها شود.
+    crop_production = village.prod_crop * oasis_mult['crop'] * mill_mult * gold_mult['crop']
+    net_crop_rate = crop_production - calculate_crop_upkeep(village)
 
     if village.loyalty < 100:
         residence_exists = VillageBuilding.objects.filter(
@@ -166,13 +179,12 @@ def update_village_resources(village):
             return hero_rate_per_hour * delta_seconds * speed / 3600
         return 0
 
-    gold_mult = _get_gold_resource_bonus_multipliers(village)
-
     village.wood = min(village.max_storage, village.wood + (village.prod_wood * oasis_mult['wood'] * gold_mult['wood'] * delta_seconds * speed / 3600) + _hero_extra('wood'))
     village.clay = min(village.max_storage, village.clay + (village.prod_clay * oasis_mult['clay'] * gold_mult['clay'] * delta_seconds * speed / 3600) + _hero_extra('clay'))
     village.iron = min(village.max_storage, village.iron + (village.prod_iron * oasis_mult['iron'] * gold_mult['iron'] * delta_seconds * speed / 3600) + _hero_extra('iron'))
 
-    raw_new_crop = village.crop + (net_crop_rate * gold_mult['crop'] * delta_seconds * speed / 3600) + _hero_extra('crop')
+    # ✅ FIX: gold_mult دیگر اینجا دوباره ضرب نمی‌شود - از قبل در crop_production لحاظ شده
+    raw_new_crop = village.crop + (net_crop_rate * delta_seconds * speed / 3600) + _hero_extra('crop')
 
     if raw_new_crop < 0 and net_crop_rate < 0:
         elapsed_hours = (delta_seconds * speed) / 3600
