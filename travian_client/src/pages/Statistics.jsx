@@ -102,6 +102,7 @@ export default function Statistics() {
                 setStats(response.data);
             } catch (error) {
                 console.error(error);
+                setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری اطلاعات' });
             } finally {
                 setLoading(false);
             }
@@ -118,8 +119,8 @@ export default function Statistics() {
                 setFarms(response.data);
             } catch (error) {
                 console.error(error);
+                setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری دهکده‌های فارم' });
             } finally {
-                setFarmsLoading(false);
                 setFarmsFetched(true);
             }
         };
@@ -135,8 +136,8 @@ export default function Statistics() {
                 setAlliances(response.data);
             } catch (error) {
                 console.error(error);
+                setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری اتحادها' });
             } finally {
-                setAlliancesLoading(false);
                 setAlliancesFetched(true);
             }
         };

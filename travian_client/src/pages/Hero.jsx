@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
@@ -358,21 +358,6 @@ export default function Hero() {
         catch (error) { setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در تخصیص امتیاز' }); }
         finally { setBusy(null); }
     };
-
-    useEffect(() => {
-        let revokeUrl = null;
-        const fetchHeroImage = async () => {
-            try {
-                const response = await api.get('combat/hero/image/?size=sideinfo', { responseType: 'blob' });
-                const url = URL.createObjectURL(response.data);
-                if (revokeUrl) URL.revokeObjectURL(revokeUrl);
-                revokeUrl = url;
-                setHeroImageUrl(url);
-            } catch { /* silent */ }
-        };
-        fetchHeroImage();
-        return () => { if (revokeUrl) URL.revokeObjectURL(revokeUrl); };
-    }, [heroImageVersion]);
 
     useEffect(() => {
         let revokeUrl = null;

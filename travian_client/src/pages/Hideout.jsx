@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import PageShell from '../components/PageShell';
 import WoodSign from '../components/WoodSign';
+import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 
@@ -22,6 +23,7 @@ export default function Hideout() {
         tribe: 'ROMAN', tribe_multiplier: 1, crannies: [],
     });
     const [loading, setLoading] = useState(true);
+    const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchData = useCallback(async () => {
         if (!activeVillageId) return;
@@ -30,6 +32,7 @@ export default function Hideout() {
             setData(data);
         } catch (error) {
             console.error(error);
+            setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری اطلاعات مخفیگاه' });
         } finally {
             setLoading(false);
         }
@@ -41,6 +44,7 @@ export default function Hideout() {
 
     return (
         <PageShell maxWidth="max-w-3xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="مخفیگاه" />
             <WoodSign title="مخفیگاه" icon="🕳️">
                 <p className="text-xs text-ink-600 mb-4 leading-relaxed text-center">
                     مخفیگاه منابع شما را از چشم دشمان پنهان می‌کند. هر سطح <b>{data.individual_capacity_per_level}</b> واحد از هر نوع منبع را محافظت می‌کند.

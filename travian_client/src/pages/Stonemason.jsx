@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import PageShell from '../components/PageShell';
 import WoodSign from '../components/WoodSign';
+import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 
@@ -8,13 +9,14 @@ export default function Stonemason() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const [data, setData] = useState({ level: 0, current_bonus_percent: 0, next_bonus_percent: null, wall_level: 0, wall_defense_percent: 0 });
     const [loading, setLoading] = useState(true);
+    const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchData = useCallback(async () => {
         if (!activeVillageId) return;
         try {
             const { data } = await api.get('game/stonemason/', { params: { village_id: activeVillageId } });
             setData(data);
-        } catch (error) { console.error(error); }
+        } catch (error) { console.error(error); setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری اطلاعات سنگ‌تراشی' }); }
         finally { setLoading(false); }
     }, [activeVillageId]);
 
@@ -24,6 +26,7 @@ export default function Stonemason() {
 
     return (
         <PageShell maxWidth="max-w-3xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="سنگ‌تراشی" />
             <WoodSign title="کارگاه سنگ‌تراشی" icon="🔨">
                 <p className="text-xs text-ink-600 mb-4 text-center leading-relaxed">
                     سنگ‌تراشان استحکام دیوار دهکده شما را افزایش می‌دهند. هر سطح <b>۲٪</b> پایداری بیشتر به دیوار می‌دهد.

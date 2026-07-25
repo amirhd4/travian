@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import PageShell from '../components/PageShell';
 import WoodSign from '../components/WoodSign';
+import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 
@@ -11,13 +12,14 @@ export default function Wall() {
         stonemason_level: 0, stonemason_multiplier: 1, total_defense_percent: 0, next_level_defense: null,
     });
     const [loading, setLoading] = useState(true);
+    const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchData = useCallback(async () => {
         if (!activeVillageId) return;
         try {
             const { data } = await api.get('game/wall/', { params: { village_id: activeVillageId } });
             setData(data);
-        } catch (error) { console.error(error); }
+        } catch (error) { console.error(error); setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری اطلاعات دیوار' }); }
         finally { setLoading(false); }
     }, [activeVillageId]);
 
@@ -28,6 +30,7 @@ export default function Wall() {
     if (!data.wall_name) {
         return (
             <PageShell maxWidth="max-w-3xl">
+                <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="دیوار" />
                 <WoodSign title="دیوار" icon="🧱">
                     <p className="text-center text-sm text-ink-500 py-6">هیچ دیواری در این دهکده ساخته نشده است.</p>
                 </WoodSign>
@@ -37,6 +40,7 @@ export default function Wall() {
 
     return (
         <PageShell maxWidth="max-w-3xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="دیوار" />
             <WoodSign title={data.wall_name} icon="🧱">
                 <p className="text-xs text-ink-600 mb-4 text-center leading-relaxed">
                     دیوار از دهکده شما در برابر حملات دفاع می‌کند. هر سطح <b>۳٪</b> دفاع اضافه می‌کند.

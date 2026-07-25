@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
+import { AlertModal } from '../components/Modal';
 import api from '../api/axiosConfig';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
@@ -20,6 +21,7 @@ export default function Movements() {
     const { lastMessage } = useGameWebSocket();
     const [data, setData] = useState({ outgoing: [], incoming: [] });
     const [loading, setLoading] = useState(true);
+    const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchMovements = useCallback(async () => {
         if (!activeVillageId) return;
@@ -28,6 +30,7 @@ export default function Movements() {
             setData(res.data);
         } catch (error) {
             console.error(error);
+            setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری حرکات نیروها' });
         } finally {
             setLoading(false);
         }
@@ -60,6 +63,7 @@ export default function Movements() {
 
     return (
         <PageShell maxWidth="max-w-3xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="حرکات نیروها" />
             <div className="panel">
                 <div className="panel-header"><span className="panel-title">🚀 نیروهای اعزامی</span></div>
                 <div className="panel-body">

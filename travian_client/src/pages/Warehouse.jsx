@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import PageShell from '../components/PageShell';
 import WoodSign from '../components/WoodSign';
+import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
 import api from '../api/axiosConfig';
 
@@ -27,6 +28,7 @@ export default function Warehouse() {
 
     const [data, setData] = useState({ warehouse_level: 0, granary_level: 0, resources: {} });
     const [loading, setLoading] = useState(true);
+    const [alertMsg, setAlertMsg] = useState(null);
 
     const fetchData = useCallback(async () => {
         if (!activeVillageId) return;
@@ -35,6 +37,7 @@ export default function Warehouse() {
             setData(data);
         } catch (error) {
             console.error(error);
+            setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری اطلاعات انبار' });
         } finally {
             setLoading(false);
         }
@@ -47,6 +50,7 @@ export default function Warehouse() {
 
     return (
         <PageShell maxWidth="max-w-3xl">
+            <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="انبار" />
             <WoodSign title="انبار و سیلو" icon="📦">
                 <p className="text-xs text-ink-600 mb-4 text-center">
                     انبار سطح <b>{data.warehouse_level}</b> · سیلو سطح <b>{data.granary_level}</b>
