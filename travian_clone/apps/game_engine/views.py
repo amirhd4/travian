@@ -3076,7 +3076,6 @@ class ResidenceView(APIView):
 
     def get(self, request):
         from apps.combat.models import TroopType, VillageTroop, TrainingQueue
-        from apps.combat.research_data import TROOP_DATA
 
         village_id = request.query_params.get('village_id')
         try:
@@ -3116,9 +3115,8 @@ class ResidenceView(APIView):
         # Build trainable units list
         trainable = []
         for tt in settler_chief_types:
-            td = TROOP_DATA.get(tt.id, {})
-            cost = td.get('cost', {})
-            train_time = td.get('train_time', tt.base_train_time)
+            cost = {"wood": tt.wood_cost, "clay": tt.clay_cost, "iron": tt.iron_cost, "crop": tt.crop_cost}
+            train_time = tt.base_train_time
             # Adjust by building level (faster training with higher level)
             if building_level > 0:
                 train_time = int(train_time * 0.95 ** (building_level - 1))
@@ -3181,7 +3179,6 @@ class ResidenceView(APIView):
 
     def post(self, request):
         from apps.combat.models import TroopType, VillageTroop, TrainingQueue
-        from apps.combat.research_data import TROOP_DATA
 
         village_id = request.data.get('village_id')
         troop_type_id = request.data.get('troop_type_id')
@@ -3222,8 +3219,7 @@ class ResidenceView(APIView):
                 return Response({"error": "این نیرو در حال حاضر در حال آموزش است."}, status=400)
 
             # Check resources
-            td = TROOP_DATA.get(troop_type_id, {})
-            cost = td.get('cost', {})
+            cost = {"wood": troop_type.wood_cost, "clay": troop_type.clay_cost, "iron": troop_type.iron_cost, "crop": troop_type.crop_cost}
             total_cost = {k: v * quantity for k, v in cost.items()}
 
             update_village_resources(village)
@@ -3239,7 +3235,7 @@ class ResidenceView(APIView):
             village.save()
 
             # Calculate duration
-            train_time = td.get('train_time', troop_type.base_train_time)
+            train_time = troop_type.base_train_time
             train_time = int(train_time * 0.95 ** (building.level - 1))
             duration = train_time * quantity
 
@@ -3254,9 +3250,12 @@ class ResidenceView(APIView):
             )
 
             # Schedule completion
-            from apps.combat.tasks import complete_training
-            transaction.on_commit(lambda: complete_training.apply_async(
-                args=[queue_item.id], eta=ends_at
+            from apps.game_engine.engine import schedule_game_event
+            transaction.on_commit(lambda: schedule_game_event(
+                village_id=village.id,
+                event_type="TROOP_RECRUITMENT",
+                base_duration_seconds=duration,
+                details={"troop_id": troop_type.id, "count": quantity, "queue_id": queue_item.id}
             ))
 
         return Response({
