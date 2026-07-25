@@ -434,6 +434,46 @@ div.village1 table#movements div.dur_r { float: left; padding-left: 2px; font-si
     pointer-events: none;
 }
 
+/* Map Toolbar */
+.mapToolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    margin-bottom: 4px;
+    background: #E5E5E5;
+    border: 1px solid #C9C9C9;
+    border-radius: 2px;
+}
+.mapToolbarBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: #498843;
+    color: #fff;
+    border: 1px solid #3a6e35;
+    border-radius: 2px;
+    font-weight: bold;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: Arial, Helvetica, Verdana, sans-serif;
+}
+.mapToolbarBtn:hover {
+    background: #5a9e52;
+}
+
+/* Map container override for fullscreen */
+body.map #contentOuterContainer {
+    width: auto;
+    margin-left: 0;
+    float: none;
+}
+body.map #contentOuterContainer .contentContainer {
+    overflow-x: auto;
+    padding: 8px;
+}
+
 
 body.login #contentOuterContainer {
     /*margin-left: auto !important;*/

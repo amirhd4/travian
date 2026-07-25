@@ -225,7 +225,7 @@ export default function Residence() {
                                 <p className="font-bold text-sm text-ink-800">{v.name}</p>
                                 <p className="text-xs text-ink-500">({v.y_coord}|{v.x_coord})</p>
                             </div>
-                            <a href={`/world-map`} className="text-xs text-brand-600 hover:underline">مشاهده در نقشه</a>
+                            <a href={`/world-map?x=${v.x_coord}&y=${v.y_coord}`} className="text-xs text-brand-600 hover:underline">مشاهده در نقشه</a>
                         </div>
                     ))}
                 </div>

@@ -13,6 +13,8 @@ const BODY_CLASS_MAP = {
     '/village': 'village1 gidRessources',
     '/dorf2': 'village2',
     '/world-map': 'map',
+    '/position-details': 'map',
+    '/cropfinder': 'cropfinder',
 };
 
 export default function GameLayout() {

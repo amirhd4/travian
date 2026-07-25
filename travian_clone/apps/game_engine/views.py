@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from asgiref.sync import async_to_sync
 from django.db import models, transaction
+from django.db.models import Q
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from channels.layers import get_channel_layer
@@ -219,6 +220,13 @@ class WorldMapView(APIView):
         for v in villages:
             population_cache[v.id] = calculate_village_population(v)
 
+        # Build alliance name cache for all alliance_ids in view
+        alliance_ids = set(v.player.alliance_id for v in villages if v.player.alliance_id)
+        alliance_cache = {}
+        if alliance_ids:
+            for a in Alliance.objects.filter(id__in=alliance_ids):
+                alliance_cache[a.id] = a.name
+
         data = [
             {
                 "id": v.id,
@@ -229,6 +237,7 @@ class WorldMapView(APIView):
                 "owner_id": v.player.id,
                 "tribe": v.player.tribe,
                 "alliance_id": v.player.alliance_id,
+                "alliance_name": alliance_cache.get(v.player.alliance_id),
                 "population": population_cache.get(v.id, 0),
                 "wall_level": wall_data.get(v.id, 0),
                 "field_type": v.field_type,
@@ -2732,6 +2741,31 @@ class PositionDetailView(APIView):
             if vb:
                 wall_level = vb.level
 
+            # Alliance name
+            alliance_name = None
+            if village.player.alliance_id:
+                alliance = Alliance.objects.filter(id=village.player.alliance_id).first()
+                alliance_name = alliance.name if alliance else None
+
+            # Recent combat reports
+            from apps.combat.models import CombatReport
+            village_coords_str = f"{village.x_coord}|{village.y_coord}"
+            recent_reports = CombatReport.objects.filter(
+                Q(attacker_player=village.player, attacker_coords=village_coords_str) |
+                Q(defender_player=village.player, defender_coords=village_coords_str)
+            ).order_by('-created_at')[:5]
+
+            report_data = [{
+                "id": r.id,
+                "type": r.movement_type,
+                "date": r.created_at.isoformat(),
+                "attacker": r.attacker_village_name,
+                "defender": r.defender_village_name,
+                "attacker_coords": r.attacker_coords,
+                "defender_coords": r.defender_coords,
+                "victory": r.victory,
+            } for r in recent_reports]
+
             return Response({
                 "type": "village",
                 "id": village.id,
@@ -2742,6 +2776,7 @@ class PositionDetailView(APIView):
                 "owner_id": village.player.id,
                 "tribe": village.player.tribe,
                 "alliance_id": village.player.alliance_id,
+                "alliance_name": alliance_name,
                 "population": calculate_village_population(village),
                 "wall_level": wall_level,
                 "field_type": village.field_type,
@@ -2749,8 +2784,15 @@ class PositionDetailView(APIView):
                 "is_capital": village.is_capital,
                 "is_natar": village.player.username == "Natars",
                 "is_mine": village.player_id == request.user.id,
+                "reports": report_data,
             })
         elif oasis:
+            # Oasis owner alliance name
+            owner_alliance_name = None
+            if oasis.owner_village and oasis.owner_village.player.alliance_id:
+                alliance = Alliance.objects.filter(id=oasis.owner_village.player.alliance_id).first()
+                owner_alliance_name = alliance.name if alliance else None
+
             return Response({
                 "type": "oasis",
                 "id": oasis.id,
@@ -2761,8 +2803,11 @@ class PositionDetailView(APIView):
                 "bonus_display": oasis.bonus_display,
                 "defense_strength": oasis.defense_strength,
                 "is_free": oasis.owner_village_id is None,
+                "is_mine": oasis.owner_village is not None and oasis.owner_village.player_id == request.user.id,
                 "owner_name": oasis.owner_village.name if oasis.owner_village else None,
+                "owner_player": oasis.owner_village.player.username if oasis.owner_village else None,
                 "owner_tribe": oasis.owner_village.player.tribe if oasis.owner_village else None,
+                "owner_alliance_name": owner_alliance_name,
                 "nature_troops": [
                     {"name": ot.troop_type.name_fa, "count": ot.count, "attack": ot.troop_type.attack,
                      "defense_infantry": ot.troop_type.defense_infantry, "defense_cavalry": ot.troop_type.defense_cavalry}
@@ -2772,8 +2817,8 @@ class PositionDetailView(APIView):
                 "bonus_percent": oasis.bonus_percent,
             })
         else:
-            import random
-            field_type = random.randint(1, 12)
+            # Deterministic field type based on coordinates (not random)
+            field_type = ((abs(x * 7 + y * 13) % 12) + 1)
             return Response({
                 "type": "empty",
                 "x_coord": x,

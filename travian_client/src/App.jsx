@@ -40,6 +40,8 @@ import GameLayout from "./layouts/GameLayouts.jsx";
 import { Outlet } from "react-router-dom";
 import VillagesOverview from "./pages/VillagesOverview.jsx";
 import Artifacts from "./pages/Artifacts.jsx";
+import PositionDetails from "./pages/PositionDetails.jsx";
+import CropFinder from "./pages/CropFinder.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -122,6 +124,8 @@ function App() {
                     <Route path="/village" element={<ResourceFields />} />
                     <Route path="/dorf2" element={<VillageCenter />} />
                     <Route path="/world-map" element={<WorldMap />} />
+                    <Route path="/position-details" element={<PositionDetails />} />
+                    <Route path="/cropfinder" element={<CropFinder />} />
                     <Route path="/send-troops" element={<SendTroops />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/statistics" element={<Statistics />} />
