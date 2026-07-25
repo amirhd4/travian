@@ -1,4 +1,7 @@
-﻿export default function Footer() {
+import { useNavigate } from 'react-router-dom';
+
+export default function Footer() {
+    const navigate = useNavigate();
     return (
         <div id="footer" style={{ clear: 'both' }}>
             <div id="mfoot">
@@ -7,7 +10,14 @@
                 <div className="clear"></div>
             </div>
             <p style={{ margin: '8px 0', fontSize: '11px', color: 'white', fontWeight: "bold"}}>
-                Support: <a href="mailto:travian@gmail.com" style={{ color: 'red', textDecoration: 'underline' }}>travian@gmail.com</a>
+                پشتیبانی:{' '}
+                <a href="#" style={{ color: 'red', textDecoration: 'underline' }}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        navigate('/messages?tab=compose&to=majditravian&subject=درخواست پشتیبانی');
+                    }}>
+                    تماس با ادمین
+                </a>
             </p>
         </div>
     );

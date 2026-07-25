@@ -139,6 +139,14 @@ export default function SideInfoBoards() {
                 </div>
             )}
 
+            {(user.is_superuser || user.is_staff) && (
+                <div id="villageList" className="listing" style={{ marginTop: '0' }}>
+                    <div className="head">
+                        <a href="/admin/messages" title="مدیریت پیام‌ها">پنل مدیریت</a>
+                    </div>
+                </div>
+            )}
+
             <div id="villageList" className="listing">
                 <div className="head">
                     <a href="/villages" title="نمای کلی دهکده‌ها">آمار دهکده‌ها:</a>

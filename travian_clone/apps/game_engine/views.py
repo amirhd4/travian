@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from asgiref.sync import async_to_sync
-from django.db import transaction
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from channels.layers import get_channel_layer
@@ -719,12 +719,21 @@ class GameLogListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        logs = GameLog.objects.filter(
-            village__player=request.user
-        ).order_by('-created_at')[:50]
+        try:
+            limit = int(request.query_params.get('limit', 20))
+            offset = int(request.query_params.get('offset', 0))
+        except (TypeError, ValueError):
+            limit, offset = 20, 0
+        limit = min(limit, 100)
 
+        qs = GameLog.objects.filter(
+            village__player=request.user
+        ).order_by('-created_at')
+
+        count = qs.count()
+        logs = qs[offset:offset + limit]
         serializer = GameLogSerializer(logs, many=True)
-        return Response(serializer.data)
+        return Response({"count": count, "results": serializer.data})
 
 
 class LeaderboardView(APIView):
@@ -973,11 +982,23 @@ class MarketplaceView(APIView):
         })
 
 
+def _paginate_qs(request, qs, default_limit=15):
+    try:
+        limit = int(request.query_params.get('limit', default_limit))
+        offset = int(request.query_params.get('offset', 0))
+    except (TypeError, ValueError):
+        limit, offset = default_limit, 0
+    limit = min(limit, 100)
+    return qs[offset:offset + limit]
+
+
 class MessageUnreadCountView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        count = Message.objects.filter(receiver=request.user, is_read=False).count()
+        count = Message.objects.filter(
+            receiver=request.user, is_read=False, is_deleted_receiver=False,
+        ).count()
         return Response({"unread_count": count})
 
 
@@ -985,25 +1006,49 @@ class InboxView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        messages = Message.objects.filter(receiver=request.user).order_by('-created_at')
-        serializer = MessageSerializer(messages, many=True)
+        msgs = Message.objects.filter(
+            receiver=request.user, is_deleted_receiver=False,
+        ).select_related('sender', 'receiver', 'parent_message__sender').order_by('-created_at')
+        msgs = _paginate_qs(request, msgs)
+        serializer = MessageSerializer(msgs, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
         receiver_id = request.data.get('receiver_id')
+        receiver_username = request.data.get('receiver_username', '').strip()
         subject = request.data.get('subject', '(بدون عنوان)')
-        body = request.data.get('body', '')
+        body = request.data.get('body', '').strip()
+        parent_id = request.data.get('parent_message')
 
-        try:
-            receiver = Player.objects.get(id=receiver_id)
-        except Player.DoesNotExist:
-            return Response({"error": "بازیکن مورد نظر یافت نشد."}, status=404)
+        if not body:
+            return Response({"error": "متن پیام نمی‌تواند خالی باشد."}, status=400)
+
+        if receiver_username:
+            try:
+                receiver = Player.objects.get(username=receiver_username)
+            except Player.DoesNotExist:
+                return Response({"error": "بازیکنی با این نام کاربری یافت نشد."}, status=404)
+        elif receiver_id:
+            try:
+                receiver = Player.objects.get(id=receiver_id)
+            except Player.DoesNotExist:
+                return Response({"error": "بازیکن مورد نظر یافت نشد."}, status=404)
+        else:
+            return Response({"error": "گیرنده مشخص نشده است."}, status=400)
+
+        if receiver.id == request.user.id:
+            return Response({"error": "نمی‌توانید به خودتان پیام بفرستید."}, status=400)
+
+        parent_msg = None
+        if parent_id:
+            try:
+                parent_msg = Message.objects.get(pk=parent_id)
+            except Message.DoesNotExist:
+                pass
 
         Message.objects.create(
-            sender=request.user,
-            receiver=receiver,
-            subject=subject,
-            body=body
+            sender=request.user, receiver=receiver,
+            subject=subject, body=body, parent_message=parent_msg,
         )
         return Response({"message": "کبوتر نامه‌بر با موفقیت ارسال شد."}, status=201)
 
@@ -1015,19 +1060,116 @@ class MessageReadView(APIView):
         try:
             message = Message.objects.get(pk=pk, receiver=request.user)
             message.is_read = True
-            message.save()
+            message.save(update_fields=['is_read'])
             return Response({"status": "خوانده شد"})
         except Message.DoesNotExist:
             return Response({"error": "پیام یافت نشد."}, status=404)
 
 
+class MessageDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            message = Message.objects.get(pk=pk)
+        except Message.DoesNotExist:
+            return Response({"error": "پیام یافت نشد."}, status=404)
+
+        if message.sender_id == request.user.id:
+            message.is_deleted_sender = True
+            message.save(update_fields=['is_deleted_sender'])
+        elif message.receiver_id == request.user.id:
+            message.is_deleted_receiver = True
+            message.save(update_fields=['is_deleted_receiver'])
+        else:
+            return Response({"error": "شما اجازه حذف این پیام را ندارید."}, status=403)
+
+        return Response({"message": "پیام حذف شد."})
+
+
 class SentMessagesView(APIView):
-    """نمایش پیام‌های ارسالی بازیکن."""
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        messages = Message.objects.filter(sender=request.user).order_by('-created_at')
-        serializer = MessageSerializer(messages, many=True)
+        msgs = Message.objects.filter(
+            sender=request.user, is_deleted_sender=False,
+        ).select_related('sender', 'receiver', 'parent_message__sender').order_by('-created_at')
+        msgs = _paginate_qs(request, msgs)
+        serializer = MessageSerializer(msgs, many=True, context={'request': request})
+        return Response(serializer.data)
+
+
+class UsernameSearchView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        q = request.query_params.get('q', '').strip()
+        if len(q) < 2:
+            return Response([])
+        users = Player.objects.filter(username__icontains=q).exclude(id=request.user.id)[:10]
+        from .serializers import get_username_search_serializer
+        serializer = get_username_search_serializer()(users, many=True)
+        return Response(serializer.data)
+
+
+class VillageSearchView(APIView):
+    """Search villages by name prefix or resolve by exact coordinates."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        name = request.query_params.get('name', '').strip()
+        x = request.query_params.get('x')
+        y = request.query_params.get('y')
+
+        if name:
+            if len(name) < 2:
+                return Response([])
+            villages = Village.objects.filter(
+                name__istartswith=name
+            ).select_related('player').order_by('name')[:15]
+            return Response([
+                {"id": v.id, "name": v.name, "x_coord": v.x_coord,
+                 "y_coord": v.y_coord, "owner": v.player.username}
+                for v in villages
+            ])
+
+        if x is not None and y is not None:
+            try:
+                x, y = int(x), int(y)
+            except (TypeError, ValueError):
+                return Response({"error": "مختصات نامعتبر است."}, status=400)
+            village = Village.objects.filter(
+                x_coord=x, y_coord=y
+            ).select_related('player').first()
+            if not village:
+                return Response({"error": "دهکده‌ای در این مختصات یافت نشد."}, status=404)
+            return Response({
+                "id": village.id, "name": village.name,
+                "x_coord": village.x_coord, "y_coord": village.y_coord,
+                "owner": village.player.username,
+            })
+
+        return Response({"error": "نام یا مختصات را وارد کنید."}, status=400)
+
+
+class AdminAllMessagesView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not (request.user.is_superuser or request.user.is_staff):
+            return Response({"error": "دسترسی غیرمجاز."}, status=403)
+
+        player_id = request.query_params.get('player_id')
+        qs = Message.objects.all()
+        if player_id:
+            try:
+                pid = int(player_id)
+                qs = qs.filter(models.Q(sender_id=pid) | models.Q(receiver_id=pid))
+            except (TypeError, ValueError):
+                pass
+        qs = qs.select_related('sender', 'receiver', 'parent_message__sender').order_by('-created_at')
+        qs = _paginate_qs(request, qs)
+        serializer = MessageSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
 
 
@@ -2462,7 +2604,7 @@ class BulkTroopBuyView(APIView):
         })
 
 
-ADMIN_USERNAME = "admin"
+ADMIN_USERNAME = "majditravian"
 
 
 class SupportMessageView(APIView):

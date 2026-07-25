@@ -254,6 +254,15 @@ class Message(models.Model):
     body = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     is_read = models.BooleanField(default=False)
+    is_deleted_sender = models.BooleanField(default=False)
+    is_deleted_receiver = models.BooleanField(default=False)
+    parent_message = models.ForeignKey(
+        'self', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='replies', verbose_name='پیام اصلی'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"{self.subject} - از {self.sender} به {self.receiver}"

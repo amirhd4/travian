@@ -509,3 +509,63 @@ body.login #side_navi{
     0%, 100% { box-shadow: inset 0 0 6px rgba(0,200,0,0.2); }
     50% { box-shadow: inset 0 0 14px rgba(0,200,0,0.5); }
 }
+
+/* ===== Report icon sprites (original Travian) ===== */
+.iReport {
+    background-image: url('/assets/reports/report_icons.gif');
+    width: 19px;
+    height: 17px;
+    display: inline-block;
+    vertical-align: middle;
+}
+.iReport0  { background-position: 0px -3px; }
+.iReport1  { background-position: 0px -53px; }
+.iReport2  { background-position: 0px -103px; }
+.iReport3  { background-position: 0px -153px; }
+.iReport4  { background-position: 0px -203px; }
+.iReport5  { background-position: 0px -253px; }
+.iReport6  { background-position: 0px -303px; }
+.iReport7  { background-position: 0px -353px; }
+.iReport8  { background-position: 0px -403px; }
+.iReport11 { background-position: 0px -553px; }
+.iReport12 { background-position: 0px -603px; }
+.iReport15 { background-position: 0px -753px; }
+.iReport21 { background-position: 0px -1053px; }
+
+/* Message status sprites */
+.messageStatus {
+    background-image: url('/assets/reports/messageStatus.gif');
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+}
+.messageStatusUnread  { background-position: 0px 0px; }
+.messageStatusRead    { background-position: -26px 0px; }
+.messageStatusReplied { background-position: -52px 0px; }
+
+/* Carry status sprites */
+.carry {
+    background-image: url('/assets/reports/carry.gif');
+    width: 13px;
+    height: 12px;
+    display: inline-block;
+    vertical-align: middle;
+}
+.carry          { background-position: 0px 0px; }
+.carry.half     { background-position: 0px -15px; }
+.carry.empty    { background-position: 0px -30px; }
+.carry.impossible { background-position: 0px -45px; }
+
+/* Resource icons (RTL) */
+.resIcon {
+    background-image: url('/assets/reports/res2-rtl.gif');
+    width: 18px;
+    height: 12px;
+    display: inline-block;
+    vertical-align: middle;
+}
+.res1 { background-position: 0px 0px; }
+.res2 { background-position: 0px -22px; }
+.res3 { background-position: 0px -44px; }
+.res4 { background-position: 0px -66px; }

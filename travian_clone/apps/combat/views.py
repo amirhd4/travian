@@ -1328,6 +1328,13 @@ class CombatReportListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        try:
+            limit = int(request.query_params.get('limit', 20))
+            offset = int(request.query_params.get('offset', 0))
+        except (TypeError, ValueError):
+            limit, offset = 20, 0
+        limit = min(limit, 100)
+
         direction = request.query_params.get('direction', 'all')
         qs = CombatReport.objects.filter(
             Q(attacker_player=request.user, hidden_from_attacker=False) |
@@ -1338,7 +1345,9 @@ class CombatReportListView(APIView):
         elif direction == 'incoming':
             qs = qs.filter(defender_player=request.user)
 
-        qs = qs.order_by('-created_at')[:100]
+        qs = qs.order_by('-created_at')
+        count = qs.count()
+        reports = qs[offset:offset + limit]
 
         def serialize(r):
             is_attacker = r.attacker_player_id == request.user.id
@@ -1360,7 +1369,7 @@ class CombatReportListView(APIView):
                 "created_at": r.created_at,
             }
 
-        return Response([serialize(r) for r in qs])
+        return Response({"count": count, "results": [serialize(r) for r in reports]})
 
 
 class CombatReportUnreadCountView(APIView):
@@ -1628,10 +1637,21 @@ class ReinforcementReportListView(APIView):
 
     def get(self, request):
         from .models import ReinforcementReport
+
+        try:
+            limit = int(request.query_params.get('limit', 20))
+            offset = int(request.query_params.get('offset', 0))
+        except (TypeError, ValueError):
+            limit, offset = 20, 0
+        limit = min(limit, 100)
+
         qs = ReinforcementReport.objects.filter(
             Q(sender_player=request.user, hidden_from_sender=False) |
             Q(receiver_player=request.user, hidden_from_receiver=False)
-        ).order_by('-created_at')[:100]
+        ).order_by('-created_at')
+
+        count = qs.count()
+        reports = qs[offset:offset + limit]
 
         def serialize(r):
             is_sender = r.sender_player_id == request.user.id
@@ -1648,7 +1668,7 @@ class ReinforcementReportListView(APIView):
                 "created_at": r.created_at,
             }
 
-        return Response([serialize(r) for r in qs])
+        return Response({"count": count, "results": [serialize(r) for r in reports]})
 
 
 class ReinforcementReportDetailView(APIView):

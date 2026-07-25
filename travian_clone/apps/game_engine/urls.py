@@ -2,7 +2,9 @@ from django.urls import path
 
 from .views import (
     UpgradeBuildingView, PaymentWebhookView, GameLogListView, LeaderboardView, MarketplaceView,
-    InboxView, MessageReadView, SentMessagesView, MessageUnreadCountView, EmbassyView, VillageListView, VillageDetailView, WorldMapView,
+    InboxView, MessageReadView, SentMessagesView, MessageUnreadCountView, MessageDeleteView,
+    UsernameSearchView, AdminAllMessagesView, VillageSearchView,
+    EmbassyView, VillageListView, VillageDetailView, WorldMapView,
     FoundVillageView, AbandonVillageView, VillageBuildingsView, ServerStatusView, QuestListView, ClaimQuestRewardView,
     GoldPackageListView, CreatePaymentRequestView, MockCompletePaymentView, BuyPlusView,
     FarmVillagesListView,
@@ -21,6 +23,7 @@ from ..combat.views import HeroAuctionListView, HeroAuctionBidView
 
 urlpatterns = [
     path('villages/', VillageListView.as_view(), name='village_list'),
+    path('villages/search/', VillageSearchView.as_view(), name='village_search'),
     path('villages/<int:village_id>/', VillageDetailView.as_view(), name='village_detail'),
     path('villages/<int:village_id>/buildings/', VillageBuildingsView.as_view(), name='village_buildings'),
     path('villages/<int:village_id>/available-buildings/', AvailableBuildingsView.as_view(), name='available_buildings'),
@@ -53,6 +56,9 @@ urlpatterns = [
     path('messages/', InboxView.as_view(), name='inbox'),
     path('messages/sent/', SentMessagesView.as_view(), name='sent_messages'),
     path('messages/<int:pk>/read/', MessageReadView.as_view(), name='read_message'),
+    path('messages/<int:pk>/delete/', MessageDeleteView.as_view(), name='message_delete'),
+    path('messages/username-search/', UsernameSearchView.as_view(), name='username_search'),
+    path('messages/admin-all/', AdminAllMessagesView.as_view(), name='admin_all_messages'),
     path('embassy/', EmbassyView.as_view(), name='embassy'),
     path('server-status/', ServerStatusView.as_view(), name='server_status'),
     path('quests/', QuestListView.as_view(), name='quest_list'),

@@ -3,13 +3,14 @@ import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
+import Pagination from '../components/Pagination';
 import { AlertModal, ConfirmModal } from '../components/Modal';
 
 const LOG_STYLES = {
-    COMBAT:   { icon: '⚔️', image: '/assets/reports/1.gif', border: 'border-rose-400', bg: 'bg-rose-50' },
-    BUILDING: { icon: '🏗️', image: '/assets/ui/buildings-icon.gif', border: 'border-blue-400', bg: 'bg-blue-50' },
-    TRADE:    { icon: '🤝', image: '/assets/reports/4.gif', border: 'border-gold-400', bg: 'bg-gold-50' },
-    SYSTEM:   { icon: 'ℹ️', image: null, border: 'border-parchment-400', bg: 'bg-parchment-100' },
+    COMBAT:   { cssClass: 'iReport iReport2', image: '/assets/reports/1.gif', border: 'border-rose-400', bg: 'bg-rose-50' },
+    BUILDING: { cssClass: null, image: '/assets/ui/buildings-icon.gif', border: 'border-blue-400', bg: 'bg-blue-50' },
+    TRADE:    { cssClass: 'iReport iReport11', image: '/assets/reports/4.gif', border: 'border-gold-400', bg: 'bg-gold-50' },
+    SYSTEM:   { cssClass: null, image: null, border: 'border-parchment-400', bg: 'bg-parchment-100' },
 };
 
 const TABS = [
@@ -20,7 +21,6 @@ const TABS = [
 ];
 
 function CombatReportRow({ report, onOpen }) {
-    const resultIcon = report.won ? '🟢' : '🔴';
     const directionLabel = report.is_attacker ? 'اعزامی' : 'ورودی';
     return (
         <div
@@ -37,14 +37,14 @@ function CombatReportRow({ report, onOpen }) {
             }}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '16px' }}>{resultIcon}</span>
+                <span className="iReport iReport2" title={report.won ? 'پیروزی' : 'شکست'} />
                 <div>
                     <p style={{ fontSize: '13px', color: '#252525', margin: 0 }}>
-                        {directionLabel} — {report.attacker_village_name} ⚔️ {report.defender_village_name}
+                        {directionLabel} — {report.attacker_village_name} → {report.defender_village_name}
                     </p>
                     <p style={{ fontSize: '11px', color: '#777', margin: 0 }}>
                         {report.attacker_coords} → {report.defender_coords}
-                        {report.conquered && <span style={{ color: '#F88C1F', fontWeight: 'bold' }}> · 🏆 تسخیر شد</span>}
+                        {report.conquered && <span style={{ color: '#F88C1F', fontWeight: 'bold' }}> · تسخیر شد</span>}
                     </p>
                 </div>
             </div>
@@ -76,14 +76,14 @@ function ReinforcementReportRow({ report, onMarkRead, onDelete }) {
         }}>
             <div onClick={handleClick} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '16px' }}>🛡️</span>
+                    <span className="iReport iReport8" title="نیروی کمکی" />
                     <div>
                         <p style={{ fontSize: '13px', color: '#252525', margin: 0 }}>
                             {directionLabel} — {report.source_village_name} ➡ {report.target_village_name}
                         </p>
                         <p style={{ fontSize: '11px', color: '#777', margin: 0 }}>
                             {report.source_coords} → {report.target_coords}
-                            {report.hero_sent && <span style={{ color: '#7B2D8B', fontWeight: 'bold' }}> · 🦸 همراه قهرمان</span>}
+                            {report.hero_sent && <span style={{ color: '#7B2D8B', fontWeight: 'bold' }}> · همراه قهرمان</span>}
                         </p>
                     </div>
                 </div>
@@ -102,7 +102,7 @@ function ReinforcementReportRow({ report, onMarkRead, onDelete }) {
                         </div>
                     )}
                     <button onClick={() => onDelete(report.id)} className="text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded hover:bg-rose-200">
-                        🗑️ حذف
+                        حذف
                     </button>
                 </div>
             )}
@@ -129,7 +129,7 @@ function CombatReportDetail({ report, onClose, onDelete }) {
             <div className="panel w-full max-w-lg p-6 relative max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <button onClick={onClose} className="absolute top-3 left-3 w-8 h-8 rounded-full bg-rose-100 text-rose-600 font-bold hover:bg-rose-200">×</button>
                 <h3 className="text-lg font-extrabold text-ink-800 mb-1">
-                    {report.attacker_village_name} ⚔️ {report.defender_village_name}
+                    {report.attacker_village_name} → {report.defender_village_name}
                 </h3>
                 <p className="text-xs text-ink-500 mb-4">
                     برنده: <b className={report.victory === 'attacker' ? 'text-brand-700' : 'text-rose-700'}>
@@ -169,12 +169,15 @@ function CombatReportDetail({ report, onClose, onDelete }) {
 
                 {report.loot && Object.values(report.loot).some((v) => v > 0) && (
                     <div className="bg-gold-50 border border-gold-200 rounded-lg p-3 mb-3 text-xs">
-                        🪵{report.loot.wood} 🧱{report.loot.clay} ⚒️{report.loot.iron} 🌾{report.loot.crop}
+                        <span className="resIcon res1" title="چوب" /> {report.loot.wood}{' '}
+                        <span className="resIcon res2" title="خشت" /> {report.loot.clay}{' '}
+                        <span className="resIcon res3" title="آهن" /> {report.loot.iron}{' '}
+                        <span className="resIcon res4" title="گندم" /> {report.loot.crop}
                     </div>
                 )}
 
                 <button onClick={() => onDelete(report.id)} className="btn text-xs !bg-rose-100 !text-rose-700 hover:!bg-rose-200 w-full mt-2">
-                    🗑️ حذف این گزارش
+                    حذف این گزارش
                 </button>
             </div>
         </div>
@@ -182,34 +185,59 @@ function CombatReportDetail({ report, onClose, onDelete }) {
 }
 
 export default function Reports() {
+    const PAGE_SIZE = 20;
     const [activeTab, setActiveTab] = useState('all');
+    const [pageOffset, setPageOffset] = useState(0);
     const [logs, setLogs] = useState([]);
+    const [logsCount, setLogsCount] = useState(0);
     const [combatReports, setCombatReports] = useState([]);
+    const [combatCount, setCombatCount] = useState(0);
     const [reinforcementReports, setReinforcementReports] = useState([]);
+    const [reinforcementCount, setReinforcementCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [openReport, setOpenReport] = useState(null);
     const [confirmState, setConfirmState] = useState(null);
     const [alertMsg, setAlertMsg] = useState(null);
 
-    const fetchLogs = useCallback(async () => {
-        try { const response = await api.get('game/logs/'); setLogs(response.data); }
-        catch (error) { console.error(error); }
+    const fetchLogs = useCallback(async (offset = 0) => {
+        try {
+            const { data } = await api.get('game/logs/', { params: { offset, limit: PAGE_SIZE } });
+            setLogs(data.results);
+            setLogsCount(data.count);
+        } catch (error) { console.error(error); }
     }, []);
 
-    const fetchCombatReports = useCallback(async () => {
-        try { const response = await api.get('combat/reports/'); setCombatReports(response.data); }
-        catch (error) { console.error(error); }
+    const fetchCombatReports = useCallback(async (offset = 0) => {
+        try {
+            const { data } = await api.get('combat/reports/', { params: { offset, limit: PAGE_SIZE } });
+            setCombatReports(data.results);
+            setCombatCount(data.count);
+        } catch (error) { console.error(error); }
     }, []);
 
-    const fetchReinforcementReports = useCallback(async () => {
-        try { const response = await api.get('combat/reports/reinforcements/'); setReinforcementReports(response.data); }
-        catch (error) { console.error(error); }
+    const fetchReinforcementReports = useCallback(async (offset = 0) => {
+        try {
+            const { data } = await api.get('combat/reports/reinforcements/', { params: { offset, limit: PAGE_SIZE } });
+            setReinforcementReports(data.results);
+            setReinforcementCount(data.count);
+        } catch (error) { console.error(error); }
     }, []);
 
     useEffect(() => {
         setLoading(true);
-        Promise.all([fetchLogs(), fetchCombatReports(), fetchReinforcementReports()]).finally(() => setLoading(false));
+        setPageOffset(0);
+        Promise.all([fetchLogs(0), fetchCombatReports(0), fetchReinforcementReports(0)]).finally(() => setLoading(false));
     }, [fetchLogs, fetchCombatReports, fetchReinforcementReports]);
+
+    const handlePageChange = useCallback((newOffset) => {
+        setPageOffset(newOffset);
+        setLoading(true);
+        const fetchers = [];
+        if (activeTab === 'all' || activeTab === 'trade' || activeTab === 'misc') fetchers.push(fetchLogs(newOffset));
+        if (activeTab === 'all' || activeTab === 'misc') fetchers.push(fetchCombatReports(newOffset));
+        if (activeTab === 'all' || activeTab === 'reinforcement') fetchers.push(fetchReinforcementReports(newOffset));
+        Promise.all(fetchers).finally(() => setLoading(false));
+    }, [activeTab, fetchLogs, fetchCombatReports, fetchReinforcementReports]);
 
     const handleOpenReport = async (report) => {
         try {
@@ -291,13 +319,24 @@ export default function Reports() {
 
             <div className="panel">
                 <div className="panel-header">
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>📜 گزارشات</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>گزارشات</span>
                 </div>
                 <div className="panel-body">
                     {/* Tabs */}
                     <div style={{ display: 'flex', borderBottom: '1px solid #C9C9C9', marginBottom: '12px' }}>
                         {TABS.map((tab) => (
-                            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                            <button key={tab.key} onClick={() => {
+                                if (activeTab !== tab.key) {
+                                    setActiveTab(tab.key);
+                                    setPageOffset(0);
+                                    setLoading(true);
+                                    const fetchers = [];
+                                    if (tab.key === 'all' || tab.key === 'trade' || tab.key === 'misc') fetchers.push(fetchLogs(0));
+                                    if (tab.key === 'all' || tab.key === 'misc') fetchers.push(fetchCombatReports(0));
+                                    if (tab.key === 'all' || tab.key === 'reinforcement') fetchers.push(fetchReinforcementReports(0));
+                                    Promise.all(fetchers).finally(() => setLoading(false));
+                                }
+                            }}
                                 style={{
                                     flex: 1,
                                     padding: '8px 12px',
@@ -332,7 +371,9 @@ export default function Reports() {
                                             borderTop: '1px solid #C9C9C9',
                                             borderBottom: '1px solid #C9C9C9',
                                         }}>
-                                            {style.image ? (
+                                            {style.cssClass ? (
+                                                <span className={style.cssClass} style={{ marginLeft: '12px', flexShrink: 0 }} title={log.log_type_display} />
+                                            ) : style.image ? (
                                                 <img src={style.image} alt="" style={{ width: '40px', height: '40px', marginLeft: '16px', flexShrink: 0 }} onError={(e) => { e.target.style.display='none'; }} />
                                             ) : null}
                                             <div style={{ flex: 1, minWidth: 0 }}>
@@ -355,6 +396,20 @@ export default function Reports() {
                                 ))}
                             </div>
                         )
+                    )}
+
+                    {!loading && hasAnyReports && (
+                        <Pagination
+                            count={
+                                activeTab === 'trade' ? logsCount :
+                                activeTab === 'reinforcement' ? reinforcementCount :
+                                activeTab === 'misc' ? combatCount :
+                                logsCount + combatCount + reinforcementCount
+                            }
+                            limit={PAGE_SIZE}
+                            offset={pageOffset}
+                            onChange={handlePageChange}
+                        />
                     )}
                 </div>
             </div>

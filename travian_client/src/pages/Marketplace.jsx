@@ -3,6 +3,7 @@ import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import EmptyState from '../components/EmptyState';
 import { AlertModal } from '../components/Modal';
+import VillageSearch from '../components/VillageSearch';
 import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
@@ -19,7 +20,8 @@ export default function Marketplace() {
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const { lastMessage } = useGameWebSocket();
 
-    const [targetVillageId, setTargetVillageId] = useState('');
+    const [targetVillageId, setTargetVillageId] = useState(null);
+    const [selectedVillage, setSelectedVillage] = useState(null);
     const [payload, setPayload] = useState({ wood: 0, clay: 0, iron: 0, crop: 0 });
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState(null);
@@ -69,6 +71,11 @@ export default function Marketplace() {
     const merchantsNeeded = status && totalToSend > 0 ? Math.max(1, Math.ceil(totalToSend / status.merchant_capacity)) : 0;
     const notEnoughMerchants = status && totalToSend > 0 && merchantsNeeded > status.available_merchants;
 
+    const handleVillageSelected = (village) => {
+        setSelectedVillage(village);
+        setTargetVillageId(village?.id || null);
+    };
+
     const handleSend = async (e) => {
         e.preventDefault();
         if (!activeVillageId) {
@@ -77,6 +84,10 @@ export default function Marketplace() {
         }
         if (totalToSend <= 0) {
             setAlertMsg({ tone: 'error', text: 'حداقل یک نوع منبع را برای ارسال مشخص کنید.' });
+            return;
+        }
+        if (!targetVillageId) {
+            setAlertMsg({ tone: 'error', text: 'دهکده مقصد را مشخص کنید.' });
             return;
         }
         setLoading(true);
@@ -123,10 +134,7 @@ export default function Marketplace() {
                     )}
 
                     <form onSubmit={handleSend} className="space-y-4">
-                        <div>
-                            <label className="field-label">شناسه دهکده مقصد</label>
-                            <input type="number" required className="field" value={targetVillageId} onChange={(e) => setTargetVillageId(e.target.value)} />
-                        </div>
+                        <VillageSearch onVillageSelected={handleVillageSelected} />
 
                         <div className="grid grid-cols-2 gap-3 bg-parchment-100 p-4 rounded-xl border border-parchment-300">
                             {Object.entries(RESOURCE_META).map(([res, meta]) => (
@@ -149,7 +157,7 @@ export default function Marketplace() {
                             </p>
                         )}
 
-                        <button type="submit" disabled={loading || !activeVillageId || notEnoughMerchants} className="btn-gold w-full py-3">
+                        <button type="submit" disabled={loading || !activeVillageId || !targetVillageId || notEnoughMerchants} className="btn-gold w-full py-3">
                             {loading ? 'در حال اعزام تاجران...' : 'ارسال تجار 🐪'}
                         </button>
                     </form>

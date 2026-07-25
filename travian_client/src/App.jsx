@@ -7,6 +7,7 @@ import Statistics from "./pages/Statistics.jsx";
 import Marketplace from "./pages/Marketplace.jsx";
 import WorldWonder from "./pages/WorldWonder.jsx";
 import Messages from "./pages/Messages.jsx";
+import AdminMessages from "./pages/AdminMessages.jsx";
 import Barracks from "./pages/Barracks.jsx";
 import Academy from "./pages/Academy.jsx";
 import Embassy from "./pages/Embassy.jsx";
@@ -127,6 +128,7 @@ function App() {
                     <Route path="/marketplace" element={<Marketplace />} />
                     <Route path="/world-wonder" element={<WorldWonder />} />
                     <Route path="/messages" element={<Messages />} />
+                    <Route path="/admin/messages" element={<AdminMessages />} />
                     <Route path="/barracks" element={<Barracks />} />
                     <Route path="/academy" element={<Academy />} />
                     <Route path="/embassy" element={<Embassy />} />

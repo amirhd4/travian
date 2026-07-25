@@ -4,6 +4,7 @@ import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
 import EmptyState from '../components/EmptyState';
 import { AlertModal, ConfirmModal } from '../components/Modal';
+import VillageSearch from '../components/VillageSearch';
 import useGameStore from '../store/useGameStore';
 
 const statusIcon = (status) => ({
@@ -24,7 +25,7 @@ export default function FarmList() {
     const [catalog, setCatalog] = useState([]);
     const [showForm, setShowForm] = useState(false);
     const [formSourceId, setFormSourceId] = useState('');
-    const [formTargetId, setFormTargetId] = useState('');
+    const [formTargetId, setFormTargetId] = useState(null);
     const [formTroops, setFormTroops] = useState({});
     const [submitting, setSubmitting] = useState(false);
 
@@ -75,11 +76,19 @@ export default function FarmList() {
     useEffect(() => { fetchEntries(); fetchCatalog(); }, [fetchEntries, fetchCatalog]);
     useEffect(() => { if (activeVillageId && !formSourceId) setFormSourceId(activeVillageId); }, [activeVillageId, formSourceId]);
 
+    const handleVillageSelected = (village) => {
+        setFormTargetId(village?.id || null);
+    };
+
     const handleAddEntry = async (e) => {
         e.preventDefault();
         const troopsPayload = Object.fromEntries(Object.entries(formTroops).filter(([, v]) => parseInt(v) > 0));
         if (Object.keys(troopsPayload).length === 0) {
             setAlertMsg({ tone: 'error', text: 'حداقل یک نوع نیرو مشخص کنید.' });
+            return;
+        }
+        if (!formTargetId) {
+            setAlertMsg({ tone: 'error', text: 'دهکده هدف را مشخص کنید.' });
             return;
         }
         setSubmitting(true);
@@ -88,7 +97,7 @@ export default function FarmList() {
                 source_village_id: formSourceId, target_village_id: formTargetId, troops_payload: troopsPayload,
                 farm_list_id: activeFarmListId
             });
-            setFormTargetId(''); setFormTroops({}); setShowForm(false);
+            setFormTargetId(null); setFormTroops({}); setShowForm(false);
             fetchEntries();
         } catch (error) {
             setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در افزودن ردیف' });
@@ -191,8 +200,8 @@ export default function FarmList() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="field-label">شناسه دهکده هدف</label>
-                                    <input type="number" required value={formTargetId} onChange={(e) => setFormTargetId(e.target.value)} className="field" />
+                                    <label className="field-label">دهکده هدف</label>
+                                    <VillageSearch onVillageSelected={handleVillageSelected} />
                                 </div>
                             </div>
 
