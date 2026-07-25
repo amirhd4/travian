@@ -170,31 +170,31 @@ export default function SideInfoBoards() {
             </div>
 
             {user.is_protected && user.protected_until && (() => {
-    const remaining = Math.max(0, Math.floor((new Date(user.protected_until) - now) / 1000));
-    return remaining > 0 ? (
-        <div style={{
-            width: '65%',
-            background: '#F7EBBE',
-            border: '3px double #BEA659',
-            borderRadius: '6px',
-            padding: '8px 12px',
-            margin: '10px 0',
-            textAlign: 'center',
-            boxShadow: 'inset 0 0 8px rgba(190, 166, 89, 0.2), 0 2px 5px rgba(0,0,0,0.1)'
-        }}>
-            <div style={{ color: '#5C4B24', fontWeight: 'bold', fontSize: '13px', marginBottom: '4px' }}>
-                🛡️ محافظت فعال
-            </div>
-            <div style={{ color: '#8A7336', fontSize: '12px', fontWeight: 'bold', letterSpacing: '1px' }}>
-                {formatCountdown(remaining)}
-            </div>
-        </div>
-    ) : null;
-})()}
+                const remaining = Math.max(0, Math.floor((new Date(user.protected_until) - now) / 1000));
+                return remaining > 0 ? (
+                    <div style={{
+                        width: '65%',
+                        background: '#F7EBBE',
+                        border: '3px double #BEA659',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        margin: '10px 0',
+                        textAlign: 'center',
+                        boxShadow: 'inset 0 0 8px rgba(190, 166, 89, 0.2), 0 2px 5px rgba(0,0,0,0.1)'
+                    }}>
+                        <div style={{ color: '#5C4B24', fontWeight: 'bold', fontSize: '10px', marginBottom: '4px' }}>
+                            🛡️ محافظت فعال
+                        </div>
+                        <div style={{ color: '#8A7336', fontSize: '9px', fontWeight: 'bold', letterSpacing: '1px' }}>
+                            {formatCountdown(remaining)}
+                        </div>
+                    </div>
+                ) : null;
+            })()}
 
             <div id="villageList" className="listing" style={{ marginTop: '0' }}>
                 <div className="head"></div>
-                <div className="list" style={{ padding: '8px', marginTop: '-40px', textAlign: 'center', fontSize: '11px' }}>
+                <div className="list" style={{ padding: '8px 13px 8px 13px', marginTop: '-40px', textAlign: 'center', fontSize: '11px' }}>
                     {cataRemaining > 0 && (
                         <>
                             <span>آزاد شدن منجنیق</span>

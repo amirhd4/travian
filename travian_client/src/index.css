@@ -3,7 +3,12 @@
 @tailwind utilities;
 
 * { margin: 0; padding: 0; box-sizing: border-box; background-repeat: no-repeat; background-position: top left; }
-body { text-align: right; direction: rtl; margin: 0; background-color: #A1BB79; background-image: url('/assets/bgs/bgV.jpg'); background-repeat: repeat-x; color: #252525; font-size: 13px; font-family: Arial, Helvetica, Verdana, sans-serif; font-weight: normal; line-height: 16px; min-width: 990px; }
+body {
+    font-family: Tahoma, Arial, sans-serif;
+    text-align: right; direction: rtl; margin: 0; background-color: #A1BB79; background-image: url('/assets/bgs/bgV.jpg'); background-repeat: repeat-x; color: #252525; font-size: 13px; font-weight: normal; line-height: 16px; min-width: 990px; }
+button, input, select, textarea {
+    font-family: inherit;
+}
 img { border: 0; }
 h1 { font-size: 18px; margin-bottom: 8px; }
 h2 { font-size: 15px; color: #252525; }
@@ -51,7 +56,7 @@ body.login #logo, body.signup #logo { background-image: url('/assets/layout/logo
 #navigation .messages a:active, #navigation .messages a.active { background-position: -370px -146px; }
 #navigation li .bubble { top: 0; left: 51px; }
 .bubble { color: #FFF; font-size: 10px; height: 21px; text-align: center; position: absolute; z-index: 5; background: url('/assets/layout/speechBalloon_small-rtl.png') no-repeat; padding: 0 8px; line-height: 21px; }
-#res { font-size: 9px; left: 193px; position: absolute; top: 80px; margin: 0; padding: 0 0 0 7px; list-style: none; width: 597px; z-index: 10; }
+#res { font-size: 0.8vh; left: 193px; position: absolute; top: 80px; margin: 0; padding: 0 0 0 7px; list-style: none; width: 597px; z-index: 10; }
 #res li { float: left; width: 106px; list-style: none; }
 #res li p { padding: 0; margin: 0; display: flex; align-items: center; gap: 3px; }
 #res li p img { width: 18px; height: 16px; flex-shrink: 0; }
@@ -59,7 +64,7 @@ body.login #logo, body.signup #logo { background-image: url('/assets/layout/logo
 #res li .bar-bg { background-color: #CCC; height: 3px; margin: 4px 0 0; width: 107px; float: right; }
 #res li .bar { background-color: #FF0; height: 3px; font-size: 0; }
 #plusLink { height: 47px; position: absolute; right: 212px; top: 16px; width: 85px; text-align: center; z-index: 10; }
-#plusLink #plus { text-align: center; position: relative; display: inline; font-size: 11px; }
+#plusLink #plus { text-align: center; position: relative; display: inline; font-size: 8.5px;}
 #plusLink #plus a.plusBtn { display: inline-block; height: 18px; line-height: 18px; text-align: center; font-weight: bold; color: #ab7900; }
 #plusLink #plus a.plusBtn:hover { color: #727272; }
 #plusLink #plus a.plusBtn .plusBtn-l,
