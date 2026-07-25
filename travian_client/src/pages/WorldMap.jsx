@@ -57,8 +57,6 @@ function getTerrainColor(x, y) {
   return TERRAIN_COLORS[idx];
 }
 
-// Deterministic field type (1-9) for empty village slots, like PHP Travian's wdata table
-// Only 9 terrain images exist (t1-t9), so we map to 1-9
 function getEmptySlotFieldType(x, y) {
   const hash = ((x * 2654435761) ^ (y * 2246822519)) & 0x7fffffff;
   return (hash % 9) + 1;
@@ -67,9 +65,19 @@ function getEmptySlotFieldType(x, y) {
 function BonusBadge({ resource, percent }) {
   const colors = { wood: '#4a7c3f', clay: '#b87333', iron: '#666', crop: '#daa520' };
   return (
-    <span style={{ display: 'inline-block', padding: '1px 6px', margin: '1px', borderRadius: 4, fontSize: 10, fontWeight: 'bold', background: colors[resource] || '#888', color: '#fff' }}>
+    <span style={{ display: 'inline-block', padding: '2px 8px', margin: '2px', borderRadius: 12, fontSize: 11, fontWeight: 'bold', background: colors[resource] || '#888', color: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
       {OASIS_BONUS_LABELS[resource] || resource} {percent}%
     </span>
+  );
+}
+
+// کامپوننت کمکی برای راهنمای نقشه
+function LegendItem({ color, label }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', padding: '4px 10px', borderRadius: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.08)', fontSize: 11, fontWeight: 'bold', color: '#444' }}>
+      <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: color, border: '1px solid rgba(0,0,0,0.1)' }}></span>
+      {label}
+    </div>
   );
 }
 
@@ -149,7 +157,6 @@ export default function WorldMap() {
         } else if (village) {
           fieldType = village.field_type || 0;
         } else if (!isNatarCenter) {
-          // Empty village slot - assign deterministic field type like PHP Travian
           fieldType = getEmptySlotFieldType(x, y);
         }
 
@@ -269,76 +276,54 @@ export default function WorldMap() {
           cursor: 'pointer',
           overflow: 'hidden',
           position: 'relative',
+          transition: 'transform 0.1s',
         }}
       >
-        {/* Layer 1: Tile background pattern (Natar region) */}
         {isGrayTile && !isNatarCenter && tileBgPattern && (
           <img src={MAP.getTileBg(tileBgPattern)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
-
-        {/* Layer 2: Volcano */}
         {isNatarCenter && volcanoClass && (
           <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', backgroundImage: `url(${MAP.volcano})`, backgroundPosition: `0 ${-(parseInt(volcanoClass.replace('volcano', '')) - 1) * 60}px`, backgroundRepeat: 'no-repeat' }} />
         )}
-
-        {/* Layer 3: Empty village slot - terrain image */}
         {isEmptySlot && !isGrayTile && fieldType > 0 && (
           <img src={MAP.getTerrain(fieldType)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
-
-        {/* Layer 4: Oasis overlay */}
         {hasOasis && cell.oasisType > 0 && (
           <img src={oasis.is_free ? MAP.getOasisTile(cell.oasisType) : MAP.getOasisOccupied(cell.oasisType)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
-
-        {/* Layer 4.5: Oasis glow */}
         {hasOasis && oasis.is_free && (
           <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 10px rgba(0,200,0,0.4)', animation: 'oasisPulse 3s ease-in-out infinite', pointerEvents: 'none' }} />
         )}
         {hasOasis && !oasis.is_free && (
           <div style={{ position: 'absolute', inset: 0, boxShadow: 'inset 0 0 8px rgba(255,180,0,0.5)', pointerEvents: 'none' }} />
         )}
-
-        {/* Layer 5: Border */}
         {hasVillage && (
           <img src={MAP.getBorder(borderClass)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
-
-        {/* Layer 6: Wall */}
         {hasVillage && wallLevel > 0 && (
           <img src={MAP.getWall(wallLevel)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
-
-        {/* Layer 7: Population */}
         {hasVillage && pop > 0 && (
           <img src={MAP.getPop(pop)} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
-
-        {/* Layer 8: Attack marker */}
         {hasVillage && village.has_incoming_attack && (
           <img src={MAP.att1} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }} alt="" />
         )}
-
-        {/* Nature troop badge on oasis */}
         {hasOasis && oasis.nature_troops?.length > 0 && (
-          <div style={{ position: 'absolute', top: 2, left: 2, fontSize: 7, background: 'rgba(139,69,19,0.85)', color: '#fff', borderRadius: 3, padding: '1px 3px', pointerEvents: 'none', fontWeight: 'bold' }}>
+          <div style={{ position: 'absolute', top: 2, left: 2, fontSize: 7, background: 'rgba(139,69,19,0.9)', color: '#fff', borderRadius: 4, padding: '2px 4px', pointerEvents: 'none', fontWeight: 'bold', boxShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
             {oasis.nature_troops.reduce((s, t) => s + t.count, 0).toLocaleString()}
           </div>
         )}
-
-        {/* Village text */}
         {hasVillage && (
           <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
-            <div style={{ fontSize: 9, fontWeight: 'bold', color: isMine ? '#006600' : isNatar ? '#cc0000' : '#333', textShadow: '0 0 2px #fff, 0 0 2px #fff', lineHeight: '11px', maxWidth: 58, margin: '0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 9, fontWeight: 'bold', color: isMine ? '#004d00' : isNatar ? '#a10000' : '#222', textShadow: '1px 1px 2px #fff, -1px -1px 2px #fff, 1px -1px 2px #fff, -1px 1px 2px #fff', lineHeight: '12px', maxWidth: 58, margin: '0 auto', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {village.name}
             </div>
           </div>
         )}
-
-        {/* Empty slot label */}
         {isEmptySlot && !isGrayTile && (
           <div style={{ position: 'absolute', bottom: 2, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
-            <div style={{ fontSize: 8, color: '#555', textShadow: '0 0 2px #fff', opacity: 0.8 }}>
+            <div style={{ fontSize: 9, color: '#444', textShadow: '0 0 3px rgba(255,255,255,0.8)', opacity: 0.7, fontWeight: 'bold' }}>
               خالی
             </div>
           </div>
@@ -353,20 +338,36 @@ export default function WorldMap() {
   for (let i = 0; i < ROWS; i++) yCoords.push(center.y + Math.floor(ROWS / 2) - i);
 
   return (
-    <div className="map" style={{ direction: 'rtl' }}>
+    <div className="map" style={{ direction: 'rtl', padding: '20px', fontFamily: 'Tahoma, Arial, sans-serif' }}>
+
+      {/* Search Coordinates - Modern Form */}
+      <form onSubmit={handleCoordSubmit} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 15, background: '#fff', padding: '12px 24px', borderRadius: 30, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', width: 'fit-content', margin: '0 auto 25px auto', border: '1px solid #eef0f2' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 'bold', color: '#555' }}>X:</span>
+          <input type="text" value={coordInput.x} onChange={(e) => setCoordInput((p) => ({ ...p, x: e.target.value }))} style={{ width: 60, textAlign: 'center', border: '2px solid #e0e0e0', borderRadius: 8, padding: '6px', fontSize: 14, direction: 'ltr', outline: 'none' }} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 14, fontWeight: 'bold', color: '#555' }}>Y:</span>
+          <input type="text" value={coordInput.y} onChange={(e) => setCoordInput((p) => ({ ...p, y: e.target.value }))} style={{ width: 60, textAlign: 'center', border: '2px solid #e0e0e0', borderRadius: 8, padding: '6px', fontSize: 14, direction: 'ltr', outline: 'none' }} />
+        </div>
+        <button type="submit" style={{ background: '#498843', color: '#fff', border: 'none', borderRadius: 20, padding: '8px 24px', cursor: 'pointer', fontWeight: 'bold', fontSize: 13, boxShadow: '0 2px 6px rgba(73,136,67,0.4)', transition: 'background 0.2s' }}>پرش به مختصات</button>
+      </form>
+
+      {/* Main Map Area with Rulers */}
       <div style={{ display: 'flex', justifyContent: 'center', margin: '10px auto' }}>
-        <div style={{ position: 'relative' }}>
-          {/* Y-axis ruler */}
-          <div style={{ position: 'absolute', right: -30, top: 0, width: 28 }}>
+        <div style={{ position: 'relative', background: '#f5f7f9', padding: '15px 35px 35px 15px', borderRadius: 16, boxShadow: '0 10px 30px rgba(0,0,0,0.1)', display: 'inline-block', border: '1px solid #e1e4e8' }}>
+
+          {/* Y-axis ruler (Right side) */}
+          <div style={{ position: 'absolute', right: 0, top: 15, width: 35, background: '#2c3e50', borderRadius: '0 12px 12px 0', paddingBottom: 2 }}>
             {yCoords.map((yc) => (
-              <div key={yc} style={{ height: TILE_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 'bold', color: '#333' }}>{yc}</div>
+              <div key={yc} style={{ height: TILE_SIZE, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 'bold', color: '#ecf0f1' }}>{yc}</div>
             ))}
           </div>
 
           {/* Map container */}
-          <div ref={mapRef} style={{ position: 'relative', width: COLS * TILE_SIZE, height: ROWS * TILE_SIZE, border: '2px solid #636363', background: '#C3EDAE', overflow: 'hidden' }}>
+          <div ref={mapRef} style={{ position: 'relative', width: COLS * TILE_SIZE, height: ROWS * TILE_SIZE, border: '3px solid #2c3e50', borderRadius: 6, background: '#C3EDAE', overflow: 'hidden', zIndex: 2 }}>
             {loading ? (
-              <div style={{ padding: 100, textAlign: 'center', fontWeight: 'bold', fontSize: 14 }}>در حال بارگذاری نقشه...</div>
+              <div style={{ padding: 100, textAlign: 'center', fontWeight: 'bold', fontSize: 15, color: '#444' }}>در حال بارگذاری نقشه...</div>
             ) : (
               <div style={{ width: '100%', height: '100%' }}>
                 {grid.map((cell) => renderTile(cell))}
@@ -374,101 +375,91 @@ export default function WorldMap() {
             )}
           </div>
 
-          {/* X-axis ruler */}
-          <div style={{ width: COLS * TILE_SIZE, display: 'flex' }}>
+          {/* X-axis ruler (Bottom side) */}
+          <div style={{ position: 'absolute', bottom: 0, left: 15, width: COLS * TILE_SIZE, display: 'flex', background: '#2c3e50', borderRadius: '0 0 12px 12px', paddingRight: 3 }}>
             {xCoords.map((xc) => (
-              <div key={xc} style={{ width: TILE_SIZE, textAlign: 'center', fontSize: 10, fontWeight: 'bold', color: '#333', paddingTop: 2 }}>{xc}</div>
+              <div key={xc} style={{ width: TILE_SIZE, textAlign: 'center', fontSize: 11, fontWeight: 'bold', color: '#ecf0f1', padding: '6px 0' }}>{xc}</div>
             ))}
           </div>
+
         </div>
       </div>
 
-      {/* Navigation arrows */}
-      <div style={{ textAlign: 'center', margin: '8px 0' }}>
-        <button onClick={() => setCenter((c) => ({ ...c, y: c.y + 1 }))} style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 'bold', margin: '2px' }}>▲</button>
-        <div style={{ display: 'inline-flex', gap: 4 }}>
-          <button onClick={() => setCenter((c) => ({ ...c, x: c.x - 1 }))} style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 'bold', margin: '2px' }}>◄</button>
-          <button onClick={() => setCenter((c) => ({ ...c, x: c.x + 1 }))} style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 'bold', margin: '2px' }}>►</button>
-        </div>
-        <button onClick={() => setCenter((c) => ({ ...c, y: c.y - 1 }))} style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontWeight: 'bold', margin: '2px' }}>▼</button>
+      {/* Navigation Controls (D-Pad / Steering Wheel style) */}
+      <div style={{ position: 'relative', width: 140, height: 140, margin: '30px auto', background: '#eef2f5', borderRadius: '50%', boxShadow: 'inset 0 4px 12px rgba(0,0,0,0.05), 0 4px 10px rgba(0,0,0,0.1)', border: '4px solid #fff' }}>
+        <button onClick={() => setCenter((c) => ({ ...c, y: c.y + 1 }))} style={{ position: 'absolute', top: 6, left: '50%', transform: 'translateX(-50%)', background: '#498843', color: '#fff', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', fontSize: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▲</button>
+        <button onClick={() => setCenter((c) => ({ ...c, y: c.y - 1 }))} style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', background: '#498843', color: '#fff', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', fontSize: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▼</button>
+        <button onClick={() => setCenter((c) => ({ ...c, x: c.x - 1 }))} style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', background: '#498843', color: '#fff', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', fontSize: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>◄</button>
+        <button onClick={() => setCenter((c) => ({ ...c, x: c.x + 1 }))} style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: '#498843', color: '#fff', border: 'none', borderRadius: '50%', width: 44, height: 44, cursor: 'pointer', fontSize: 18, boxShadow: '0 2px 6px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>►</button>
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 36, height: 36, background: '#dce2e8', borderRadius: '50%', boxShadow: 'inset 0 2px 5px rgba(0,0,0,0.1)' }} />
       </div>
 
-      {/* Coordinate input */}
-      <form onSubmit={handleCoordSubmit} style={{ textAlign: 'center', margin: '8px 0' }}>
-        <span style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>X:</span>
-        <input type="text" value={coordInput.x} onChange={(e) => setCoordInput((p) => ({ ...p, x: e.target.value }))} style={{ width: 50, textAlign: 'center', border: '1px solid #999', borderRadius: 3, padding: '2px 4px', fontSize: 12, direction: 'ltr', margin: '0 4px' }} />
-        <span style={{ fontSize: 12, fontWeight: 'bold', marginLeft: 4 }}>Y:</span>
-        <input type="text" value={coordInput.y} onChange={(e) => setCoordInput((p) => ({ ...p, y: e.target.value }))} style={{ width: 50, textAlign: 'center', border: '1px solid #999', borderRadius: 3, padding: '2px 4px', fontSize: 12, direction: 'ltr', margin: '0 4px' }} />
-        <button type="submit" style={{ background: '#498843', color: '#fff', border: '1px solid #3a6e35', borderRadius: 4, padding: '3px 12px', cursor: 'pointer', fontWeight: 'bold', fontSize: 12 }}>OK</button>
-      </form>
-
-      {/* Legend */}
-      <div style={{ textAlign: 'center', margin: '8px 0', fontSize: 10, color: '#252525', lineHeight: '18px' }}>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#006600' }}>دهکده من</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#8b7355' }}>بازیکن دیگر</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#cc3333' }}>ناتار</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#9966cc' }}>شگفتی جهان</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#5a8a3a' }}>آبادی آزاد</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#3a6a2a' }}>آبادی اشغال‌شده</span></span>
-        <span style={{ margin: '0 6px' }}>● <span style={{ color: '#7a9a6a' }}>خانه خالی</span></span>
+      {/* Legend - Badges Style */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12, margin: '30px auto', maxWidth: 800, padding: '16px', background: '#f8f9fa', borderRadius: 16, border: '1px solid #eaeaea' }}>
+        <LegendItem color="#006600" label="دهکده من" />
+        <LegendItem color="#8b7355" label="بازیکن دیگر" />
+        <LegendItem color="#cc3333" label="ناتار" />
+        <LegendItem color="#9966cc" label="شگفتی جهان" />
+        <LegendItem color="#5a8a3a" label="آبادی آزاد" />
+        <LegendItem color="#3a6a2a" label="آبادی اشغال‌شده" />
+        <LegendItem color="#7a9a6a" label="خانه خالی" />
       </div>
 
-      {/* Hover tooltip */}
+      {/* Hover tooltip (Modernized) */}
       {hoveredTile && (
         <div style={{
           position: 'fixed', left: tooltipPos.x + 15, top: tooltipPos.y - 10,
-          background: 'rgba(0,0,0,0.88)', color: '#FFF', padding: '8px 12px',
-          borderRadius: 6, fontSize: 11, zIndex: 200, pointerEvents: 'none',
-          minWidth: 160, lineHeight: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          direction: 'rtl', fontFamily: 'Tahoma,Arial,sans-serif',
+          background: 'rgba(25, 30, 36, 0.95)', color: '#FFF', padding: '12px 16px',
+          borderRadius: 8, fontSize: 12, zIndex: 200, pointerEvents: 'none',
+          minWidth: 180, lineHeight: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.4)',
+          direction: 'rtl', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.1)'
         }}>
           {hoveredTile.village ? (
             <>
-              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4, borderBottom: '1px solid rgba(255,255,255,0.3)', paddingBottom: 4 }}>
+              <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 6, borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: 6, color: '#f1c40f' }}>
                 {hoveredTile.village.name}
               </div>
-              <div>({hoveredTile.y}|{hoveredTile.x})</div>
-              <div>بازیکن: {hoveredTile.village.owner}</div>
+              <div style={{ color: '#bdc3c7' }}>مختصات: ({hoveredTile.y}|{hoveredTile.x})</div>
+              <div>بازیکن: <span style={{ fontWeight: 'bold' }}>{hoveredTile.village.owner}</span></div>
               {hoveredTile.village.tribe && <div>قبیله: {hoveredTile.village.tribe}</div>}
               {hoveredTile.village.alliance_id && <div>اتحاد: #{hoveredTile.village.alliance_id}</div>}
               <div>جمعیت: {hoveredTile.village.population?.toLocaleString()}</div>
               {hoveredTile.village.wall_level > 0 && <div>دیوار: سطح {hoveredTile.village.wall_level}</div>}
-              {hoveredTile.village.is_capital && <div style={{ color: '#f88c1f' }}>پایتخت</div>}
-              {hoveredTile.isMine && <div style={{ color: '#66ff66' }}>دهکده شما</div>}
+              {hoveredTile.village.is_capital && <div style={{ color: '#e67e22', marginTop: 4, fontWeight: 'bold' }}>⭐ پایتخت</div>}
+              {hoveredTile.isMine && <div style={{ color: '#2ecc71', marginTop: 4, fontWeight: 'bold' }}>✓ دهکده شما</div>}
             </>
           ) : hoveredTile.oasis ? (
             <>
-              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4 }}>آبادی</div>
-              <div>({hoveredTile.y}|{hoveredTile.x})</div>
-              <div style={{ margin: '3px 0' }}>
+              <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 6, color: '#2ecc71' }}>🌴 آبادی</div>
+              <div style={{ color: '#bdc3c7', marginBottom: 4 }}>مختصات: ({hoveredTile.y}|{hoveredTile.x})</div>
+              <div style={{ margin: '6px 0', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                 {hoveredTile.oasis.bonuses?.map((b, i) => (
-                  <span key={i} style={{ fontSize: 10, marginRight: 4 }}>{OASIS_BONUS_LABELS[b[0]] || b[0]} {b[1]}%</span>
-                )) || <span>{OASIS_BONUS_LABELS[hoveredTile.oasis.bonus_resource]} {hoveredTile.oasis.bonus_percent}%</span>}
+                  <span key={i} style={{ fontSize: 11, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>{OASIS_BONUS_LABELS[b[0]] || b[0]} {b[1]}%</span>
+                )) || <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>{OASIS_BONUS_LABELS[hoveredTile.oasis.bonus_resource]} {hoveredTile.oasis.bonus_percent}%</span>}
               </div>
               <div>دفاع: {hoveredTile.oasis.defense_strength}</div>
               {hoveredTile.oasis.nature_troops?.length > 0 && (
-                <div style={{ marginTop: 3, borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 3 }}>
+                <div style={{ marginTop: 6, borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 6 }}>
                   {hoveredTile.oasis.nature_troops.map((t, i) => (
-                    <span key={i} style={{ fontSize: 10, marginRight: 4 }}>{t.name}: {t.count}</span>
+                    <div key={i} style={{ fontSize: 11, color: '#e0e0e0' }}>- {t.name}: {t.count}</div>
                   ))}
                 </div>
               )}
-              <div>{hoveredTile.oasis.is_free ? 'آزاد' : `مالک: ${hoveredTile.oasis.owner_name}`}</div>
+              <div style={{ marginTop: 6, fontWeight: 'bold' }}>{hoveredTile.oasis.is_free ? 'آزاد' : `مالک: ${hoveredTile.oasis.owner_name}`}</div>
               {hoveredTile.distance != null && (
-                <div style={{ color: hoveredTile.distance > OASIS_CAPTURE_MAX_DISTANCE ? '#ff6666' : '#66ff66', marginTop: 2 }}>
+                <div style={{ color: hoveredTile.distance > OASIS_CAPTURE_MAX_DISTANCE ? '#e74c3c' : '#2ecc71', marginTop: 4 }}>
                   فاصله: {hoveredTile.distance.toFixed(1)} {hoveredTile.distance > OASIS_CAPTURE_MAX_DISTANCE ? '(خارج از محدوده)' : ''}
                 </div>
               )}
             </>
           ) : hoveredTile.isEmptySlot ? (
             <>
-              <div style={{ fontWeight: 'bold', fontSize: 12, marginBottom: 4, color: '#aaffaa' }}>خانه خالی</div>
-              <div>({hoveredTile.y}|{hoveredTile.x})</div>
+              <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 6, color: '#95a5a6' }}>موقعیت خالی</div>
+              <div style={{ color: '#bdc3c7' }}>مختصات: ({hoveredTile.y}|{hoveredTile.x})</div>
               {hoveredTile.fieldType > 0 && FIELD_DISTRIBUTIONS[hoveredTile.fieldType] && (
-                <div style={{ marginTop: 2, color: '#99cc99', fontSize: 10 }}>توزیع: {FIELD_DISTRIBUTIONS[hoveredTile.fieldType]}</div>
+                <div style={{ marginTop: 4, color: '#2ecc71', fontSize: 11 }}>منابع: {FIELD_DISTRIBUTIONS[hoveredTile.fieldType]}</div>
               )}
-              <div style={{ marginTop: 4, color: '#ccc' }}>این موقعیت هنوز تسخیر نشده</div>
-              <div style={{ color: '#aaa', fontSize: 10 }}>برای تاسیس دهکده کلیک کنید</div>
+              <div style={{ marginTop: 6, color: '#7f8c8d', fontSize: 11 }}>برای تاسیس دهکده کلیک کنید</div>
             </>
           ) : (
             <div>({hoveredTile.y}|{hoveredTile.x})</div>
@@ -476,45 +467,51 @@ export default function WorldMap() {
         </div>
       )}
 
-      {/* Position details popup */}
+      {/* Position details popup (Modal styles refined) */}
       {selectedTile && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: '#FFF', border: '2px solid #C9C9C9', borderRadius: 8, maxWidth: 420, width: '100%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 8px 16px rgba(0,0,0,0.3)' }}>
-            <div style={{ background: '#f8f8f8', padding: '10px 14px', borderBottom: '1px solid #ddd', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '6px 6px 0 0' }}>
-              <span style={{ fontWeight: 'bold', fontSize: 14 }}>جزئیات موقعیت</span>
-              <button onClick={() => { setSelectedTile(null); setPositionDetail(null); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, color: '#888' }}>&#10006;</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(3px)' }}>
+          <div style={{ background: '#FFF', borderRadius: 12, maxWidth: 420, width: '100%', maxHeight: '85vh', overflow: 'hidden', boxShadow: '0 12px 30px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ background: '#f8f9fa', padding: '14px 20px', borderBottom: '1px solid #eaeaea', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 'bold', fontSize: 16, color: '#333' }}>جزئیات موقعیت</span>
+              <button onClick={() => { setSelectedTile(null); setPositionDetail(null); }} style={{ background: '#f1f3f5', border: 'none', cursor: 'pointer', fontSize: 16, color: '#666', width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }}>&#10006;</button>
             </div>
-            <div style={{ padding: 14 }}>
+            <div style={{ padding: 20, overflowY: 'auto' }}>
               {detailLoading ? (
-                <p style={{ textAlign: 'center', color: '#666' }}>در حال بارگذاری...</p>
+                <div style={{ textAlign: 'center', padding: '30px 0', color: '#888' }}>
+                  <div style={{ marginBottom: 10 }}>⏳</div>
+                  در حال دریافت اطلاعات...
+                </div>
               ) : positionDetail ? (
                 <div>
-                  <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>({selectedTile.y}|{selectedTile.x})</div>
+                  <div style={{ fontSize: 12, color: '#888', marginBottom: 12, background: '#f1f3f5', padding: '4px 10px', borderRadius: 20, display: 'inline-block' }}>مختصات: ({selectedTile.y}|{selectedTile.x})</div>
                   {positionDetail.type === 'village' && (
                     <>
-                      <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>{positionDetail.name}</h3>
-                      <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-                        <tbody>
-                          <tr><td style={{ padding: '4px 0', color: '#666' }}>بازیکن</td><td style={{ fontWeight: 'bold' }}>{positionDetail.owner}</td></tr>
-                          {positionDetail.tribe && <tr><td style={{ padding: '4px 0', color: '#666' }}>قبیله</td><td>{positionDetail.tribe}</td></tr>}
-                          {positionDetail.alliance_id && <tr><td style={{ padding: '4px 0', color: '#666' }}>اتحاد</td><td>#{positionDetail.alliance_id}</td></tr>}
-                          <tr><td style={{ padding: '4px 0', color: '#666' }}>جمعیت</td><td style={{ fontWeight: 'bold' }}>{positionDetail.population?.toLocaleString()}</td></tr>
-                          {positionDetail.wall_level > 0 && <tr><td style={{ padding: '4px 0', color: '#666' }}>دیوار</td><td>سطح {positionDetail.wall_level}</td></tr>}
-                          {positionDetail.field_distribution && (
-                            <tr><td style={{ padding: '4px 0', color: '#666' }}>توزیع منابع</td><td style={{ fontWeight: 'bold', color: '#498843' }}>{positionDetail.field_distribution}</td></tr>
-                          )}
-                          {positionDetail.is_capital && <tr><td style={{ padding: '4px 0', color: '#f88c1f', fontWeight: 'bold' }} colSpan={2}>پایتخت</td></tr>}
-                        </tbody>
-                      </table>
-                      {/* Only show action buttons if this is NOT our own village */}
+                      <h3 style={{ margin: '0 0 12px', fontSize: 18, color: '#2c3e50' }}>{positionDetail.name}</h3>
+                      <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+                        <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                          <tbody>
+                            <tr><td style={{ padding: '6px 0', color: '#666', borderBottom: '1px solid #eee' }}>بازیکن</td><td style={{ fontWeight: 'bold', borderBottom: '1px solid #eee', textAlign: 'left' }}>{positionDetail.owner}</td></tr>
+                            {positionDetail.tribe && <tr><td style={{ padding: '6px 0', color: '#666', borderBottom: '1px solid #eee' }}>قبیله</td><td style={{ borderBottom: '1px solid #eee', textAlign: 'left' }}>{positionDetail.tribe}</td></tr>}
+                            {positionDetail.alliance_id && <tr><td style={{ padding: '6px 0', color: '#666', borderBottom: '1px solid #eee' }}>اتحاد</td><td style={{ borderBottom: '1px solid #eee', textAlign: 'left' }}>#{positionDetail.alliance_id}</td></tr>}
+                            <tr><td style={{ padding: '6px 0', color: '#666', borderBottom: '1px solid #eee' }}>جمعیت</td><td style={{ fontWeight: 'bold', borderBottom: '1px solid #eee', textAlign: 'left' }}>{positionDetail.population?.toLocaleString()}</td></tr>
+                            {positionDetail.wall_level > 0 && <tr><td style={{ padding: '6px 0', color: '#666', borderBottom: '1px solid #eee' }}>دیوار</td><td style={{ borderBottom: '1px solid #eee', textAlign: 'left' }}>سطح {positionDetail.wall_level}</td></tr>}
+                            {positionDetail.field_distribution && (
+                              <tr><td style={{ padding: '6px 0', color: '#666' }}>توزیع منابع</td><td style={{ fontWeight: 'bold', color: '#27ae60', textAlign: 'left', direction: 'ltr' }}>{positionDetail.field_distribution}</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {positionDetail.is_capital && <div style={{ color: '#e67e22', fontWeight: 'bold', marginBottom: 16, background: '#fdf3e8', padding: '8px', borderRadius: 6, textAlign: 'center' }}>⭐ این دهکده پایتخت است</div>}
+
                       {!positionDetail.is_mine && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                          <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/send-troops', { state: { targetVillageId: positionDetail.id, targetName: positionDetail.name } }); }} style={{ flex: 1, padding: 8, background: '#498843', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>ارسال نیرو</button>
-                          <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/marketplace', { state: { targetX: selectedTile.x, targetY: selectedTile.y } }); }} style={{ flex: 1, padding: 8, background: '#F88C1F', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>ارسال منابع</button>
+                        <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                          <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/send-troops', { state: { targetVillageId: positionDetail.id, targetName: positionDetail.name } }); }} style={{ flex: 1, padding: '10px', background: '#e74c3c', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', fontSize: 13, boxShadow: '0 2px 5px rgba(231,76,60,0.3)' }}>⚔️ ارسال نیرو</button>
+                          <button onClick={() => { setSelectedTile(null); setPositionDetail(null); navigate('/marketplace', { state: { targetX: selectedTile.x, targetY: selectedTile.y } }); }} style={{ flex: 1, padding: '10px', background: '#f39c12', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', fontSize: 13, boxShadow: '0 2px 5px rgba(243,156,18,0.3)' }}>📦 ارسال منابع</button>
                         </div>
                       )}
                       {positionDetail.is_mine && (
-                        <div style={{ marginTop: 12, padding: 8, background: '#e8f5e9', borderRadius: 4, textAlign: 'center', fontSize: 12, color: '#2e7d32', fontWeight: 'bold' }}>
+                        <div style={{ marginTop: 20, padding: 12, background: '#e8f5e9', borderRadius: 6, textAlign: 'center', fontSize: 13, color: '#27ae60', border: '1px solid #c8e6c9', fontWeight: 'bold' }}>
                           این دهکده متعلق به شماست
                         </div>
                       )}
@@ -522,25 +519,28 @@ export default function WorldMap() {
                   )}
                   {positionDetail.type === 'oasis' && (
                     <>
-                      <h3 style={{ margin: '0 0 8px', fontSize: 15 }}>آبادی</h3>
-                      <div style={{ marginBottom: 8 }}>
+                      <h3 style={{ margin: '0 0 12px', fontSize: 18, color: '#27ae60' }}>🌴 آبادی</h3>
+                      <div style={{ marginBottom: 16, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {positionDetail.bonuses?.map((b, i) => (
                           <BonusBadge key={i} resource={b[0]} percent={b[1]} />
                         )) || <BonusBadge resource={positionDetail.bonus_resource} percent={positionDetail.bonus_percent} />}
                       </div>
-                      <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
-                        <tbody>
-                          <tr><td style={{ padding: '4px 0', color: '#666' }}>قدرت دفاعی</td><td>{positionDetail.defense_strength}</td></tr>
-                          <tr><td style={{ padding: '4px 0', color: '#666' }}>وضعیت</td><td>{positionDetail.is_free ? 'آزاد' : `مالک: ${positionDetail.owner_name}`}</td></tr>
-                        </tbody>
-                      </table>
+                      <div style={{ background: '#f8f9fa', borderRadius: 8, padding: 12, marginBottom: 16 }}>
+                        <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                          <tbody>
+                            <tr><td style={{ padding: '6px 0', color: '#666', borderBottom: '1px solid #eee' }}>قدرت دفاعی</td><td style={{ fontWeight: 'bold', borderBottom: '1px solid #eee', textAlign: 'left' }}>{positionDetail.defense_strength}</td></tr>
+                            <tr><td style={{ padding: '6px 0', color: '#666' }}>وضعیت</td><td style={{ fontWeight: 'bold', textAlign: 'left' }}>{positionDetail.is_free ? <span style={{ color: '#27ae60' }}>آزاد</span> : `مالک: ${positionDetail.owner_name}`}</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+
                       {positionDetail.nature_troops?.length > 0 && (
-                        <div style={{ marginTop: 8, padding: 8, background: '#fff8f0', borderRadius: 4, border: '1px solid #f0d0a0' }}>
-                          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#8B4513', marginBottom: 4 }}>نیروهای مدافع طبیعت:</div>
+                        <div style={{ marginTop: 12, padding: 12, background: '#fdfbf7', borderRadius: 8, border: '1px solid #f0e6d2' }}>
+                          <div style={{ fontSize: 13, fontWeight: 'bold', color: '#8B4513', marginBottom: 8, borderBottom: '1px solid #f0e6d2', paddingBottom: 4 }}>نیروهای مدافع طبیعت:</div>
                           {positionDetail.nature_troops.map((t, i) => (
-                            <div key={i} style={{ fontSize: 10, color: '#5a3a1a', display: 'flex', justifyContent: 'space-between' }}>
-                              <span>{t.name}: {t.count}</span>
-                              <span>⚔️{t.attack} 🛡️{t.defense_infantry}/{t.defense_cavalry}</span>
+                            <div key={i} style={{ fontSize: 12, color: '#5a3a1a', display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                              <span>{t.name}: <strong style={{color: '#d35400'}}>{t.count}</strong></span>
+                              <span style={{ fontSize: 11, color: '#888' }}>⚔️{t.attack} 🛡️{t.defense_infantry}/{t.defense_cavalry}</span>
                             </div>
                           ))}
                         </div>
@@ -549,17 +549,19 @@ export default function WorldMap() {
                   )}
                   {positionDetail.type === 'empty' && (
                     <>
-                      <h3 style={{ margin: '0 0 8px', fontSize: 15, color: '#5a8a3a' }}>خانه خالی</h3>
-                      <p style={{ fontSize: 12, color: '#666', marginBottom: 8 }}>این موقعیت هنوز تسخیر نشده است.</p>
+                      <h3 style={{ margin: '0 0 12px', fontSize: 18, color: '#7f8c8d' }}>موقعیت خالی</h3>
+                      <p style={{ fontSize: 13, color: '#666', marginBottom: 16, lineHeight: '1.5' }}>این قسمت از نقشه هنوز توسط بازیکنی تسخیر نشده است و آماده بنای یک دهکده جدید می‌باشد.</p>
+
                       {positionDetail.field_distribution && (
-                        <div style={{ padding: 8, background: '#f0f8e8', borderRadius: 4, marginBottom: 8 }}>
-                          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#498843' }}>توزیع منابع: {positionDetail.field_distribution}</div>
+                        <div style={{ padding: 12, background: '#eafaf1', borderRadius: 8, marginBottom: 20, border: '1px solid #d5f5e3' }}>
+                          <div style={{ fontSize: 13, fontWeight: 'bold', color: '#27ae60' }}>توزیع منابع در این موقعیت: <span style={{ direction: 'ltr', display: 'inline-block' }}>{positionDetail.field_distribution}</span></div>
                         </div>
                       )}
-                      <button onClick={handleFoundVillage} style={{ width: '100%', padding: 10, background: '#498843', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: 'pointer', fontSize: 12 }}>
+
+                      <button onClick={handleFoundVillage} style={{ width: '100%', padding: '12px', background: '#27ae60', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: 'pointer', fontSize: 14, boxShadow: '0 4px 10px rgba(39,174,96,0.3)', transition: 'background 0.2s' }}>
                         🏠 تاسیس دهکده جدید
                       </button>
-                      <p style={{ fontSize: 10, color: '#999', marginTop: 6, textAlign: 'center' }}>نیازمند ۳ مهاجر و امتیاز فرهنگی کافی</p>
+                      <p style={{ fontSize: 11, color: '#999', marginTop: 10, textAlign: 'center' }}>* نیازمند ۳ مهاجر و امتیاز فرهنگی کافی</p>
                     </>
                   )}
                 </div>
@@ -571,46 +573,57 @@ export default function WorldMap() {
         </div>
       )}
 
-      {/* Oasis attack modal */}
+      {/* Oasis attack modal (Refined) */}
       {selectedOasis && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: '#FFF', border: '2px solid #C9C9C9', borderRadius: 8, maxWidth: 400, width: '100%', boxShadow: '0 8px 16px rgba(0,0,0,0.3)' }}>
-            <div style={{ background: '#498843', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '6px 6px 0 0' }}>
-              <span style={{ fontWeight: 'bold', fontSize: 14, color: '#fff' }}>آبادی ({selectedOasis.x_coord}|{selectedOasis.y_coord})</span>
-              <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff' }}>&#10006;</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(3px)' }}>
+          <div style={{ background: '#FFF', borderRadius: 12, maxWidth: 420, width: '100%', boxShadow: '0 12px 30px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ background: '#c0392b', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontWeight: 'bold', fontSize: 16, color: '#fff' }}>⚔️ حمله به آبادی ({selectedOasis.y_coord}|{selectedOasis.x_coord})</span>
+              <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 18, color: '#fff', opacity: 0.8 }}>&#10006;</button>
             </div>
-            <div style={{ padding: 14 }}>
-              <div style={{ marginBottom: 8 }}>
+            <div style={{ padding: 20 }}>
+              <div style={{ marginBottom: 12, display: 'flex', gap: 6 }}>
                 {selectedOasis.bonuses?.map((b, i) => (
                   <BonusBadge key={i} resource={b[0]} percent={b[1]} />
                 )) || <BonusBadge resource={selectedOasis.bonus_resource} percent={selectedOasis.bonus_percent} />}
               </div>
-              <p style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
-                قدرت دفاعی: {selectedOasis.defense_strength}
-              </p>
+
+              <div style={{ background: '#f8f9fa', padding: 10, borderRadius: 6, marginBottom: 12 }}>
+                <span style={{ fontSize: 13, color: '#555' }}>قدرت دفاعی: <strong style={{ color: '#333' }}>{selectedOasis.defense_strength}</strong></span>
+              </div>
+
               {selectedOasis.nature_troops?.length > 0 && (
-                <div style={{ padding: 8, background: '#fff8f0', borderRadius: 4, border: '1px solid #f0d0a0', marginBottom: 8 }}>
-                  <div style={{ fontSize: 11, fontWeight: 'bold', color: '#8B4513', marginBottom: 4 }}>نیروهای مدافع:</div>
-                  {selectedOasis.nature_troops.map((t, i) => (
-                    <div key={i} style={{ fontSize: 10, color: '#5a3a1a' }}>{t.name}: {t.count}</div>
-                  ))}
+                <div style={{ padding: 12, background: '#fdfbf7', borderRadius: 6, border: '1px solid #f0e6d2', marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 'bold', color: '#8B4513', marginBottom: 6 }}>نیروهای مدافع حاضر:</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    {selectedOasis.nature_troops.map((t, i) => (
+                      <div key={i} style={{ fontSize: 11, color: '#5a3a1a' }}>• {t.name}: <strong>{t.count}</strong></div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {oasisAlert && <p style={{ fontSize: 11, fontWeight: 'bold', color: oasisAlert.includes('شکست') ? '#DE0000' : '#228B22', marginBottom: 8 }}>{oasisAlert}</p>}
-              <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: 8 }}>
+
+              {oasisAlert && <div style={{ padding: 10, borderRadius: 6, fontSize: 12, fontWeight: 'bold', background: oasisAlert.includes('شکست') ? '#fdedec' : '#eafaf1', color: oasisAlert.includes('شکست') ? '#c0392b' : '#27ae60', marginBottom: 16, border: `1px solid ${oasisAlert.includes('شکست') ? '#fadbd8' : '#d5f5e3'}` }}>{oasisAlert}</div>}
+
+              <div style={{ fontWeight: 'bold', fontSize: 13, color: '#444', marginBottom: 8 }}>انتخاب نیروهای مهاجم:</div>
+              <div style={{ maxHeight: 220, overflowY: 'auto', marginBottom: 20, border: '1px solid #eee', borderRadius: 6, padding: 8 }}>
                 {availableTroops.map((t) => (
-                  <div key={t.troop_type_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, padding: '4px 0', borderBottom: '1px solid #EEE' }}>
-                    <span>{t.name} (موجود: {t.count})</span>
-                    <input type="number" min="0" max={t.count} style={{ width: 60, textAlign: 'center', border: '1px solid #ccc', borderRadius: 3, padding: '2px 4px' }}
+                  <div key={t.troop_type_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, padding: '8px', borderBottom: '1px solid #f5f5f5', background: oasisTroops[t.troop_type_id] > 0 ? '#f0f8ff' : 'transparent', transition: 'background 0.2s' }}>
+                    <span style={{ color: '#333' }}>{t.name} <span style={{ color: '#888', fontSize: 11 }}>(موجود: {t.count})</span></span>
+                    <input type="number" min="0" max={t.count} style={{ width: 70, textAlign: 'center', border: '1px solid #dcdcdc', borderRadius: 4, padding: '6px', outline: 'none' }}
                       value={oasisTroops[t.troop_type_id] || ''}
                       onChange={(e) => setOasisTroops((p) => ({ ...p, [t.troop_type_id]: Math.max(0, Math.min(t.count, parseInt(e.target.value) || 0)) }))} />
                   </div>
                 ))}
+                {availableTroops.length === 0 && <div style={{ padding: 10, textAlign: 'center', color: '#888', fontSize: 12 }}>هیچ نیرویی در دهکده موجود نیست.</div>}
               </div>
-              <button onClick={handleOasisAttack} disabled={attackingOasis || Object.values(oasisTroops).every(v => !v)} style={{ width: '100%', padding: 10, background: (attackingOasis || Object.values(oasisTroops).every(v => !v)) ? '#ccc' : '#DE0000', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 'bold', cursor: (attackingOasis || Object.values(oasisTroops).every(v => !v)) ? 'not-allowed' : 'pointer', marginBottom: 8 }}>
-                {attackingOasis ? '...' : 'حمله به آبادی (فوری)'}
-              </button>
-              <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ width: '100%', padding: 8, background: '#eee', color: '#333', border: '1px solid #ccc', borderRadius: 4, cursor: 'pointer' }}>بستن</button>
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={handleOasisAttack} disabled={attackingOasis || Object.values(oasisTroops).every(v => !v)} style={{ flex: 2, padding: '12px', background: (attackingOasis || Object.values(oasisTroops).every(v => !v)) ? '#bdc3c7' : '#c0392b', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 'bold', cursor: (attackingOasis || Object.values(oasisTroops).every(v => !v)) ? 'not-allowed' : 'pointer', fontSize: 13, transition: 'background 0.2s' }}>
+                  {attackingOasis ? 'در حال ارسال...' : 'حمله (غارت)'}
+                </button>
+                <button onClick={() => { setSelectedOasis(null); setOasisAlert(null); }} style={{ flex: 1, padding: '12px', background: '#ecf0f1', color: '#555', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 'bold', fontSize: 13, transition: 'background 0.2s' }}>انصراف</button>
+              </div>
             </div>
           </div>
         </div>

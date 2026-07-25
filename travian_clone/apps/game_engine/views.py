@@ -3143,8 +3143,8 @@ class ResidenceView(APIView):
             })
 
         # Culture points
-        from .utils import calculate_village_culture_production
-        cp_production = calculate_village_culture_production(village)
+        from .utils import calculate_player_culture_points_per_hour
+        cp_production = calculate_player_culture_points_per_hour(request.user)
         player = request.user
         total_cp = player.culture_points
 

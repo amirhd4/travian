@@ -3,6 +3,7 @@ import api from '../api/axiosConfig';
 import WoodSign from './WoodSign';
 import { AlertModal } from './Modal';
 import useGameStore from '../store/useGameStore';
+import '../styles/premium-features.css';
 
 const RESOURCE_BONUS_TYPES = [
     { value: 'all', label: 'همه منابع', image: '/assets/ui/res-5.gif' },
@@ -29,8 +30,8 @@ function TroopCard({ item, qty, pkg, onStep, onSetQty, onSetPkg, onBuy, busy, cu
     if (item.is_catapult) labels.push('منجنیق');
 
     return (
-        <div className="bg-white border border-parchment-200 rounded-lg overflow-hidden">
-            <div className="bg-parchment-100 px-3 py-1.5 flex items-center justify-between">
+        <div className="bg-white border border-parchment-200 rounded-lg overflow-hidden premium-card">
+            <div className="bg-parchment-100 px-3 py-1.5 flex items-center justify-between border-b border-parchment-200">
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-ink-800">{item.name}</span>
                     {labels.length > 0 && labels.map((l) => (
@@ -73,7 +74,7 @@ function TroopCard({ item, qty, pkg, onStep, onSetQty, onSetPkg, onBuy, busy, cu
                     </div>
                 </div>
                 {/* Total + buy */}
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-parchment-100">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-parchment-100">
                     <div className="text-[11px]">
                         {qty > 0 ? (
                             <span><b className="text-ink-700">{fmt(qty)}</b> عدد — <b className="text-gold-600">{fmt(totalCost)} {unit}</b></span>
@@ -81,7 +82,7 @@ function TroopCard({ item, qty, pkg, onStep, onSetQty, onSetPkg, onBuy, busy, cu
                             <span className="text-ink-400">تعداد را وارد کنید</span>
                         )}
                     </div>
-                    <button onClick={() => onBuy(item)} disabled={busy === `troopshop-${key}` || !villageId || qty <= 0} className="btn-gold text-xs !px-4 !py-1.5">
+                    <button onClick={() => onBuy(item)} disabled={busy === `troopshop-${key}` || !villageId || qty <= 0} className="btn-gold-shiny text-xs !px-4 !py-1.5 w-auto">
                         {busy === `troopshop-${key}` ? '...' : 'خرید'}
                     </button>
                 </div>
@@ -97,8 +98,8 @@ function AnimalCard({ item, qty, pkg, onStep, onSetQty, onSetPkg, onBuy, busy, c
     const key = `animal-${item.id}`;
 
     return (
-        <div className="bg-white border border-parchment-200 rounded-lg overflow-hidden">
-            <div className="bg-amber-50 px-3 py-1.5 flex items-center justify-between">
+        <div className="bg-white border border-parchment-200 rounded-lg overflow-hidden premium-card">
+            <div className="bg-amber-50 px-3 py-1.5 flex items-center justify-between border-b border-amber-100">
                 <span className="text-xs font-bold text-ink-800">🐾 {item.name}</span>
                 <span className="text-[11px] font-bold text-gold-600">{item.gold_price} 💰 / {item.silver_price} 🪙</span>
             </div>
@@ -121,7 +122,7 @@ function AnimalCard({ item, qty, pkg, onStep, onSetQty, onSetPkg, onBuy, busy, c
                         ))}
                     </div>
                 </div>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-parchment-100">
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-parchment-100">
                     <div className="text-[11px]">
                         {qty > 0 ? (
                             <span><b className="text-ink-700">{fmt(qty)}</b> عدد — <b className="text-gold-600">{fmt(totalCost)} {unit}</b></span>
@@ -129,7 +130,7 @@ function AnimalCard({ item, qty, pkg, onStep, onSetQty, onSetPkg, onBuy, busy, c
                             <span className="text-ink-400">تعداد را وارد کنید</span>
                         )}
                     </div>
-                    <button onClick={() => onBuy(item)} disabled={busy === `troopshop-${key}` || !villageId || qty <= 0} className="btn-gold text-xs !px-4 !py-1.5">
+                    <button onClick={() => onBuy(item)} disabled={busy === `troopshop-${key}` || !villageId || qty <= 0} className="btn-gold-shiny text-xs !px-4 !py-1.5 w-auto">
                         {busy === `troopshop-${key}` ? '...' : 'خرید'}
                     </button>
                 </div>
@@ -240,7 +241,6 @@ export default function GoldFeatures() {
         }
     };
 
-    // Shop actions
     const stepQty = useCallback((key, step) => {
         setQty((prev) => ({ ...prev, [key]: Math.max(0, (prev[key] || 0) + step) }));
     }, []);
@@ -292,7 +292,6 @@ export default function GoldFeatures() {
         });
     }, [troopShop.animals]);
 
-    // Totals
     const totalTroopsInCart = troopShop.troops.reduce((s, t) => s + (qty[`troop-${t.id}`] || 0), 0);
     const totalTroopsCost = troopShop.troops.reduce((s, t) => {
         const p = shopCurrency === 'gold' ? t.gold_price : t.silver_price;
@@ -306,7 +305,6 @@ export default function GoldFeatures() {
 
     const unit = shopCurrency === 'gold' ? '💰' : '🪙';
 
-    // Group troops by category
     const infantry = troopShop.troops.filter((t) => !t.is_cavalry && !t.is_siege_weapon);
     const cavalry = troopShop.troops.filter((t) => t.is_cavalry);
     const siege = troopShop.troops.filter((t) => t.is_siege_weapon);
@@ -316,10 +314,10 @@ export default function GoldFeatures() {
             <AlertModal open={!!alertMsg} onClose={() => setAlertMsg(null)} tone={alertMsg?.tone} message={alertMsg?.text} title="امکانات طلایی" />
 
             {/* Protection */}
-            <WoodSign title="🛡️ محافظت تازه‌وارد" icon="🛡️">
+            <WoodSign title="محافظت تازه‌وارد" icon="🛡️">
                 <p className="text-xs text-ink-500 mb-3">خرید یا لغو فوری محافظت تازه‌وارد در ازای طلا.</p>
                 <div className="flex gap-2">
-                    <button onClick={handleBuyProtection} disabled={busy === 'buy_protection'} className="btn-primary flex-1 text-xs">
+                    <button onClick={handleBuyProtection} disabled={busy === 'buy_protection'} className="btn-gold-shiny flex-1 text-xs">
                         {busy === 'buy_protection' ? '...' : 'خرید محافظت'}
                     </button>
                     <button onClick={handleExitProtection} disabled={busy === 'exit_protection'} className="btn-danger flex-1 text-xs">
@@ -329,52 +327,52 @@ export default function GoldFeatures() {
             </WoodSign>
 
             {/* Instant features */}
-            <WoodSign title="⚡ امکانات فوری دهکده فعال" icon="⚡">
+            <WoodSign title="امکانات فوری دهکده فعال" icon="⚡">
                 <p className="text-xs text-ink-500 mb-3">این گزینه‌ها روی دهکده‌ی فعال شما ({activeVillage?.name || '—'}) اعمال می‌شوند.</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                     <div className="flex items-center gap-2 md:col-span-2">
-                        <select value={resourceBonusType} onChange={(e) => setResourceBonusType(e.target.value)} className="field text-xs">
+                        <select value={resourceBonusType} onChange={(e) => setResourceBonusType(e.target.value)} className="premium-select text-xs flex-1">
                             {RESOURCE_BONUS_TYPES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                         </select>
-                        <button onClick={handleResourceBonus} disabled={busy === 'resource_bonus' || !activeVillageId} className="btn-gold text-xs flex-1">
+                        <button onClick={handleResourceBonus} disabled={busy === 'resource_bonus' || !activeVillageId} className="btn-gold-shiny text-xs flex-1">
                             {busy === 'resource_bonus' ? '...' : 'بونوس ۲۵٪ تولید (۲۴ ساعت) — ۵۰ 💰'}
                         </button>
                     </div>
-                    <button onClick={handleInstantRallyPoint} disabled={busy === 'rally_point' || !activeVillageId} className="btn-gold text-xs">
+                    <button onClick={handleInstantRallyPoint} disabled={busy === 'rally_point' || !activeVillageId} className="btn-gold-shiny text-xs">
                         {busy === 'rally_point' ? '...' : 'محل گردهمایی فوری — ۵۰ 💰'}
                     </button>
-                    <button onClick={handleInstantConstruction} disabled={busy === 'instant_construction' || !activeVillageId} className="btn-gold text-xs md:col-span-2">
-                        {busy === 'instant_construction' ? '...' : 'تکمیل فوری صف ساخت — ۳۰ 💰/ساختمان'}
+                    <button onClick={handleInstantConstruction} disabled={busy === 'instant_construction' || !activeVillageId} className="btn-gold-shiny text-xs">
+                        {busy === 'instant_construction' ? '...' : 'تکمیل صف ساخت — ۳۰ 💰'}
                     </button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <select value={warehouseResourceType} onChange={(e) => setWarehouseResourceType(e.target.value)} className="field text-xs">
+                <div className="flex items-center gap-2 border-t border-parchment-200 pt-3">
+                    <select value={warehouseResourceType} onChange={(e) => setWarehouseResourceType(e.target.value)} className="premium-select text-xs flex-1">
                         {RESOURCE_BONUS_TYPES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
-                    <button onClick={handleBuyWarehouse} disabled={busy === 'warehouse' || !activeVillageId} className="btn-gold text-xs flex-1">
-                        {busy === 'warehouse' ? '...' : 'پر کردن فوری انبار/سیلو — ۲ 💰/۱۰۰۰ واحد'}
+                    <button onClick={handleBuyWarehouse} disabled={busy === 'warehouse' || !activeVillageId} className="btn-gold-shiny text-xs flex-1">
+                        {busy === 'warehouse' ? '...' : 'پر کردن فوری انبار — ۲ 💰/۱۰۰۰'}
                     </button>
                 </div>
             </WoodSign>
 
             {/* Silver exchange */}
-            <WoodSign title="💱 تبدیل طلا به نقره" icon="💱">
+            <WoodSign title="تبدیل طلا به نقره" icon="💱">
                 <p className="text-xs text-ink-500 mb-2">{silverStatus?.exchange_rate}</p>
                 <p className="text-xs text-ink-600 mb-3">موجودی نقره: {fmt(silverStatus?.silver_coins ?? 0)}</p>
                 <div className="flex gap-2">
                     <input type="number" min="10" step="10" value={silverGoldAmount} onChange={(e) => setSilverGoldAmount(parseInt(e.target.value, 10) || 10)} className="field w-24 text-center text-xs" />
-                    <button onClick={handleExchangeSilver} disabled={busy === 'exchange_silver'} className="btn-gold flex-1 text-xs">
+                    <button onClick={handleExchangeSilver} disabled={busy === 'exchange_silver'} className="btn-gold-shiny flex-1 text-xs">
                         {busy === 'exchange_silver' ? '...' : 'تبدیل به نقره'}
                     </button>
                 </div>
             </WoodSign>
 
             {/* Gold Club */}
-            <WoodSign title="⭐ کلوپ طلایی" icon="⭐">
+            <WoodSign title="کلوپ طلایی" icon="👑">
                 {goldClubStatus?.has_gold_club ? (
                     <p className="text-sm font-bold text-brand-700 text-center py-2">شما عضو کلوپ طلایی هستید.</p>
                 ) : (
-                    <button onClick={handleBuyGoldClub} disabled={busy === 'gold_club'} className="btn-gold w-full text-xs">
+                    <button onClick={handleBuyGoldClub} disabled={busy === 'gold_club'} className="btn-gold-shiny w-full text-xs">
                         {busy === 'gold_club' ? '...' : `خرید کلوپ طلایی (${goldClubStatus?.cost ?? '—'} 💰)`}
                     </button>
                 )}
@@ -383,12 +381,12 @@ export default function GoldFeatures() {
 
             {/* Cropper search */}
             {goldClubStatus?.has_gold_club && (
-                <WoodSign title="🔍 جستجوی دهکده‌های ۹ و ۱۵ گندمی" icon="🔍">
+                <WoodSign title="جستجوی دهکده‌های ۹ و ۱۵ گندمی" icon="🔍">
                     <div className="flex gap-2 mb-3">
-                        <button onClick={() => setCropperType('9')} className={`flex-1 text-xs py-2 rounded-lg border-2 font-bold ${cropperType === '9' ? 'border-gold-500 bg-gold-50' : 'border-parchment-300'}`}>۹ گندمی</button>
-                        <button onClick={() => setCropperType('15')} className={`flex-1 text-xs py-2 rounded-lg border-2 font-bold ${cropperType === '15' ? 'border-gold-500 bg-gold-50' : 'border-parchment-300'}`}>۱۵ گندمی</button>
+                        <button onClick={() => setCropperType('9')} className={`flex-1 text-xs py-2 rounded-lg border-2 font-bold transition-all ${cropperType === '9' ? 'border-gold-500 bg-gold-50 shadow-inner' : 'border-parchment-300'}`}>۹ گندمی</button>
+                        <button onClick={() => setCropperType('15')} className={`flex-1 text-xs py-2 rounded-lg border-2 font-bold transition-all ${cropperType === '15' ? 'border-gold-500 bg-gold-50 shadow-inner' : 'border-parchment-300'}`}>۱۵ گندمی</button>
                     </div>
-                    <button onClick={handleCropperSearch} disabled={cropperSearching || !activeVillage} className="btn-primary w-full text-xs mb-3">
+                    <button onClick={handleCropperSearch} disabled={cropperSearching || !activeVillage} className="btn-gold-shiny w-full text-xs mb-3">
                         {cropperSearching ? 'در حال جستجو...' : 'جستجو در اطراف دهکده فعال'}
                     </button>
                     {cropperResults && (
@@ -410,10 +408,10 @@ export default function GoldFeatures() {
             )}
 
             {/* ========== GOLDEN TROOP SHOP ========== */}
-            <WoodSign title="⚔️ فروشگاه نیروی طلایی" icon="⚔️">
-                <div className="flex items-center justify-end gap-2 mb-3">
+            <WoodSign title="فروشگاه نیروی طلایی" icon="⚔️">
+                <div className="flex items-center justify-end gap-2 mb-4">
                     <span className="text-xs font-bold text-ink-600">پرداخت با:</span>
-                    <select value={shopCurrency} onChange={(e) => setShopCurrency(e.target.value)} className="field text-xs !w-24">
+                    <select value={shopCurrency} onChange={(e) => setShopCurrency(e.target.value)} className="premium-select text-xs !w-32 !py-1.5">
                         <option value="gold">💰 طلا</option>
                         <option value="silver">🪙 نقره</option>
                     </select>
@@ -422,7 +420,7 @@ export default function GoldFeatures() {
                 {troopShop.troops.length === 0 && troopShop.animals.length === 0 ? (
                     <p className="text-xs text-ink-400 text-center py-3">در حال بارگذاری فروشگاه...</p>
                 ) : (
-                    <div className="space-y-4 max-h-[40rem] overflow-y-auto">
+                    <div className="space-y-6 max-h-[40rem] overflow-y-auto pr-1">
 
                         {/* ===== TROOPS ===== */}
                         {troopShop.troops.length > 0 && (
@@ -430,11 +428,11 @@ export default function GoldFeatures() {
                                 {/* Infantry */}
                                 {infantry.length > 0 && (
                                     <div>
-                                        <div className="text-[11px] font-bold text-ink-600 uppercase tracking-wide px-1 mb-2 flex items-center justify-between">
+                                        <div className="text-[11px] font-bold text-ink-600 uppercase tracking-wide px-1 mb-2 flex items-center justify-between border-b border-parchment-200 pb-1">
                                             <span>نیروی پیاده</span>
                                             <span className="text-ink-400 normal-case">{infantry.length} نوع</span>
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             {infantry.map((t) => (
                                                 <TroopCard key={t.id} item={t} qty={qty[`troop-${t.id}`] || 0} pkg={pkgs[`troop-${t.id}`] || 1} onStep={stepQty} onSetQty={setQtyVal} onSetPkg={setPkgVal} onBuy={handleBuySingle} busy={busy} currency={shopCurrency} villageId={activeVillageId} />
                                             ))}
@@ -445,11 +443,11 @@ export default function GoldFeatures() {
                                 {/* Cavalry */}
                                 {cavalry.length > 0 && (
                                     <div>
-                                        <div className="text-[11px] font-bold text-ink-600 uppercase tracking-wide px-1 mb-2 flex items-center justify-between">
+                                        <div className="text-[11px] font-bold text-ink-600 uppercase tracking-wide px-1 mb-2 mt-4 flex items-center justify-between border-b border-parchment-200 pb-1">
                                             <span>نیروی سواره</span>
                                             <span className="text-ink-400 normal-case">{cavalry.length} نوع</span>
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             {cavalry.map((t) => (
                                                 <TroopCard key={t.id} item={t} qty={qty[`troop-${t.id}`] || 0} pkg={pkgs[`troop-${t.id}`] || 1} onStep={stepQty} onSetQty={setQtyVal} onSetPkg={setPkgVal} onBuy={handleBuySingle} busy={busy} currency={shopCurrency} villageId={activeVillageId} />
                                             ))}
@@ -460,11 +458,11 @@ export default function GoldFeatures() {
                                 {/* Siege */}
                                 {siege.length > 0 && (
                                     <div>
-                                        <div className="text-[11px] font-bold text-ink-600 uppercase tracking-wide px-1 mb-2 flex items-center justify-between">
+                                        <div className="text-[11px] font-bold text-ink-600 uppercase tracking-wide px-1 mb-2 mt-4 flex items-center justify-between border-b border-parchment-200 pb-1">
                                             <span>نیروی محاصره</span>
                                             <span className="text-ink-400 normal-case">{siege.length} نوع</span>
                                         </div>
-                                        <div className="space-y-2">
+                                        <div className="space-y-3">
                                             {siege.map((t) => (
                                                 <TroopCard key={t.id} item={t} qty={qty[`troop-${t.id}`] || 0} pkg={pkgs[`troop-${t.id}`] || 1} onStep={stepQty} onSetQty={setQtyVal} onSetPkg={setPkgVal} onBuy={handleBuySingle} busy={busy} currency={shopCurrency} villageId={activeVillageId} />
                                             ))}
@@ -474,11 +472,11 @@ export default function GoldFeatures() {
 
                                 {/* Troop bulk bar */}
                                 {totalTroopsInCart > 0 && (
-                                    <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                                        <div className="flex items-center justify-between">
+                                    <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-3 shadow-sm">
+                                        <div className="flex flex-col md:flex-row items-center justify-between gap-3">
                                             <span className="text-xs font-bold text-green-700">سبد نیروها: <b>{fmt(totalTroopsInCart)}</b> عدد — <b className="text-gold-600">{fmt(totalTroopsCost)} {unit}</b></span>
-                                            <button onClick={handleBulkTroops} disabled={busy === 'bulk-troops' || !activeVillageId} className="btn-gold text-xs !px-3 !py-1">
-                                                {busy === 'bulk-troops' ? '...' : 'خرید همه نیروها'}
+                                            <button onClick={handleBulkTroops} disabled={busy === 'bulk-troops' || !activeVillageId} className="btn-gold-shiny text-xs !px-4 !py-2 w-full md:w-auto">
+                                                {busy === 'bulk-troops' ? '...' : 'خرید گروهی نیروها'}
                                             </button>
                                         </div>
                                     </div>
@@ -488,49 +486,47 @@ export default function GoldFeatures() {
 
                         {/* ===== ANIMALS ===== */}
                         {troopShop.animals.length > 0 && (
-                            <>
-                                <div>
-                                    <div className="text-[11px] font-bold text-ink-600 uppercase tracking-wide px-1 mb-2 flex items-center justify-between">
-                                        <span>حیوانات نگهبان</span>
-                                        <span className="text-ink-400 normal-case">{troopShop.animals.length} نوع</span>
-                                    </div>
-
-                                    {/* Bundle bar */}
-                                    <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
-                                        <div className="flex items-center justify-between mb-1.5">
-                                            <span className="text-xs font-bold text-amber-700">بسته همه حیوانات</span>
-                                            <div className="flex items-center gap-0.5">
-                                                <button onClick={() => applyBundle(Math.max(0, (qty[`animal-${troopShop.animals[0]?.id}`] || 0) - bundleMult))} className="w-6 h-6 rounded bg-amber-200 hover:bg-amber-300 text-xs font-bold flex items-center justify-center">−</button>
-                                                <button onClick={() => applyBundle((qty[`animal-${troopShop.animals[0]?.id}`] || 0) + bundleMult)} className="w-6 h-6 rounded bg-amber-200 hover:bg-amber-300 text-xs font-bold flex items-center justify-center">+</button>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-1 flex-wrap">
-                                            {BUNDLE_PACKAGES.map((p) => (
-                                                <button key={p} onClick={() => setBundleMult(p)} className={`text-[10px] px-2 py-0.5 rounded border font-bold transition-colors ${bundleMult === p ? 'bg-amber-500 text-white border-amber-600' : 'bg-white text-ink-600 border-parchment-300 hover:border-amber-400'}`}>
-                                                    {p >= 1000 ? `${p / 1000}K` : p}
-                                                </button>
-                                            ))}
-                                            <span className="text-[10px] text-ink-400">عدد هر حیوان</span>
-                                        </div>
-                                        {totalAnimalsInCart > 0 && (
-                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-amber-200">
-                                                <span className="text-[11px] text-amber-600">
-                                                    جمع سبد: <b>{fmt(totalAnimalsInCart)}</b> حیوان — <b className="text-gold-600">{fmt(totalAnimalsCost)} {unit}</b>
-                                                </span>
-                                                <button onClick={handleBulkAnimals} disabled={busy === 'bulk-animals' || !activeVillageId} className="btn-gold text-xs !px-3 !py-1">
-                                                    {busy === 'bulk-animals' ? '...' : 'خرید همه حیوانات'}
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        {troopShop.animals.map((a) => (
-                                            <AnimalCard key={a.id} item={a} qty={qty[`animal-${a.id}`] || 0} pkg={pkgs[`animal-${a.id}`] || 100} onStep={stepQty} onSetQty={setQtyVal} onSetPkg={setPkgVal} onBuy={handleBuySingle} busy={busy} currency={shopCurrency} villageId={activeVillageId} />
-                                        ))}
-                                    </div>
+                            <div className="mt-6">
+                                <div className="text-[11px] font-bold text-ink-600 uppercase tracking-wide px-1 mb-2 flex items-center justify-between border-b border-parchment-200 pb-1">
+                                    <span>حیوانات نگهبان</span>
+                                    <span className="text-ink-400 normal-case">{troopShop.animals.length} نوع</span>
                                 </div>
-                            </>
+
+                                {/* Bundle bar */}
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-3 mb-4 shadow-sm">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-xs font-bold text-amber-800">خرید بسته‌ای همه حیوانات</span>
+                                        <div className="flex items-center gap-1">
+                                            <button onClick={() => applyBundle(Math.max(0, (qty[`animal-${troopShop.animals[0]?.id}`] || 0) - bundleMult))} className="w-7 h-7 rounded bg-amber-200 hover:bg-amber-300 text-sm font-bold flex items-center justify-center transition-colors">−</button>
+                                            <button onClick={() => applyBundle((qty[`animal-${troopShop.animals[0]?.id}`] || 0) + bundleMult)} className="w-7 h-7 rounded bg-amber-200 hover:bg-amber-300 text-sm font-bold flex items-center justify-center transition-colors">+</button>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        {BUNDLE_PACKAGES.map((p) => (
+                                            <button key={p} onClick={() => setBundleMult(p)} className={`text-[10px] px-2 py-1 rounded border font-bold transition-all ${bundleMult === p ? 'bg-amber-500 text-white border-amber-600 shadow-inner' : 'bg-white text-ink-600 border-parchment-300 hover:border-amber-400'}`}>
+                                                {p >= 1000 ? `${p / 1000}K` : p}
+                                            </button>
+                                        ))}
+                                        <span className="text-[10px] text-ink-500 font-bold mr-1">عدد (ضریب افزودن)</span>
+                                    </div>
+                                    {totalAnimalsInCart > 0 && (
+                                        <div className="flex flex-col md:flex-row items-center justify-between mt-3 pt-3 border-t border-amber-200 gap-3">
+                                            <span className="text-[11px] text-amber-700 font-bold">
+                                                جمع سبد حیوانات: <b>{fmt(totalAnimalsInCart)}</b> حیوان — <b className="text-gold-600">{fmt(totalAnimalsCost)} {unit}</b>
+                                            </span>
+                                            <button onClick={handleBulkAnimals} disabled={busy === 'bulk-animals' || !activeVillageId} className="btn-gold-shiny text-xs !px-4 !py-2 w-full md:w-auto">
+                                                {busy === 'bulk-animals' ? '...' : 'خرید گروهی حیوانات'}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-3">
+                                    {troopShop.animals.map((a) => (
+                                        <AnimalCard key={a.id} item={a} qty={qty[`animal-${a.id}`] || 0} pkg={pkgs[`animal-${a.id}`] || 100} onStep={stepQty} onSetQty={setQtyVal} onSetPkg={setPkgVal} onBuy={handleBuySingle} busy={busy} currency={shopCurrency} villageId={activeVillageId} />
+                                    ))}
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}
