@@ -116,9 +116,9 @@ export default function Palace() {
     if (loading) return <PageShell><p className="text-center font-bold text-ink-500 mt-10">در حال بارگذاری قصر...</p></PageShell>;
 
     const renderTrainingTab = () => {
-        if (data.is_capital) {
-            return <p className="text-center text-sm text-amber-700 py-6">این دهکده پایتخت شماست. آموزش مهاجر/چیف امکان‌پذیر نیست.</p>;
-        }
+        // if (data.is_capital) {
+        //     return <p className="text-center text-sm text-amber-700 py-6">این دهکده پایتخت شماست. آموزش مهاجر/رئیس امکان‌پذیر نیست.</p>;
+        // }
         if (data.building_level < 10) {
             return <p className="text-center text-sm text-ink-500 py-6">برای یافتن دهکده جدید به سطح ۱۰ قصر نیاز دارید.</p>;
         }
@@ -141,7 +141,7 @@ export default function Palace() {
                                 <div className="flex items-center gap-2">
                                     <p className="font-bold text-ink-800">{t.name}</p>
                                     {t.is_settler && <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 font-bold">مهاجر</span>}
-                                    {t.is_chief && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">چیف</span>}
+                                    {t.is_chief && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">رئیس</span>}
                                 </div>
                                 <p className="text-xs text-ink-500">موجود: {t.count_in_village}</p>
                                 <div className="flex gap-2 text-[10px] font-bold mt-1">

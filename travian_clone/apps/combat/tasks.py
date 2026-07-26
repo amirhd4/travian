@@ -762,9 +762,9 @@ def _resolve_attack_or_raid(movement):
                 for tid in chief_ids_sent:
                     attacker_survivors[tid] = 0
                 if still_protected:
-                    conquest_blocked_reason = "\n🛡️ این دهکده هنوز در دوره‌ی محافظت تازه‌واردان است؛ چیف اثری نداشت."
+                    conquest_blocked_reason = "\n🛡️ این دهکده هنوز در دوره‌ی محافظت تازه‌واردان است؛ رئیس اثری نداشت."
                 else:
-                    conquest_blocked_reason = "\n🛡️ اقامتگاه این دهکده هنوز سرپاست؛ چیف اثری نداشت."
+                    conquest_blocked_reason = "\n🛡️ اقامتگاه این دهکده هنوز سرپاست؛ رئیس اثری نداشت."
 
     plan_message = ""
     if victory == "attacker" and movement.movement_type == 'ATTACK' and movement.hero_participating:

@@ -3284,7 +3284,7 @@ class MyGoldBankDepositsView(APIView):
 
 class ResidenceView(APIView):
     """
-    صفحه اقامتگاه/قصر — آموزش مهاجر و چیف + امتیاز فرهنگی + وفاداری + گسترش.
+    صفحه اقامتگاه/قصر — آموزش مهاجر و رئیس + امتیاز فرهنگی + وفاداری + گسترش.
     """
     permission_classes = [IsAuthenticated]
 
@@ -3420,7 +3420,7 @@ class ResidenceView(APIView):
                 return Response({"error": "اقامتگاه یا قصری در این دهکده وجود ندارد."}, status=400)
 
             if building.level < 10:
-                return Response({"error": "برای آموزش مهاجر/چیف به اقامتگاه سطح ۱۰ نیاز دارید."}, status=400)
+                return Response({"error": "برای آموزش مهاجر/رئیس به اقامتگاه سطح ۱۰ نیاز دارید."}, status=400)
 
             # Check troop type
             try:
@@ -3429,7 +3429,7 @@ class ResidenceView(APIView):
                 return Response({"error": "نیروی نامعتبر."}, status=400)
 
             if not troop_type.is_settler and not troop_type.is_chief:
-                return Response({"error": "فقط مهاجر و چیف در اقامتگاه آموزش داده می‌شوند."}, status=400)
+                return Response({"error": "فقط مهاجر و رئیس در اقامتگاه آموزش داده می‌شوند."}, status=400)
 
             # Check not already training
             if TrainingQueue.objects.filter(village=village, troop_type=troop_type, is_completed=False).exists():
