@@ -4,12 +4,12 @@ import useGameStore from "../store/useGameStore.js";
 import api from "../api/axiosConfig.js";
 
 const NAV_ITEMS = [
-    { path: '/village', cssClass: 'resources', label: 'منابع', accessKey: '1' },
-    { path: '/dorf2', cssClass: 'village', label: 'مرکز دهکده', accessKey: '2' },
-    { path: '/world-map', cssClass: 'map', label: 'نقشه', accessKey: '3' },
-    { path: '/statistics', cssClass: 'stats', label: 'آمار', accessKey: '4' },
-    { path: '/reports', cssClass: 'reports', label: 'گزارشات', accessKey: '5' },
     { path: '/messages', cssClass: 'messages', label: 'پیام‌ها', accessKey: '6' },
+    { path: '/reports', cssClass: 'reports', label: 'گزارشات', accessKey: '5' },
+    { path: '/statistics', cssClass: 'stats', label: 'آمار', accessKey: '4' },
+    { path: '/world-map', cssClass: 'map', label: 'نقشه', accessKey: '3' },
+    { path: '/dorf2', cssClass: 'village', label: 'مرکز دهکده', accessKey: '2' },
+    { path: '/village', cssClass: 'resources', label: 'منابع', accessKey: '1' },
 ];
 
 export default function Navbar() {

@@ -19,6 +19,7 @@ export default function Colonize() {
 
     const [center, setCenter] = useState({ x: 0, y: 0 });
     const [mapVillages, setMapVillages] = useState([]);
+    const [mapOases, setMapOases] = useState([]); // ✅ جدید
     const [loadingMap, setLoadingMap] = useState(false);
     const [selectedTarget, setSelectedTarget] = useState(null);
     const [autoFind, setAutoFind] = useState(true);
@@ -57,11 +58,17 @@ export default function Colonize() {
 
     useEffect(() => { if (sourceId) fetchSettlers(sourceId); }, [sourceId, fetchSettlers]);
 
+    // ✅ جدید: علاوه بر دهکده‌ها، آبادی‌های موجود در همین محدوده را هم می‌گیریم
+    // تا کاربر نتواند دقیقا روی یک آبادی دهکده تاسیس کند.
     const fetchMap = useCallback(async () => {
         setLoadingMap(true);
         try {
-            const { data } = await api.get('game/world-map/', { params: { x: center.x, y: center.y, radius: GRID_RADIUS } });
-            setMapVillages(data);
+            const [villagesRes, oasesRes] = await Promise.all([
+                api.get('game/world-map/', { params: { x: center.x, y: center.y, radius: GRID_RADIUS } }),
+                api.get('game/oases/', { params: { x: center.x, y: center.y, radius: GRID_RADIUS } }),
+            ]);
+            setMapVillages(villagesRes.data);
+            setMapOases(oasesRes.data);
         } catch (error) {
             console.error(error);
         } finally {
@@ -81,8 +88,15 @@ export default function Colonize() {
     const grid = [];
     for (let y = center.y + GRID_RADIUS; y >= center.y - GRID_RADIUS; y--) {
         for (let x = center.x - GRID_RADIUS; x <= center.x + GRID_RADIUS; x++) {
-            const occupied = mapVillages.find((v) => v.x_coord === x && v.y_coord === y);
-            grid.push({ x, y, occupied: !!occupied, name: occupied?.name });
+            const occupiedVillage = mapVillages.find((v) => v.x_coord === x && v.y_coord === y);
+            const occupiedOasis = mapOases.find((o) => o.x_coord === x && o.y_coord === y); // ✅ جدید
+            const occupied = !!occupiedVillage || !!occupiedOasis;
+            grid.push({
+                x, y,
+                occupied,
+                isOasis: !!occupiedOasis, // ✅ جدید
+                name: occupiedVillage?.name || (occupiedOasis ? 'آبادی' : undefined),
+            });
         }
     }
 
@@ -183,6 +197,7 @@ export default function Colonize() {
                                                 <button type="button" key={i} disabled={cell.occupied}
                                                     onClick={() => setSelectedTarget({ x: cell.x, y: cell.y })}
                                                     className={`h-14 text-[10px] rounded-lg border-2 flex flex-col items-center justify-center transition ${
+                                                        cell.isOasis ? 'bg-emerald-100 border-emerald-300 text-emerald-700 cursor-not-allowed' :
                                                         cell.occupied ? 'bg-rose-100 border-rose-300 text-rose-600 cursor-not-allowed' :
                                                         isSelected ? 'bg-brand-400 border-brand-600 text-white font-bold' :
                                                         'bg-white border-parchment-300 hover:border-gold-400 cursor-pointer'
@@ -194,6 +209,12 @@ export default function Colonize() {
                                         })}
                                     </div>
                                 )}
+                                <p className="text-[10px] text-ink-500 mt-2 text-center">
+                                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-200 border border-emerald-400 align-middle ml-1"></span>
+                                    آبادی (غیرقابل انتخاب)
+                                    <span className="inline-block w-2.5 h-2.5 rounded-sm bg-rose-200 border border-rose-400 align-middle ml-3 mr-1"></span>
+                                    دهکده (غیرقابل انتخاب)
+                                </p>
                                 <div className="flex justify-between mt-2">
                                     <button type="button" onClick={() => setCenter((c) => ({ ...c, x: c.x - (GRID_RADIUS * 2 + 1) }))} className="btn-ghost text-xs !px-2 !py-1">⬅ غرب</button>
                                     <button type="button" onClick={() => setCenter((c) => ({ ...c, x: c.x + (GRID_RADIUS * 2 + 1) }))} className="btn-ghost text-xs !px-2 !py-1">شرق ➡</button>

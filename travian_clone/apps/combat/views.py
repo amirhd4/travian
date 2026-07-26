@@ -75,6 +75,12 @@ class BarracksTrainView(APIView):
         except TroopType.DoesNotExist:
             return Response({"error": "این نیرو مختص نژاد شما نیست یا وجود ندارد."}, status=400)
 
+        if troop_info.is_settler or troop_info.is_chief:
+            return Response(
+                {"error": f"{troop_info.name} فقط از طریق اقامتگاه یا قصر قابل آموزش است، نه پادگان."},
+                status=400
+            )
+
         total_cost = {
             'wood': troop_info.wood_cost * quantity,
             'clay': troop_info.clay_cost * quantity,
@@ -188,8 +194,9 @@ class TroopTypeCatalogView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # ✅ فقط نیروهای متعلق به نژاد خود بازیکن (ناتار هرگز نمایش داده نمی‌شود)
-        troop_types = TroopType.objects.filter(tribe=request.user.tribe).order_by('id')
+        troop_types = TroopType.objects.filter(
+            tribe=request.user.tribe, is_settler=False, is_chief=False
+        ).order_by('id')
 
         # Check research status if village_id provided
         village_id = request.query_params.get('village_id')

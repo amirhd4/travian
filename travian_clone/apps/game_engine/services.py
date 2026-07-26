@@ -312,6 +312,8 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
     if target_x is not None and target_y is not None:
         if Village.objects.filter(x_coord=target_x, y_coord=target_y).exists():
             raise ValidationError("این مختصات قبلا توسط دهکده دیگری اشغال شده است.")
+        if Oasis.objects.filter(x_coord=target_x, y_coord=target_y).exists():
+            raise ValidationError("این مختصات یک آبادی است و قابل تاسیس دهکده نیست.")
         x, y = target_x, target_y
     else:
         x, y = _find_free_coordinates(near_x=source_village.x_coord, near_y=source_village.y_coord)

@@ -98,10 +98,10 @@ export default function ResourceBar() {
             </div>
             <ul id="res">
                 {[
-                    { key: 'wood', img: '/assets/ui/res-1.gif', label: 'چوب', maxKey: 'maxStorage' },
-                    { key: 'clay', img: '/assets/ui/res-2.gif', label: 'خاک رس', maxKey: 'maxStorage' },
-                    { key: 'iron', img: '/assets/ui/res-3.gif', label: 'آهن', maxKey: 'maxStorage' },
                     { key: 'crop', img: '/assets/ui/res-4.gif', label: 'گندم', maxKey: 'maxGranary' },
+                    { key: 'iron', img: '/assets/ui/res-3.gif', label: 'آهن', maxKey: 'maxStorage' },
+                    { key: 'clay', img: '/assets/ui/res-2.gif', label: 'خاک رس', maxKey: 'maxStorage' },
+                    { key: 'wood', img: '/assets/ui/res-1.gif', label: 'چوب', maxKey: 'maxStorage' },
                 ].map(function(item, idx) {
                     var value = Math.floor(resources[item.key]);
                     var max = item.maxKey === 'maxGranary' ? maxGranary : maxStorage;
