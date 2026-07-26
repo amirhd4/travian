@@ -529,3 +529,26 @@ class GoldBankDeposit(models.Model):
 
     def __str__(self):
         return f"{self.amount} گلد -> {self.email} (پین: {self.pin_code})"
+
+
+class PlayerProfile(models.Model):
+    """Extended profile data for players (description, location, gender, birthday)."""
+    player = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='profile'
+    )
+    description = models.TextField(blank=True, default='')
+    location = models.CharField(max_length=100, blank=True, default='')
+    gender = models.CharField(
+        max_length=10,
+        choices=[('M', 'مرد'), ('F', 'زن'), ('', 'نامشخص')],
+        default='',
+        blank=True,
+    )
+    birthday = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'پروفایل بازیکن'
+        verbose_name_plural = 'پروفایل‌های بازیکنان'
+
+    def __str__(self):
+        return f"Profile of {self.player.username}"

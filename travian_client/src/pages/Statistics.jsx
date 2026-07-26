@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
@@ -19,6 +20,7 @@ const TABS = [
 const medalIcon = (rank) => (rank === 1 ? '🥇' : rank <= 3 ? '🥈' : '🥉');
 
 function RankTable({ rows, valueLabel }) {
+    const navigate = useNavigate();
     if (rows.length === 0) return <EmptyState icon="📉" title="هنوز داده‌ای برای این رتبه‌بندی ثبت نشده است." />;
     return (
         <div style={{ overflowX: 'auto' }}>
@@ -37,7 +39,11 @@ function RankTable({ rows, valueLabel }) {
                             <td style={{ fontWeight: 'bold', color: '#252525', textAlign: 'center' }}>
                                 {row.rank <= 3 ? medalIcon(row.rank) : row.rank}
                             </td>
-                            <td style={{ fontWeight: 'bold', color: '#252525', textAlign: 'center' }}>{row.player}</td>
+                            <td style={{ fontWeight: 'bold', color: '#252525', textAlign: 'center' }}>
+                                {row.player_id ? (
+                                    <a onClick={() => navigate(`/profile?id=${row.player_id}`)} style={{ color: '#99C01A', cursor: 'pointer' }}>{row.player}</a>
+                                ) : row.player}
+                            </td>
                             <td style={{ fontSize: '12px', color: '#777', textAlign: 'center' }}>{row.alliance}</td>
                             <td style={{ fontWeight: 'bold', color: '#228B22', textAlign: 'center' }}>
                                 {row.points?.toLocaleString?.() ?? row.population?.toLocaleString?.()}

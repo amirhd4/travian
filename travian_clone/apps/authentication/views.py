@@ -109,7 +109,7 @@ class MeView(APIView):
 
     def get(self, request):
         user = request.user
-        from apps.game_engine.models import ServerSetting
+        from apps.game_engine.models import ServerSetting, Alliance
         server = ServerSetting.objects.filter(is_active=True).first()
         protection_days = server.new_player_protection_days if server else 7
         now = timezone.now()
@@ -119,6 +119,16 @@ class MeView(APIView):
             and protection_days > 0
             and now < protected_until
         )
+
+        # Get alliance info
+        alliance_tag = None
+        alliance_name = None
+        if user.alliance_id:
+            alliance = Alliance.objects.filter(id=user.alliance_id).first()
+            if alliance:
+                alliance_tag = alliance.tag
+                alliance_name = alliance.name
+
         return Response({
             "id": user.id, "username": user.username, "email": user.email,
             "tribe": user.tribe, "gold_coins": user.gold_coins,
@@ -127,6 +137,12 @@ class MeView(APIView):
             "date_joined": user.date_joined.isoformat(),
             "is_protected": is_protected,
             "protected_until": protected_until.isoformat() if is_protected else None,
+            "alliance_id": user.alliance_id,
+            "alliance_tag": alliance_tag,
+            "alliance_name": alliance_name,
+            "has_plus": user.has_plus,
+            "has_gold_club": user.has_gold_club,
+            "culture_points": user.culture_points,
         }, status=status.HTTP_200_OK)
 
 

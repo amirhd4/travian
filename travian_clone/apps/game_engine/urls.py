@@ -15,9 +15,10 @@ from .views import (
     GoldBankDepositView, GoldBankWithdrawView, MyGoldBankDepositsView,
     ResourceBonusView, BuyFullWarehouseView, BuyProtectionView, ExitProtectionView, InstantRallyPointView,
     BuyGoldClubView, CropperSearchView, StandardNpcTradeView, GoldToSilverExchangeView, SupportMessageView,
-    InstantConstructionView, GoldTroopShopView, BulkAnimalBuyView, BulkTroopBuyView, AllianceListView, MoveCapitalView, TownHallCelebrationView,
+    InstantConstructionView, GoldTroopShopView, BulkAnimalBuyView, BulkTroopBuyView, AllianceListView, MoveCapitalView,
+    TownHallCelebrationView,
     AvailableBuildingsView, ResidenceView, MainBuildingView, CrannyView,
-    WarehouseView, StonemasonView, WallView,
+    WarehouseView, StonemasonView, WallView, PlayerProfileView, ProfileUpdateView,
 )
 from ..combat.views import HeroAuctionListView, HeroAuctionBidView
 
@@ -92,4 +93,6 @@ urlpatterns = [
     path('gold/troop-shop/', GoldTroopShopView.as_view(), name='gold_troop_shop'),
     path('gold/bulk-animal-buy/', BulkAnimalBuyView.as_view(), name='bulk_animal_buy'),
     path('gold/bulk-troop-buy/', BulkTroopBuyView.as_view(), name='bulk_troop_buy'),
+    path('profile/', PlayerProfileView.as_view(), name='player-profile'),
+    path('profile/update/', ProfileUpdateView.as_view(), name='profile-update'),
 ]

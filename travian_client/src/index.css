@@ -621,3 +621,27 @@ body.login #side_navi{
 .msgStatusUnread  { background-position: 0px 0px; }
 .msgStatusRead    { background-position: -26px 0px; }
 .msgStatusReplied { background-position: -52px 0px; }
+
+/* ===== Profile Page Styles ===== */
+div.player { padding: 12px; }
+div.player img.heroImage { width: 160px; height: 205px; float: left; margin-bottom: 20px; }
+div.player table#details { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+div.player table#details th { width: 35%; text-align: right; padding: 4px 8px; background: #E5EECC; border-bottom: 1px solid #ddd; font-weight: bold; }
+div.player table#details td { padding: 4px 8px; border-bottom: 1px solid #eee; }
+div.player .description { width: 252px; text-align: center; margin-bottom: 20px; overflow: hidden; }
+div.player .description1 { float: right; margin-right: 12px; }
+div.player .description2 { float: left; margin-left: 12px; }
+div.player table#villages { width: 100%; border-collapse: collapse; }
+div.player table#villages th { background: #E5EECC; padding: 6px 8px; text-align: right; border-bottom: 2px solid #99C01A; font-weight: bold; }
+div.player table#villages td { padding: 4px 8px; border-bottom: 1px solid #eee; text-align: center; }
+div.player table#villages td.name { text-align: right; white-space: nowrap; }
+div.player table#villages td.coords { white-space: nowrap; }
+div.player .profileTabs { display: flex; gap: 2px; margin-bottom: 12px; }
+div.player .profileTab { padding: 6px 16px; background: #E5E5E5; border: 1px solid #C9C9C9; border-radius: 2px 2px 0 0; cursor: pointer; font-weight: bold; font-size: 12px; font-family: Arial, Helvetica, Verdana, sans-serif; }
+div.player .profileTab.active { background: #498843; color: #fff; border-color: #3a6e35; }
+div.player .profileTab:hover:not(.active) { background: #D5D5D5; }
+div.player .profileContent { background: #fff; border: 1px solid #C9C9C9; padding: 12px; }
+div.player textarea.editDescription { width: 100%; height: 200px; border: 1px solid #CCC; padding: 8px; font-size: 12px; font-family: Arial, Helvetica, Verdana, sans-serif; }
+div.player table#medals { width: 100%; border-collapse: collapse; }
+div.player table#medals td { text-align: center; padding: 4px; }
+div.player img.medal { width: 35px; height: 48px; }

@@ -117,7 +117,7 @@ export default function SideInfoBoards() {
         </div>
 
         <div className="sideInfoPlayer" title="پروفایل بازیکن">
-                <a className="signLink" href="/profile">
+                <a className="signLink" href={`/profile?id=${user.id}`}>
                     <span className="wrap">{user.username}</span>
                 </a>
                 {user.tribe && (

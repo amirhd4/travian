@@ -776,6 +776,7 @@ class LeaderboardView(APIView):
             player_name = p.email.split('@')[0] if p.email else p.username
             ranking_data.append({
                 "player": player_name,
+                "player_id": p.id,
                 "alliance": alliance_by_player.get(p.id, "بدون اتحاد"),
                 "population": population_by_player.get(p.id, 0),
             })
@@ -819,6 +820,7 @@ class LeaderboardView(APIView):
                 data.append({
                     "rank": rank,
                     "player": player_name,
+                    "player_id": stat.player_id,
                     "alliance": alliance_by_player.get(stat.player_id, "بدون اتحاد"),
                     "points": round(getattr(stat, field_name), 1),
                 })
@@ -3783,3 +3785,122 @@ class WallView(APIView):
             "total_defense_percent": round(total_defense, 1),
             "next_level_defense": round((wall_level + 1) * self.WALL_BONUS_PER_LEVEL * stonemason_multiplier, 1) if wall_level < 20 else None,
         })
+
+
+class PlayerProfileView(APIView):
+    """Get player profile data (own or other player)."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        player_id = request.query_params.get('id')
+        if player_id:
+            try:
+                player = User.objects.get(id=player_id)
+            except User.DoesNotExist:
+                return Response({"error": "بازیکن یافت نشد."}, status=404)
+            is_own = (player.id == request.user.id)
+        else:
+            player = request.user
+            is_own = True
+
+        # Get villages
+        villages = Village.objects.filter(player=player).order_by('-is_capital', 'name')
+        village_data = []
+        for v in villages:
+            village_data.append({
+                "id": v.id,
+                "name": v.name,
+                "x_coord": v.x_coord,
+                "y_coord": v.y_coord,
+                "population": calculate_village_population(v),
+                "is_capital": v.is_capital,
+            })
+
+        total_pop = sum(v["population"] for v in village_data)
+
+        # Get alliance info
+        alliance_name = None
+        alliance_tag = None
+        if player.alliance_id:
+            alliance = Alliance.objects.filter(id=player.alliance_id).first()
+            if alliance:
+                alliance_name = alliance.name
+                alliance_tag = alliance.tag
+
+        # Get combat stats
+        from apps.game_engine.models import PlayerCombatStats
+        stats = PlayerCombatStats.objects.filter(player=player).first()
+
+        # Get medals
+        from .models import DailyMedal
+        medals = DailyMedal.objects.filter(player=player, is_visible=True).order_by('-awarded_at')[:20]
+
+        # Get profile extended data
+        from .models import PlayerProfile
+        profile, _ = PlayerProfile.objects.get_or_create(player=player)
+
+        # Calculate rank
+        rank = self._get_player_rank(player)
+
+        return Response({
+            "id": player.id,
+            "username": player.username,
+            "tribe": player.tribe,
+            "alliance_id": player.alliance_id,
+            "alliance_name": alliance_name,
+            "alliance_tag": alliance_tag,
+            "villages": village_data,
+            "village_count": len(village_data),
+            "total_population": total_pop,
+            "rank": rank,
+            "attacker_points": stats.attacker_kill_points if stats else 0,
+            "defender_points": stats.defender_kill_points if stats else 0,
+            "date_joined": player.date_joined.isoformat(),
+            "is_own": is_own,
+            "has_plus": player.has_plus,
+            "culture_points": player.culture_points,
+            "description": profile.description,
+            "location": profile.location,
+            "gender": profile.gender,
+            "medals": [{
+                "id": m.id,
+                "category": m.category,
+                "rank": m.rank,
+                "day_number": m.day_number,
+            } for m in medals],
+        })
+
+    def _get_player_rank(self, player):
+        """Calculate player rank based on total population."""
+        all_players = Player.objects.exclude(username__in=['Natars', 'Farms'])
+        player_pops = []
+        for p in all_players:
+            pop = sum(calculate_village_population(v) for v in Village.objects.filter(player=p))
+            if pop > 0:
+                player_pops.append((p.id, pop))
+        player_pops.sort(key=lambda x: x[1], reverse=True)
+        for i, (pid, _) in enumerate(player_pops):
+            if pid == player.id:
+                return i + 1
+        return None
+
+
+class ProfileUpdateView(APIView):
+    """Update own profile (description, location, gender)."""
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request):
+        from .models import PlayerProfile
+        profile, _ = PlayerProfile.objects.get_or_create(player=request.user)
+
+        if 'description' in request.data:
+            profile.description = request.data['description']
+        if 'location' in request.data:
+            profile.location = request.data['location'][:100]
+        if 'gender' in request.data:
+            profile.gender = request.data['gender']
+        if 'birthday' in request.data:
+            profile.birthday = request.data['birthday'] or None
+
+        profile.save()
+        return Response({"message": "پروفایل با موفقیت به‌روزرسانی شد."})

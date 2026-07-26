@@ -42,6 +42,7 @@ import VillagesOverview from "./pages/VillagesOverview.jsx";
 import Artifacts from "./pages/Artifacts.jsx";
 import PositionDetails from "./pages/PositionDetails.jsx";
 import CropFinder from "./pages/CropFinder.jsx";
+import Profile from "./pages/Profile.jsx";
 
 const PrivateRoute = ({ children }) => {
     const accessToken = useGameStore((state) => state.accessToken);
@@ -156,6 +157,7 @@ function App() {
                     <Route path="/blacksmith" element={<Blacksmith />} />
                     <Route path="/villages" element={<VillagesOverview />} />
                     <Route path="/artifacts" element={<Artifacts />} />
+                    <Route path="/profile" element={<Profile />} />
                 </Route>
             </Routes>
         </Router>
