@@ -124,13 +124,21 @@ export default function WorldMap() {
       setCoordInput({ x: String(activeVillage.x_coord), y: String(activeVillage.y_coord) });
       setCenterReady(true);
     }
-  }, [searchParams, villages, activeVillageId]);
+  }, [searchParams, villages, activeVillageId, activeVillage]);
 
   useEffect(() => {
     if (!activeVillageId) return;
     api.get('combat/village-troops/', { params: { village_id: activeVillageId } })
       .then(({ data }) => setAvailableTroops(data)).catch(() => {});
   }, [activeVillageId]);
+
+  useEffect(() => {
+      if (fullScreen) {
+        document.body.classList.add('map-fullscreen');
+      } else {
+        document.body.classList.remove('map-fullscreen');
+      }
+    }, [fullScreen]);
 
   const fetchMap = useCallback(async () => {
     setLoading(true);
@@ -424,7 +432,7 @@ export default function WorldMap() {
           </div>
 
           {/* Map container */}
-          <div ref={mapRef} className={fullScreen ? 'fullscreen' : ''} style={{ position: 'relative', width: COLS * TILE_SIZE, height: ROWS * TILE_SIZE, border: '2px solid #2c3e50', background: '#C3EDAE', overflow: 'hidden' }}>
+          <div ref={mapRef} className={fullScreen ? 'fullscreen' : ''} style={{ position: 'relative', zIndex: "200",  width: COLS * TILE_SIZE, height: ROWS * TILE_SIZE, border: '2px solid #2c3e50', background: '#C3EDAE', overflow: 'hidden' }}>
             {loading ? (
               <div style={{ padding: 100, textAlign: 'center', fontWeight: 'bold', fontSize: 13, color: '#444' }}>در حال بارگذاری نقشه...</div>
             ) : (

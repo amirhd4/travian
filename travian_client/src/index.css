@@ -463,12 +463,17 @@ div.village1 table#movements div.dur_r { float: left; padding-left: 2px; font-si
     background: #5a9e52;
 }
 
-/* Map container override for fullscreen */
-body.map #contentOuterContainer {
-    width: auto;
-    margin-left: 0;
-    float: none;
+/* وقتی نقشه تمام صفحه است، کانتینر بزرگ شده و سایدبار مخفی می‌شود */
+body.map-fullscreen #contentOuterContainer {
+    width: 100% !important;
+    margin-left: 0 !important;
+    float: none !important;
 }
+
+body.map-fullscreen #side_info {
+    display: none !important;
+}
+
 body.map #contentOuterContainer .contentContainer {
     overflow-x: auto;
     padding: 8px;

@@ -3795,8 +3795,8 @@ class PlayerProfileView(APIView):
         player_id = request.query_params.get('id')
         if player_id:
             try:
-                player = User.objects.get(id=player_id)
-            except User.DoesNotExist:
+                player = Player.objects.get(id=player_id)
+            except Player.DoesNotExist:
                 return Response({"error": "بازیکن یافت نشد."}, status=404)
             is_own = (player.id == request.user.id)
         else:
