@@ -2282,6 +2282,19 @@ class CropperSearchView(APIView):
 
         results.sort(key=lambda x: x['distance'])
 
+        # Compute oasis crop bonuses for each result village
+        village_ids = [r['id'] for r in results]
+        oases_by_village = {}
+        if village_ids:
+            from .models import Oasis
+            for oasis in Oasis.objects.filter(owner_village_id__in=village_ids).select_related():
+                crop_pct = sum(pct for res, pct in oasis.bonuses if res == 'crop')
+                if crop_pct:
+                    oases_by_village[oasis.owner_village_id] = oases_by_village.get(oasis.owner_village_id, 0) + crop_pct
+
+        for r in results:
+            r['oasis_bonus'] = oases_by_village.get(r['id'], 0)
+
         return Response({
             "type": f"{target_type}-cropper",
             "results": results[:20],

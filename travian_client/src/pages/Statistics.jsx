@@ -7,14 +7,14 @@ import EmptyState from '../components/EmptyState';
 import { AlertModal } from '../components/Modal';
 
 const TABS = [
-    { key: 'general', label: '🏆 رتبه‌بندی بازیکنان', image: '/assets/ui/status-top10.gif' },
-    { key: 'attackers', label: '⚔️ مهاجم برتر (کلی)', image: '/assets/ui/status-off.gif' },
-    { key: 'defenders', label: '🛡️ مدافع برتر (کلی)', image: '/assets/ui/status-def.gif' },
-    { key: 'daily', label: '🎖️ مدال‌های روزانه', image: '/assets/ui/artefacts.gif' },
-    { key: 'mymedals', label: '🎗️ مدال‌های من', image: '/assets/ui/artefacts.gif' },
-    { key: 'ww', label: '🏛️ مسابقه شگفتی جهان', image: '/assets/ui/buildings-icon.gif' },
-    { key: 'alliances', label: '🤝 اتحادها', image: '/assets/ui/friends-icon.gif' },
-    { key: 'farms', label: '🌾 دهکده‌های فارم', image: '/assets/ui/buildings-icon.gif' },
+    { key: 'general', label: '🏆 رتبه‌بندی بازیکنان' },
+    { key: 'attackers', label: '⚔️ مهاجم برتر (کلی)' },
+    { key: 'defenders', label: '🛡️ مدافع برتر (کلی)' },
+    { key: 'daily', label: '🎖️ مدال‌های روزانه' },
+    { key: 'mymedals', label: '🎗️ مدال‌های من' },
+    { key: 'ww', label: '🏛️ مسابقه شگفتی جهان' },
+    { key: 'alliances', label: '🤝 اتحادها' },
+    { key: 'farms', label: '🌾 دهکده‌های فارم' },
 ];
 
 const medalIcon = (rank) => (rank === 1 ? '🥇' : rank <= 3 ? '🥈' : '🥉');
@@ -93,8 +93,8 @@ export default function Statistics() {
     const [myMedals, setMyMedals] = useState([]);
     const [activeTab, setActiveTab] = useState('general');
     const [loading, setLoading] = useState(true);
-    const [farmsLoading, setFarmsLoading] = useState(true);
-    const [alliancesLoading, setAlliancesLoading] = useState(true);
+    const [farmsLoading, setFarmsLoading] = useState(false);
+    const [alliancesLoading, setAlliancesLoading] = useState(false);
     const [farmsFetched, setFarmsFetched] = useState(false);
     const [alliancesFetched, setAlliancesFetched] = useState(false);
     const [dailyFetched, setDailyFetched] = useState(false);
@@ -128,6 +128,7 @@ export default function Statistics() {
                 setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری دهکده‌های فارم' });
             } finally {
                 setFarmsFetched(true);
+                setFarmsLoading(false);
             }
         };
         fetchFarms();
@@ -145,6 +146,7 @@ export default function Statistics() {
                 setAlertMsg({ tone: 'error', text: 'خطا در بارگذاری اتحادها' });
             } finally {
                 setAlliancesFetched(true);
+                setAlliancesLoading(false);
             }
         };
         fetchAlliances();
@@ -210,7 +212,6 @@ export default function Statistics() {
                                     whiteSpace: 'nowrap',
                                 }}
                             >
-                                <img src={tab.image} alt="" style={{ width: '16px', height: '16px' }} onError={(e) => { e.target.style.display='none'; }} />
                                 {tab.label}
                             </button>
                         ))}

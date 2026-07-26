@@ -347,7 +347,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         max_granary=max_granary,
     )
 
-    _create_default_buildings(village, distribution_key=distribution_key, tribe=player.tribe)
+    _create_default_buildings(new_village, distribution_key=distribution_key, tribe=player.tribe)
 
     return new_village
 

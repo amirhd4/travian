@@ -166,7 +166,7 @@ export default function CropFinder() {
                             onClick={() => navigate(`/world-map?x=${r.x_coord}&y=${r.y_coord}`)}
                             style={{ color: '#99C01A', fontWeight: 'bold', cursor: 'pointer' }}
                           >
-                            ({r.y_coord}|{r.x_coord})
+                            ({r.x_coord}|{r.y_coord})
                           </a>
                         </td>
                         <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee', fontWeight: 'bold', color: '#228B22' }}>

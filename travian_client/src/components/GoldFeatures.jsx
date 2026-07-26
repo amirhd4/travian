@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import WoodSign from './WoodSign';
 import { AlertModal } from './Modal';
@@ -140,6 +141,7 @@ function AnimalCard({ item, qty, pkg, onStep, onSetQty, onSetPkg, onBuy, busy, c
 }
 
 export default function GoldFeatures() {
+    const navigate = useNavigate();
     const setUser = useGameStore((state) => state.setUser);
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const villages = useGameStore((state) => state.villages);
@@ -397,7 +399,11 @@ export default function GoldFeatures() {
                                 {cropperResults.results.map((r) => (
                                     <div key={r.id} className="flex justify-between gap-2 text-xs bg-parchment-50 border border-parchment-200 rounded-lg px-3 py-1.5">
                                         <span className="font-bold truncate">{r.name}</span>
-                                        <span dir="ltr" className="flex-shrink-0">({r.x_coord}|{r.y_coord})</span>
+                                        <span
+                                            dir="ltr"
+                                            className="flex-shrink-0 text-brand-600 hover:underline cursor-pointer font-bold"
+                                            onClick={() => navigate(`/world-map?x=${r.x_coord}&y=${r.y_coord}`)}
+                                        >({r.x_coord}|{r.y_coord})</span>
                                         <span className="truncate">{r.player_name}</span>
                                     </div>
                                 ))}
