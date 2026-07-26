@@ -267,11 +267,17 @@ const TABS = [
     { key: 'appearance', label: '🎨 ظاهر' },
     { key: 'auction', label: '🏺 حراجی' },
     { key: 'adventures', label: '🗺️ ماجراجویی‌ها' },
+    { key: 'oases', label: '🌿 آبادی‌ها' },
 ];
 
 export default function Hero() {
     const { lastMessage } = useGameWebSocket();
     const villages = useGameStore((state) => state.villages);
+    const activeVillageId = useGameStore((state) => state.activeVillageId);
+    const setVillages = useGameStore((state) => state.setVillages);
+
+    const activeVillage = villages.find(v => v.id === activeVillageId);
+    const ownedOases = activeVillage?.oases || [];
 
     const [activeTab, setActiveTab] = useState('attributes');
     const [hero, setHero] = useState(null);
@@ -284,6 +290,22 @@ export default function Hero() {
 
     const [revivalVillageId, setRevivalVillageId] = useState('');
     const [revivalCost, setRevivalCost] = useState(null);
+
+    const handleReleaseOasis = async (oasisId) => {
+        if (!window.confirm("آیا از رها کردن این آبادی مطمئن هستید؟")) return;
+        setBusy(oasisId);
+        try {
+            await api.post('game/oases/release/', { oasis_id: oasisId });
+            setAlertMsg({ tone: 'success', text: 'آبادی با موفقیت رها شد.' });
+            // Refresh villages list
+            const { data: vData } = await api.get('game/villages/');
+            setVillages(vData);
+        } catch (error) {
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || 'خطا در رها کردن آبادی' });
+        } finally {
+            setBusy(null);
+        }
+    };
 
     const fetchHero = useCallback(async () => {
         try { const { data } = await api.get('combat/hero/'); setHero(data); }
@@ -588,6 +610,37 @@ export default function Hero() {
 
                     {activeTab === 'appearance' && <AppearanceTab hero={hero} onSave={handleSaveAppearance} />}
                     {activeTab === 'auction' && <AuctionTab />}
+
+                    {activeTab === 'oases' && (
+                        <div className="space-y-4">
+                            <h3 className="font-bold text-lg mb-2">🌿 آبادی‌های تحت تسخیر این دهکده ({activeVillage?.name})</h3>
+                            {ownedOases.length === 0 ? (
+                                <p className="text-sm text-ink-500 italic bg-parchment-100 p-4 rounded-xl border">هیچ آبادی برای این دهکده تسخیر نشده است.</p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {ownedOases.map((o) => (
+                                        <div key={o.id} className="flex items-center justify-between border-2 rounded-xl p-3 bg-white/5 border-parchment-300">
+                                            <div>
+                                                <p className="font-bold text-sm text-ink-900">آبادی ({o.x_coord}|{o.y_coord})</p>
+                                                <p className="text-xs text-ink-500">{o.bonus_display || 'بونوس تولید منابع'}</p>
+                                            </div>
+                                            <button onClick={() => handleReleaseOasis(o.id)}
+                                                disabled={busy === o.id}
+                                                className="btn-danger text-xs px-4 py-2 rounded-lg font-bold">
+                                                {busy === o.id ? 'در حال رهاسازی...' : 'رها کردن 🌿'}
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="bg-parchment-100 p-4 rounded-xl border text-xs text-ink-600 leading-relaxed space-y-1">
+                                <p className="font-bold">راهنمای عمارت قهرمان:</p>
+                                <p>• هر دهکده می‌تواند حداکثر ۳ آبادی تسخیر شده داشته باشد.</p>
+                                <p>• برای تسخیر آبادی اول به عمارت قهرمان سطح ۱۰، آبادی دوم سطح ۱۵ و آبادی سوم سطح ۲۰ نیاز دارید.</p>
+                                <p>• هر بازیکن می‌تواند با مراجعه به این بخش آبادی‌های خود را رها کند تا اسلات خالی برای آبادی‌های جدید باز شود.</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </PageShell>
