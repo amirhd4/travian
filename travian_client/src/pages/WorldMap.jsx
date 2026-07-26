@@ -398,7 +398,19 @@ export default function WorldMap() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button onClick={() => navigate('/cropfinder')} className="mapToolbarBtn">
-            <img src={MAP.cropfinder} style={{ width: 16, height: 16 }} alt="" /> جستجوی گندم
+            <span
+              style={{
+                display: 'inline-block',
+                width: 16,
+                height: 16,
+                backgroundImage: `url(${MAP.cropfinder})`,
+                backgroundPosition: 'left center', /* یا '0 0' برای نمایش آیکون رنگی */
+                backgroundRepeat: 'no-repeat',
+                verticalAlign: 'middle',
+                marginLeft: '4px' /* ایجاد کمی فاصله با متن */
+              }}
+            />
+            جستجوی گندم
           </button>
           <button onClick={() => setFullScreen(!fullScreen)} className="mapToolbarBtn">
             {fullScreen ? '▼ نمای عادی' : '▲ تمام صفحه'}
