@@ -100,9 +100,9 @@ export default function Residence() {
     if (loading) return <PageShell><p className="text-center font-bold text-ink-500 mt-10">در حال بارگذاری اقامتگاه...</p></PageShell>;
 
     const renderTrainingTab = () => {
-        if (data.is_capital) {
-            return <p className="text-center text-sm text-amber-700 py-6">این دهکده پایتخت شماست. آموزش مهاجر/رئیس امکان‌پذیر نیست.</p>;
-        }
+        // if (data.is_capital) {
+        //     return <p className="text-center text-sm text-amber-700 py-6">این دهکده پایتخت شماست. آموزش مهاجر/رئیس امکان‌پذیر نیست.</p>;
+        // }
         if (data.building_level < 10) {
             return <p className="text-center text-sm text-ink-500 py-6">برای یافتن دهکده جدید به سطح ۱۰ {data.building_name || 'اقامتگاه'} نیاز دارید.</p>;
         }
