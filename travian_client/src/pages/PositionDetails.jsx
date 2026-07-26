@@ -180,13 +180,13 @@ export default function PositionDetails() {
       {/* Tile visual */}
       <div style={{ background: '#C3EDAE', padding: 12, borderBottom: '1px solid #C9C9C9', textAlign: 'center' }}>
         {data.type === 'village' && data.field_type > 0 && (
-          <img src={MAP.getTerrain(data.field_type)} style={{ width: 120, height: 120 }} alt="" />
+          <img src={MAP.getDetailTerrain(data.field_type)} style={{ width: '100%', maxWidth: 319, height: 'auto' }} alt="" />
         )}
         {data.type === 'oasis' && data.oasis_type > 0 && (
-          <img src={data.is_free ? MAP.getOasisTile(data.oasis_type) : MAP.getOasisOccupied(data.oasis_type)} style={{ width: 120, height: 120 }} alt="" />
+          <img src={data.is_free ? MAP.getDetailOasis(data.oasis_type) : MAP.getDetailOasis(data.oasis_type)} style={{ width: '100%', maxWidth: 319, height: 'auto' }} alt="" />
         )}
         {data.type === 'empty' && data.field_type > 0 && (
-          <img src={MAP.getTerrain(data.field_type)} style={{ width: 120, height: 120 }} alt="" />
+          <img src={MAP.getDetailTerrain(data.field_type)} style={{ width: '100%', maxWidth: 319, height: 'auto' }} alt="" />
         )}
       </div>
 
