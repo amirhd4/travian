@@ -50,10 +50,13 @@ def calculate_village_population(village):
     return int(round(sum(calculate_building_population(b.building_type, b.level) for b in buildings)))
 
 
-def _apply_starvation(village, elapsed_hours):
+def _apply_starvation(village, crop_deficit):
     from apps.combat.models import VillageTroop
 
     total_lost = 0
+    if crop_deficit <= 0:
+        return
+
     with transaction.atomic():
         troops = list(
             VillageTroop.objects.select_for_update()
@@ -63,17 +66,23 @@ def _apply_starvation(village, elapsed_hours):
         if not troops:
             return
 
-        loss_ratio = min(1.0, (STARVATION_LOSS_PERCENT_PER_HOUR / 100) * elapsed_hours)
-        if loss_ratio <= 0:
-            return
-
         random.shuffle(troops)
+        remaining_deficit = crop_deficit
         for vt in troops:
-            lost = min(vt.count, int(round(vt.count * loss_ratio)))
-            if lost > 0:
-                vt.count -= lost
+            if remaining_deficit <= 0:
+                break
+            u = vt.troop_type.crop_upkeep or 1
+            max_kill = vt.count
+            needed_kill = int(remaining_deficit / u)
+            if needed_kill <= 0 and remaining_deficit > 0:
+                needed_kill = 1
+
+            kill_count = min(max_kill, needed_kill)
+            if kill_count > 0:
+                vt.count -= kill_count
                 vt.save()
-                total_lost += lost
+                remaining_deficit -= kill_count * u
+                total_lost += kill_count
 
     if total_lost <= 0:
         return
@@ -187,11 +196,11 @@ def update_village_resources(village):
     raw_new_crop = village.crop + (net_crop_rate * delta_seconds * speed / 3600) + _hero_extra('crop')
 
     if raw_new_crop < 0 and net_crop_rate < 0:
-        elapsed_hours = (delta_seconds * speed) / 3600
+        crop_deficit = -raw_new_crop
         village.crop = 0
         village.last_update = now
         village.save()
-        _apply_starvation(village, elapsed_hours)
+        _apply_starvation(village, crop_deficit)
         return
 
     village.crop = max(0, min(village.max_granary, raw_new_crop))

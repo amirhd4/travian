@@ -205,35 +205,58 @@ export default function Residence() {
         </div>
     );
 
-    const renderExpansionTab = () => (
-        <div className="space-y-4">
-            <div className="bg-parchment-50 rounded-xl p-4 border border-parchment-300">
-                <p className="text-sm font-bold text-ink-800 mb-2">🗺️ گسترش قلمرو</p>
-                <p className="text-xs text-ink-500 mb-3">
-                    مهاجران: {data.expansion.settlers_available}/{data.expansion.settlers_required} برای تأسیس دهکده جدید
-                </p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-                    <div className="h-2 rounded-full bg-teal-500 transition-all" style={{ width: `${Math.min(100, (data.expansion.settlers_available / data.expansion.settlers_required) * 100)}%` }} />
+    const renderExpansionTab = () => {
+        const { max_slots = 0, captured_villages = [] } = data.expansion || {};
+        const slots = [];
+        for (let i = 0; i < max_slots; i++) {
+            if (i < captured_villages.length) {
+                slots.push({ status: 'occupied', village: captured_villages[i] });
+            } else {
+                slots.push({ status: 'empty' });
+            }
+        }
+        return (
+            <div className="space-y-4">
+                <div className="bg-parchment-50 rounded-xl p-4 border border-parchment-300">
+                    <p className="text-sm font-bold text-ink-800 mb-2">🗺️ گسترش قلمرو</p>
+                    <p className="text-xs text-ink-500 mb-3">
+                        مهاجران: {data.expansion.settlers_available}/{data.expansion.settlers_required} برای تأسیس دهکده جدید
+                    </p>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                        <div className="h-2 rounded-full bg-teal-500 transition-all" style={{ width: `${Math.min(100, (data.expansion.settlers_available / data.expansion.settlers_required) * 100)}%` }} />
+                    </div>
+                </div>
+
+                <div className="space-y-2">
+                    <p className="text-xs font-bold text-ink-600 mb-2">📋 وضعیت اسلات‌های توسعه دهکده:</p>
+                    {slots.length > 0 ? (
+                        slots.map((slot, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-white rounded-xl border border-parchment-300">
+                                <div>
+                                    <p className="text-xs font-bold text-ink-400">اسلات {index + 1}:</p>
+                                    {slot.status === 'occupied' ? (
+                                        <>
+                                            <p className="font-bold text-sm text-ink-800">{slot.village.name}</p>
+                                            <p className="text-xs text-ink-500">({slot.village.y_coord}|{slot.village.x_coord})</p>
+                                        </>
+                                    ) : (
+                                        <p className="font-bold text-sm text-emerald-600">خالی (آماده برای تاسیس یا تسخیر دهکده جدید)</p>
+                                    )}
+                                </div>
+                                {slot.status === 'occupied' && (
+                                    <a href={`/world-map?x=${slot.village.x_coord}&y=${slot.village.y_coord}`} className="text-xs text-brand-600 hover:underline">مشاهده در نقشه</a>
+                                )}
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-center text-xs text-ink-400 py-4">
+                            هیچ اسلات توسعه‌ای فعال نیست. برای باز کردن اسلات اول، ساختمان را به سطح ۱۰ ارتقا دهید.
+                        </p>
+                    )}
                 </div>
             </div>
-
-            {data.expansion.captured_villages.length > 0 ? (
-                <div className="space-y-2">
-                    {data.expansion.captured_villages.map((v) => (
-                        <div key={v.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-parchment-300">
-                            <div>
-                                <p className="font-bold text-sm text-ink-800">{v.name}</p>
-                                <p className="text-xs text-ink-500">({v.y_coord}|{v.x_coord})</p>
-                            </div>
-                            <a href={`/world-map?x=${v.x_coord}&y=${v.y_coord}`} className="text-xs text-brand-600 hover:underline">مشاهده در نقشه</a>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <p className="text-center text-xs text-ink-400 py-4">دهکده تسخیر شده‌ای وجود ندارد.</p>
-            )}
-        </div>
-    );
+        );
+    };
 
     return (
         <PageShell maxWidth="max-w-3xl">

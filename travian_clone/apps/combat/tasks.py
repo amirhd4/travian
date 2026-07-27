@@ -848,6 +848,7 @@ def _resolve_attack_or_raid(movement):
                         conquest_blocked_reason = "\n👑 این دهکده پایتخت است و هرگز قابل تسخیر نیست."
                     else:
                         target.player = source.player
+                        target.parent_village = source
                         target.loyalty = random.randint(20, 35)
                         conquered = True
 

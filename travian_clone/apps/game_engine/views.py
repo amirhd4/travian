@@ -3413,6 +3413,26 @@ class ResidenceView(APIView):
     RESIDENCE_BUILDING_NAMES = ("اقامتگاه", "قصر")
     SETTLERS_REQUIRED = 3
 
+    @staticmethod
+    def _get_expansion_slots_count(building_name, level):
+        if not building_name or level <= 0:
+            return 0
+        if building_name == "اقامتگاه":
+            if level >= 20:
+                return 2
+            elif level >= 10:
+                return 1
+            return 0
+        elif building_name == "قصر":
+            if level >= 20:
+                return 3
+            elif level >= 15:
+                return 2
+            elif level >= 10:
+                return 1
+            return 0
+        return 0
+
     def get(self, request):
         from apps.combat.models import TroopType, VillageTroop, TrainingQueue
 
@@ -3490,10 +3510,15 @@ class ResidenceView(APIView):
         # Loyalty
         loyalty = village.loyalty
 
-        # Expansion (captured villages)
+        # Expansion slots data
+        max_slots = self._get_expansion_slots_count(building_name, building_level)
+        used_slots = Village.objects.filter(parent_village=village).count()
+        empty_slots = max(0, max_slots - used_slots)
+
+        # Expansion (captured/settled villages from this specific village)
         captured = Village.objects.filter(
-            player=player, is_capital=False
-        ).exclude(id=village.id).values('id', 'name', 'x_coord', 'y_coord')[:3]
+            parent_village=village
+        ).values('id', 'name', 'x_coord', 'y_coord')
 
         # Settlers needed for next expansion
         settler_count = sum(village_troops.get(tt.id, 0) for tt in settler_chief_types if tt.is_settler)
@@ -3513,11 +3538,15 @@ class ResidenceView(APIView):
                 "captured_villages": list(captured),
                 "settlers_available": settler_count,
                 "settlers_required": self.SETTLERS_REQUIRED,
+                "max_slots": max_slots,
+                "used_slots": used_slots,
+                "empty_slots": empty_slots,
             },
         })
 
     def post(self, request):
         from apps.combat.models import TroopType, VillageTroop, TrainingQueue
+        import math
 
         village_id = request.data.get('village_id')
         troop_type_id = request.data.get('troop_type_id')
@@ -3552,6 +3581,51 @@ class ResidenceView(APIView):
 
             if not troop_type.is_settler and not troop_type.is_chief:
                 return Response({"error": "فقط مهاجر و رئیس در اقامتگاه آموزش داده می‌شوند."}, status=400)
+
+            # Check expansion slots limitations
+            max_slots = self._get_expansion_slots_count(building.building_type.name, building.level)
+            used_slots = Village.objects.filter(parent_village=village).count()
+            empty_slots = max(0, max_slots - used_slots)
+
+            if empty_slots <= 0:
+                return Response({
+                    "error": "این دهکده دیگر هیچ اسلات توسعه‌ی خالی ندارد. برای باز کردن اسلات توسعه‌ی جدید، اقامتگاه یا قصر را ارتقا دهید."
+                }, status=400)
+
+            # Get settlers/chiefs in village and queue
+            settlers_in_village = sum(
+                vt.count for vt in VillageTroop.objects.filter(
+                    village=village, troop_type__is_settler=True
+                )
+            )
+            chiefs_in_village = sum(
+                vt.count for vt in VillageTroop.objects.filter(
+                    village=village, troop_type__is_chief=True
+                )
+            )
+            settlers_in_queue = sum(
+                q.count for q in TrainingQueue.objects.filter(
+                    village=village, troop_type__is_settler=True, is_completed=False
+                )
+            )
+            chiefs_in_queue = sum(
+                q.count for q in TrainingQueue.objects.filter(
+                    village=village, troop_type__is_chief=True, is_completed=False
+                )
+            )
+
+            num_settlers = settlers_in_village + settlers_in_queue
+            num_chiefs = chiefs_in_village + chiefs_in_queue
+
+            proposed_settlers = num_settlers + (quantity if troop_type.is_settler else 0)
+            proposed_chiefs = num_chiefs + (quantity if troop_type.is_chief else 0)
+
+            slots_needed = math.ceil(proposed_settlers / 3) + proposed_chiefs
+
+            if slots_needed > empty_slots:
+                return Response({
+                    "error": f"اسلات‌های خالی کافی برای این تعداد نیرو وجود ندارد. اسلات خالی موجود: {empty_slots}، اسلات مورد نیاز: {slots_needed}."
+                }, status=400)
 
             # Check not already training
             if TrainingQueue.objects.filter(village=village, troop_type=troop_type, is_completed=False).exists():
