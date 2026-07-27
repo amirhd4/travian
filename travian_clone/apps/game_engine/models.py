@@ -289,6 +289,18 @@ class AllianceMember(models.Model):
         return f"{self.player} in {self.alliance.tag}"
 
 
+class AllianceInvitation(models.Model):
+    alliance = models.ForeignKey(Alliance, related_name='invitations', on_delete=models.CASCADE)
+    player = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='alliance_invitations', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('alliance', 'player')
+
+    def __str__(self):
+        return f"Invite from {self.alliance.tag} to {self.player.username}"
+
+
 class QuestDefinition(models.Model):
     CONDITION_CHOICES = [
         ('MAIN_BUILDING_LEVEL', 'سطح ساختمان اصلی'),

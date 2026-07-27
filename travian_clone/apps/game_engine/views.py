@@ -25,13 +25,14 @@ from .services import found_new_village, abandon_village, EMPTY_SLOT_NAME
 from .serializers import GameLogSerializer
 from .models import Message
 from .serializers import MessageSerializer
-from .models import Alliance, AllianceMember, ResourceTrade
+from .models import Alliance, AllianceMember, ResourceTrade, AllianceInvitation
 from .market_utils import get_total_merchants, get_available_merchants, calculate_merchant_travel_seconds, MERCHANT_CAPACITY
 from .tasks.game_tasks import deliver_trade_resources
 from .quest_utils import sync_quest_progress, claim_quest_reward
 
 
 Player = get_user_model()
+ADMIN_USERNAME = "majditravian"
 
 
 class VillageListView(APIView):
@@ -777,7 +778,8 @@ class LeaderboardView(APIView):
 
         players = (
             Player.objects.exclude(username__in=["Natars", "Farms"])
-            .filter(is_active=True)
+            .filter(is_active=True, is_superuser=False, is_staff=False)
+            .exclude(username=ADMIN_USERNAME)
             .order_by('id')
         )
 
@@ -818,6 +820,11 @@ class LeaderboardView(APIView):
 
         combat_stats_qs = PlayerCombatStats.objects.select_related('player').exclude(
             player__username__in=["Natars", "Farms"]
+        ).filter(
+            player__is_superuser=False,
+            player__is_staff=False
+        ).exclude(
+            player__username=ADMIN_USERNAME
         )
 
         def _serialize_stats(qs, field_name):
@@ -1141,7 +1148,10 @@ class UsernameSearchView(APIView):
         q = request.query_params.get('q', '').strip()
         if len(q) < 2:
             return Response([])
-        users = Player.objects.filter(username__icontains=q).exclude(id=request.user.id)[:10]
+        users = Player.objects.filter(username__icontains=q).exclude(id=request.user.id)
+        if not (request.user.is_superuser or request.user.is_staff):
+            users = users.filter(is_superuser=False, is_staff=False).exclude(username=ADMIN_USERNAME)
+        users = users[:10]
         from .serializers import get_username_search_serializer
         serializer = get_username_search_serializer()(users, many=True)
         return Response(serializer.data)
@@ -1161,7 +1171,13 @@ class VillageSearchView(APIView):
                 return Response([])
             villages = Village.objects.filter(
                 name__istartswith=name
-            ).select_related('player').order_by('name')[:15]
+            ).select_related('player')
+            if not (request.user.is_superuser or request.user.is_staff):
+                villages = villages.filter(
+                    player__is_superuser=False,
+                    player__is_staff=False
+                ).exclude(player__username=ADMIN_USERNAME)
+            villages = villages.order_by('name')[:15]
             return Response([
                 {"id": v.id, "name": v.name, "x_coord": v.x_coord,
                  "y_coord": v.y_coord, "owner": v.player.username}
@@ -1178,6 +1194,9 @@ class VillageSearchView(APIView):
             ).select_related('player').first()
             if not village:
                 return Response({"error": "دهکده‌ای در این مختصات یافت نشد."}, status=404)
+            if not (request.user.is_superuser or request.user.is_staff):
+                if village.player.is_superuser or village.player.is_staff or village.player.username == ADMIN_USERNAME:
+                    return Response({"error": "دهکده‌ای در این مختصات یافت نشد."}, status=404)
             return Response({
                 "id": village.id, "name": village.name,
                 "x_coord": village.x_coord, "y_coord": village.y_coord,
@@ -1218,6 +1237,18 @@ class EmbassyView(APIView):
             members = AllianceMember.objects.filter(alliance=alliance).values(
                 'player_id', 'player__email', 'role'
             )
+
+            # Fetch sent invitations if user is Leader or Diplomat
+            sent_invites_data = []
+            if membership.role in ('Leader', 'Diplomat'):
+                invitations = AllianceInvitation.objects.filter(alliance=alliance).select_related('player')
+                sent_invites_data = [{
+                    "id": inv.id,
+                    "player_id": inv.player.id,
+                    "player_username": inv.player.username,
+                    "created_at": inv.created_at.isoformat()
+                } for inv in invitations]
+
             return Response({
                 "has_alliance": True,
                 "alliance_data": {
@@ -1228,19 +1259,40 @@ class EmbassyView(APIView):
                     "founder_id": alliance.founder_id,
                     "members": list(members),
                     "capacity": get_alliance_capacity(alliance),
+                    "sent_invitations": sent_invites_data,
                 }
             })
         except AllianceMember.DoesNotExist:
+            # Fetch received invitations
+            invitations = AllianceInvitation.objects.filter(player=request.user).select_related('alliance')
+            invites_data = [{
+                "id": inv.id,
+                "alliance_id": inv.alliance.id,
+                "alliance_name": inv.alliance.name,
+                "alliance_tag": inv.alliance.tag,
+                "created_at": inv.created_at.isoformat()
+            } for inv in invitations]
+
             alliances = Alliance.objects.all().values('id', 'name', 'tag')
             return Response({
                 "has_alliance": False,
-                "available_alliances": list(alliances)
+                "available_alliances": list(alliances),
+                "invitations": invites_data
             })
 
     def post(self, request):
         action = request.data.get('action')
 
-        if action in ('create', 'join'):
+        if action in ('create', 'join', 'decline_invite'):
+            if action == 'decline_invite':
+                invite_id = request.data.get('invite_id')
+                try:
+                    invite = AllianceInvitation.objects.get(id=invite_id, player=request.user)
+                except AllianceInvitation.DoesNotExist:
+                    return Response({"error": "دعوت‌نامه یافت نشد."}, status=404)
+                invite.delete()
+                return Response({"message": "دعوت‌نامه با موفقیت رد شد."})
+
             if AllianceMember.objects.filter(player=request.user).exists():
                 return Response({"error": "شما از قبل عضو یک اتحاد هستید."}, status=400)
 
@@ -1271,6 +1323,11 @@ class EmbassyView(APIView):
             except Alliance.DoesNotExist:
                 return Response({"error": "اتحاد مورد نظر یافت نشد."}, status=404)
 
+            # Check for valid invitation
+            invite = AllianceInvitation.objects.filter(alliance=alliance, player=request.user).first()
+            if not invite:
+                return Response({"error": "شما برای پیوستن به این اتحاد دعوت‌نامه ندارید."}, status=400)
+
             current_count = AllianceMember.objects.filter(alliance=alliance).count()
             capacity = get_alliance_capacity(alliance)
             if current_count >= capacity:
@@ -1280,7 +1337,9 @@ class EmbassyView(APIView):
                     status=400
                 )
 
-            AllianceMember.objects.create(alliance=alliance, player=request.user, role='Member')
+            with transaction.atomic():
+                AllianceMember.objects.create(alliance=alliance, player=request.user, role='Member')
+                AllianceInvitation.objects.filter(player=request.user).delete()
             return Response({"message": f"شما با موفقیت به اتحاد {alliance.tag} پیوستید."})
 
         try:
@@ -1360,6 +1419,47 @@ class EmbassyView(APIView):
             alliance_name = alliance.name
             alliance.delete()
             return Response({"message": f"اتحاد {alliance_name} منحل شد."})
+
+        elif action == 'invite':
+            if membership.role not in ('Leader', 'Diplomat'):
+                return Response({"error": "فقط رهبر یا دیپلمات اتحاد می‌تواند بازیکن دعوت کند."}, status=403)
+
+            target_username = request.data.get('username', '').strip()
+            if not target_username:
+                return Response({"error": "نام کاربری بازیکن الزامی است."}, status=400)
+
+            try:
+                target_player = Player.objects.get(username=target_username)
+            except Player.DoesNotExist:
+                return Response({"error": "بازیکن مورد نظر یافت نشد."}, status=404)
+
+            if target_player.id == request.user.id:
+                return Response({"error": "شما نمی‌توانید خودتان را دعوت کنید."}, status=400)
+
+            if target_player.is_superuser or target_player.is_staff or target_player.username == ADMIN_USERNAME:
+                return Response({"error": "امکان دعوت ادمین وجود ندارد."}, status=400)
+
+            if AllianceMember.objects.filter(player=target_player).exists():
+                return Response({"error": "این بازیکن از قبل عضو یک اتحاد است."}, status=400)
+
+            if AllianceInvitation.objects.filter(alliance=alliance, player=target_player).exists():
+                return Response({"error": "این بازیکن قبلا دعوت شده است."}, status=400)
+
+            AllianceInvitation.objects.create(alliance=alliance, player=target_player)
+            return Response({"message": f"دعوت‌نامه برای بازیکن {target_player.username} با موفقیت ارسال شد."})
+
+        elif action == 'cancel_invite':
+            if membership.role not in ('Leader', 'Diplomat'):
+                return Response({"error": "فقط رهبر یا دیپلمات اتحاد می‌تواند دعوت‌نامه را لغو کند."}, status=403)
+
+            invite_id = request.data.get('invite_id')
+            try:
+                invite = AllianceInvitation.objects.get(id=invite_id, alliance=alliance)
+            except AllianceInvitation.DoesNotExist:
+                return Response({"error": "دعوت‌نامه یافت نشد."}, status=404)
+
+            invite.delete()
+            return Response({"message": "دعوت‌نامه با موفقیت لغو شد."})
 
         return Response({"error": "عملیات نامعتبر"}, status=400)
 
@@ -3833,6 +3933,8 @@ class PlayerProfileView(APIView):
                 player = Player.objects.get(id=player_id)
             except Player.DoesNotExist:
                 return Response({"error": "بازیکن یافت نشد."}, status=404)
+            if (player.is_superuser or player.is_staff or player.username == ADMIN_USERNAME) and not (request.user.is_superuser or request.user.is_staff):
+                return Response({"error": "بازیکن یافت نشد."}, status=404)
             is_own = (player.id == request.user.id)
         else:
             player = request.user
@@ -3907,7 +4009,11 @@ class PlayerProfileView(APIView):
 
     def _get_player_rank(self, player):
         """Calculate player rank based on total population."""
-        all_players = Player.objects.exclude(username__in=['Natars', 'Farms'])
+        all_players = (
+            Player.objects.exclude(username__in=['Natars', 'Farms'])
+            .filter(is_superuser=False, is_staff=False)
+            .exclude(username=ADMIN_USERNAME)
+        )
         player_pops = []
         for p in all_players:
             pop = sum(calculate_village_population(v) for v in Village.objects.filter(player=p))
