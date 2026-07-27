@@ -190,7 +190,7 @@ REST_FRAMEWORK = {
         'login_ip': '10/min',
         'login_username': '5/min',
         'register_ip': '5/hour',
-        'captcha_ip': '120/min',
+        'captcha_ip': '40/min',
     },
 }
 

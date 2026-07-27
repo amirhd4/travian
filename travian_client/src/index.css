@@ -295,7 +295,7 @@ body.login #footer, body.signup #footer {
 
 body.login #contentOuterContainer, body.signup #contentOuterContainer {
     flex-shrink: 0;
-    width: 551px;
+    width: 558px;
 }
 
 .login-layout, .register-layout {
@@ -317,7 +317,7 @@ body.login #contentOuterContainer, body.signup #contentOuterContainer {
 .login-sign-text .sign-bold { font-weight: bold; font-size: 12px; }
 .outerLoginBox { width: 551px; margin-bottom: 10px; }
 .outerLoginBox h2 { color: #393939; margin-bottom: 15px; }
-.outerLoginBox .innerLoginBox { width: 551px; min-height: 235px; background: url('/assets/layout/bgLogin-rtl.png') no-repeat left top; margin-bottom: 10px; }
+.outerLoginBox .innerLoginBox { width: 551px; min-height: 235px; margin-bottom: 10px; }
 .outerLoginBox table.loginTable { vertical-align: top; width: 400px; position: relative; top: 10px; margin-right: 6px; }
 .outerLoginBox table.loginTable td { text-align: right; padding: 2px 6px; font-size: 11px; }
 .outerLoginBox table.loginTable td.accountNameOrEmailAddress { width: 115px; font-weight: bold; }

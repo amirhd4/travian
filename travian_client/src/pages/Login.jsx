@@ -100,7 +100,7 @@ export default function Login() {
     return (
         <div className="v35 webkit chrome login">
             <div id="wrapper">
-                <img id="staticElements" alt="" />
+                {/*<img id="staticElements" alt="" />*/}
                 <div className="bodyWrapper">
                     <div id="header">
                         <div id="mtop">
