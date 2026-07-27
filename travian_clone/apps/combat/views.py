@@ -32,6 +32,7 @@ class SendTroopsView(APIView):
         payload = request.data.get('troops_payload', {})
         send_hero = bool(request.data.get('send_hero', False))
         catapult_target_building = request.data.get('catapult_target_building') or None  # ✅ جدید
+        scout_type = request.data.get('scout_type') or None
 
         try:
             source_village = Village.objects.get(id=source_id, player=request.user)
@@ -43,6 +44,7 @@ class SendTroopsView(APIView):
             request.user, source_village, target_village, movement_type, payload,
             send_hero=send_hero,
             catapult_target_building=catapult_target_building,  # ✅ جدید
+            scout_type=scout_type,
         )
         if not success:
             return Response({"error": result}, status=400)
@@ -1435,6 +1437,8 @@ class CombatReportDetailView(APIView):
             "catapult_damage_text": r.catapult_damage_text,
             "conquered": r.conquered,
             "trapped_summary": r.trapped_summary,
+            "scout_type": r.scout_type,
+            "scout_result": r.scout_result,
             "created_at": r.created_at,
         })
 

@@ -4,6 +4,7 @@ import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
+import VillageSearch from '../components/VillageSearch';
 
 const MOVEMENT_OPTIONS = [
     { value: 'ATTACK', label: '🪓 حمله کامل', hint: 'تسخیر / نقشه ساخت', image: '/assets/ui/attack-symbol.gif' },
@@ -14,23 +15,25 @@ const MOVEMENT_OPTIONS = [
 
 const CATAPULT_TARGETS = [
     { value: '', label: '🎲 تصادفی' },
+    { value: 'ساختمان اصلی', label: 'ساختمان اصلی' },
     { value: 'انبار', label: 'انبار' },
     { value: 'سیلوی غله', label: 'سیلوی غله' },
     { value: 'پادگان', label: 'پادگان' },
     { value: 'اصطبل', label: 'اصطبل' },
     { value: 'کارگاه', label: 'کارگاه' },
+    { value: 'آهنگری', label: 'آهنگری' },
+    { value: 'آکادمی', label: 'آکادمی' },
     { value: 'بازارچه', label: 'بازارچه' },
     { value: 'سفارتخانه', label: 'سفارتخانه' },
     { value: 'خزانه‌داری', label: 'خزانه‌داری' },
-    { value: 'آکادمی', label: 'آکادمی' },
     { value: 'اقامتگاه', label: 'اقامتگاه' },
+    { value: 'قصر', label: 'قصر' },
     { value: 'تالار شهر', label: 'تالار شهر' },
-    { value: 'آهنگری', label: 'آهنگری' },
+    { value: 'مخفیگاه', label: 'مخفیگاه' },
+    { value: 'آسیاب', label: 'آسیاب' },
     { value: 'کارگاه سنگ‌تراشی', label: 'کارگاه سنگ‌تراشی' },
     { value: 'عمارت قهرمان', label: 'عمارت قهرمان' },
-    { value: 'آبشخور اسب', label: 'آبشخور اسب' },
-    { value: 'اداره تجارت', label: 'اداره تجارت' },
-    { value: 'پادگان بزرگ', label: 'پادگان بزرگ' },
+    { value: 'محل گردهمایی', label: 'محل گردهمایی' },
 ];
 
 export default function SendTroops() {
@@ -38,12 +41,16 @@ export default function SendTroops() {
     const navigate = useNavigate();
     const activeVillageId = useGameStore((state) => state.activeVillageId);
 
-    const targetVillageId = location.state?.targetVillageId || 0;
-    const targetName = location.state?.targetName || "مختصات نامشخص";
+    const targetVillageIdFromState = location.state?.targetVillageId || 0;
+    const targetNameFromState = location.state?.targetName || "مختصات نامشخص";
+
+    const [targetVillageId, setTargetVillageId] = useState(targetVillageIdFromState);
+    const [targetName, setTargetName] = useState(targetNameFromState);
 
     const [availableTroops, setAvailableTroops] = useState([]);
     const [troops, setTroops] = useState({});
     const [movementType, setMovementType] = useState('ATTACK');
+    const [scoutType, setScoutType] = useState('RESOURCES_AND_BUILDINGS');
     const [sendHero, setSendHero] = useState(false);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(true);
@@ -96,6 +103,7 @@ export default function SendTroops() {
                 troops_payload: payload,
                 send_hero: sendHero,
                 catapult_target_building: movementType === 'ATTACK' ? catapultTarget : null,
+                scout_type: movementType === 'SCOUT' ? scoutType : null,
             });
             navigate('/village', { state: { flash: response.data.message } });
         } catch (error) {
@@ -114,9 +122,24 @@ export default function SendTroops() {
                     <span className="panel-title">⚔️ نقطه گردهمایی نظامی</span>
                 </div>
                 <div className="panel-body">
-                    <p className="text-sm text-ink-600 mb-6">
-                        هدف حمله: <span className="font-bold text-rose-600">{targetName}</span>
-                    </p>
+                    {targetVillageIdFromState ? (
+                        <p className="text-sm text-ink-600 mb-6">
+                            هدف حمله: <span className="font-bold text-rose-600">{targetName}</span>
+                        </p>
+                    ) : (
+                        <div className="mb-6 p-4 bg-parchment-100 rounded-xl border border-parchment-300">
+                            <h3 className="field-label mb-2">🎯 انتخاب دهکده هدف</h3>
+                            <VillageSearch onVillageSelected={(v) => {
+                                if (v) {
+                                    setTargetVillageId(v.id);
+                                    setTargetName(v.name);
+                                } else {
+                                    setTargetVillageId(0);
+                                    setTargetName("مختصات نامشخص");
+                                }
+                            }} />
+                        </div>
+                    )}
 
                     <form onSubmit={handleSend} className="space-y-5">
                         <div>
@@ -137,6 +160,28 @@ export default function SendTroops() {
                                 ))}
                             </div>
                         </div>
+
+                        {movementType === 'SCOUT' && (
+                            <div>
+                                <label className="field-label">🔎 نوع شناسایی (جاسوسی)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setScoutType('RESOURCES_AND_BUILDINGS')}
+                                        className={`text-center p-3 rounded-xl border-2 transition text-sm font-bold ${scoutType === 'RESOURCES_AND_BUILDINGS' ? 'border-gold-500 bg-gold-50 text-ink-800' : 'border-parchment-300 bg-white text-ink-600 hover:border-parchment-400'}`}
+                                    >
+                                        🌾 منابع و ساختمان‌ها
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setScoutType('TROOPS_AND_DEFENSE')}
+                                        className={`text-center p-3 rounded-xl border-2 transition text-sm font-bold ${scoutType === 'TROOPS_AND_DEFENSE' ? 'border-gold-500 bg-gold-50 text-ink-800' : 'border-parchment-300 bg-white text-ink-600 hover:border-parchment-400'}`}
+                                    >
+                                        🛡️ نیروها و دفاع
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="rounded-xl border border-parchment-300 bg-parchment-50 p-4 space-y-3">
                             <h3 className="field-label">تعداد نیروهای اعزامی</h3>

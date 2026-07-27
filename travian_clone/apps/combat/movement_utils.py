@@ -38,6 +38,7 @@ def _get_protection_message_if_blocked(target_village):
 def dispatch_troop_movement(
     player, source_village, target_village, movement_type, troops_payload,
     farm_list_entry=None, send_hero=False, catapult_target_building=None,
+    scout_type=None,
 ):
     ALLOWED_MOVEMENT_TYPES = {'ATTACK', 'RAID', 'REINFORCEMENT', 'SCOUT'}  # ✅ RETURN اینجا مجاز نیست
     if movement_type not in ALLOWED_MOVEMENT_TYPES:
@@ -134,6 +135,7 @@ def dispatch_troop_movement(
             farm_list_entry=farm_list_entry,
             hero_participating=hero_participating,
             catapult_target_building=catapult_target_building,
+            scout_type=scout_type,
         )
 
         GameLog.objects.create(

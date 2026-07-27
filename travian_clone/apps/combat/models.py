@@ -131,6 +131,8 @@ class TroopMovement(models.Model):
     # و غیر از مزارع منابع) در دهکده‌ی هدف انتخاب می‌شود - دقیقا مانند تراوین اصلی.
     catapult_target_building = models.CharField(max_length=50, null=True, blank=True)
 
+    scout_type = models.CharField(max_length=50, null=True, blank=True)  # RESOURCES_AND_BUILDINGS / TROOPS_AND_DEFENSE
+
     start_time = models.DateTimeField(auto_now_add=True)
     arrival_time = models.DateTimeField()
 
@@ -408,6 +410,9 @@ class CombatReport(models.Model):
     catapult_damage_text = models.CharField(max_length=255, blank=True, default='')
     conquered = models.BooleanField(default=False)
     trapped_summary = models.CharField(max_length=255, blank=True, default='')
+
+    scout_type = models.CharField(max_length=50, null=True, blank=True)
+    scout_result = models.JSONField(default=dict, blank=True, null=True)
 
     is_read_by_attacker = models.BooleanField(default=False)
     is_read_by_defender = models.BooleanField(default=False)

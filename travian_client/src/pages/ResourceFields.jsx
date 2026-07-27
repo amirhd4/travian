@@ -155,12 +155,18 @@ export default function ResourceFields() {
         const isIncoming = m.direction === 'incoming';
         const t = m.movement_type;
         if (isIncoming) {
-            if (t === 'REINFORCEMENT') return { label: 'نیروی کمکی ورودی', aclass: 'd1', imgClass: 'def1' };
-            return { label: 'حمله', aclass: 'a1', imgClass: 'att1' };
+            if (t === 'REINFORCEMENT') return { label: '🛡️ نیروی کمکی ورودی', aclass: 'd1', imgClass: 'def1' };
+            if (t === 'RAID') return { label: '💰 غارت منابع ورودی', aclass: 'a1', imgClass: 'att1' };
+            if (t === 'SCOUT') return { label: '🔍 شناسایی ورودی', aclass: 'a1', imgClass: 'att1' };
+            if (t === 'ATTACK') return { label: '🪓 حمله کامل ورودی', aclass: 'a1', imgClass: 'att1' };
+            return { label: '⚔️ حمله ورودی', aclass: 'a1', imgClass: 'att1' };
         } else {
-            if (t === 'REINFORCEMENT') return { label: 'نیروی کمکی خروجی', aclass: 'd2', imgClass: 'def2' };
-            if (t === 'RETURN') return { label: 'بازگشت', aclass: 'd2', imgClass: 'def2' };
-            return { label: 'حمله', aclass: 'a2', imgClass: 'att2' };
+            if (t === 'REINFORCEMENT') return { label: '🛡️ نیروی کمکی خروجی', aclass: 'd2', imgClass: 'def2' };
+            if (t === 'RETURN') return { label: '↩️ بازگشت نیروها', aclass: 'd2', imgClass: 'def2' };
+            if (t === 'RAID') return { label: '💰 غارت خروجی', aclass: 'a2', imgClass: 'att2' };
+            if (t === 'SCOUT') return { label: '🔍 شناسایی خروجی', aclass: 'a2', imgClass: 'att2' };
+            if (t === 'ATTACK') return { label: '🪓 حمله کامل خروجی', aclass: 'a2', imgClass: 'att2' };
+            return { label: '⚔️ حمله خروجی', aclass: 'a2', imgClass: 'att2' };
         }
     };
 
@@ -417,6 +423,7 @@ export default function ResourceFields() {
                                     {movements.map((m, i) => {
                                         const info = getMovementInfo(m);
                                         const remaining = m.remaining_seconds || 0;
+                                        const totalTroops = m.troops_payload ? Object.values(m.troops_payload).reduce((a, b) => a + b, 0) : 1;
                                         return (
                                             <tr key={i}>
                                                 <td className="typ">
@@ -424,9 +431,12 @@ export default function ResourceFields() {
                                                     <span className={info.aclass}>&raquo;</span>
                                                 </td>
                                                 <td>
-                                                    {info.label}
-                                                    <div className="mov"><span className={info.aclass}>{(m.troops_payload ? Object.values(m.troops_payload).reduce((a,b)=>a+b, 0) : 1)}:<span>{formatCountdown(remaining)}</span></span></div>
-                                                    <div className="dur_r"></div>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '11px', color: '#252525' }}>{info.label}</div>
+                                                    <div className="mov" style={{ fontSize: '10px', marginTop: '2px' }}>
+                                                        <span className={info.aclass}>
+                                                            تعداد: <b>{totalTroops.toLocaleString()}</b> {' · '} زمان: <b>{formatCountdown(remaining) || 'کامل شد'}</b>
+                                                        </span>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );

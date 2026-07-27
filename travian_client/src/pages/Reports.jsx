@@ -21,7 +21,10 @@ const TABS = [
 ];
 
 function CombatReportRow({ report, onOpen }) {
-    const directionLabel = report.is_attacker ? 'اعزامی' : 'ورودی';
+    const isScout = report.movement_type === 'SCOUT';
+    const directionLabel = isScout ? 'شناسایی' : (report.is_attacker ? 'اعزامی' : 'ورودی');
+    const outcomeLabel = isScout ? (report.won ? 'موفق' : 'ناموفق') : (report.won ? 'پیروزی' : 'شکست');
+    const outcomeColor = report.won ? '#228B22' : '#DE0000';
     return (
         <div
             onClick={() => onOpen(report)}
@@ -37,7 +40,7 @@ function CombatReportRow({ report, onOpen }) {
             }}
         >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="iReport iReport2" title={report.won ? 'پیروزی' : 'شکست'} />
+                <span className={isScout ? "iReport iReport17" : "iReport iReport2"} title={outcomeLabel} />
                 <div>
                     <p style={{ fontSize: '13px', color: '#252525', margin: 0 }}>
                         {directionLabel} — {report.attacker_village_name} → {report.defender_village_name}
@@ -49,8 +52,8 @@ function CombatReportRow({ report, onOpen }) {
                 </div>
             </div>
             <div style={{ textAlign: 'left', flexShrink: 0 }}>
-                <p style={{ fontSize: '11px', fontWeight: 'bold', color: report.won ? '#228B22' : '#DE0000', margin: 0 }}>
-                    {report.won ? 'پیروزی' : 'شکست'}
+                <p style={{ fontSize: '11px', fontWeight: 'bold', color: outcomeColor, margin: 0 }}>
+                    {outcomeLabel}
                 </p>
                 <p style={{ fontSize: '10px', color: '#777', margin: 0 }} dir="ltr">{new Date(report.created_at).toLocaleString('fa-IR')}</p>
             </div>
@@ -138,26 +141,83 @@ function CombatReportDetail({ report, onClose, onDelete }) {
                     {' · '}بونوس روحیه‌ی مدافع: {report.morale_percent}٪
                 </p>
 
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-parchment-100 rounded-lg p-3">
-                        <p className="text-xs font-bold text-ink-700 mb-1">نیروی اعزامی مهاجم</p>
-                        {renderTroops(report.attacker_troops_sent)}
-                        <p className="text-[10px] text-rose-600 mt-1">تلفات: {report.attacker_loss_percent}٪</p>
+                {report.movement_type === 'SCOUT' ? (
+                    <div className="space-y-4 mb-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-parchment-100 rounded-lg p-3">
+                                <p className="text-xs font-bold text-ink-700 mb-1">جاسوسان اعزامی مهاجم</p>
+                                {renderTroops(report.attacker_troops_sent)}
+                                <p className="text-[10px] text-rose-600 mt-1">تلفات: {report.attacker_loss_percent}٪</p>
+                            </div>
+                            <div className="bg-parchment-100 rounded-lg p-3">
+                                <p className="text-xs font-bold text-ink-700 mb-1">بازماندگان مهاجم</p>
+                                {renderTroops(report.attacker_troops_survived)}
+                            </div>
+                        </div>
+
+                        <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 text-sm">
+                            <p className="font-bold text-brand-800 mb-2">🔎 گزارش جاسوسی (نوع: {report.scout_type === 'RESOURCES_AND_BUILDINGS' ? 'منابع و ساختمان‌ها' : 'نیروها و دفاع'})</p>
+                            {report.victory === 'attacker' ? (
+                                report.scout_result ? (
+                                    report.scout_type === 'RESOURCES_AND_BUILDINGS' ? (
+                                        <div className="space-y-2 text-xs text-ink-700">
+                                            <p className="font-bold">🌾 منابع موجود در دهکده هدف:</p>
+                                            <div className="flex gap-2 flex-wrap">
+                                                <span>🪵 چوب: <b>{report.scout_result.resources?.wood?.toLocaleString()}</b></span>
+                                                <span>🧱 خشت: <b>{report.scout_result.resources?.clay?.toLocaleString()}</b></span>
+                                                <span>⚒️ آهن: <b>{report.scout_result.resources?.iron?.toLocaleString()}</b></span>
+                                                <span>🌾 گندم: <b>{report.scout_result.resources?.crop?.toLocaleString()}</b></span>
+                                            </div>
+                                            <p className="mt-2">📦 ظرفیت انبار: <b>{report.scout_result.max_storage?.toLocaleString()}</b> | سیلوی غله: <b>{report.scout_result.max_granary?.toLocaleString()}</b></p>
+                                            <p>🛡️ مقدار منابع محافظت شده توسط مخفیگاه: <b>{report.scout_result.cranny_protection?.toLocaleString()}</b></p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2 text-xs text-ink-700">
+                                            <p className="font-bold">🛡️ نیروهای مستقر در دهکده هدف:</p>
+                                            {Object.keys(report.scout_result.troops || {}).length === 0 ? (
+                                                <p className="text-ink-500 italic">هیچ نیرویی مستقر نیست.</p>
+                                            ) : (
+                                                <div className="grid grid-cols-2 gap-1 mb-2">
+                                                    {Object.entries(report.scout_result.troops).map(([name, count]) => (
+                                                        <span key={name}>{name}: <b>{count.toLocaleString()}</b></span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            <p className="mt-2">🧱 سطح دیوار شهر: <b>{report.scout_result.wall_level}</b></p>
+                                            <p>👑 سطح اقامتگاه/قصر: <b>{report.scout_result.residence_level}</b></p>
+                                            <p>🚩 وفاداری دهکده: <b>{report.scout_result.loyalty}%</b></p>
+                                        </div>
+                                    )
+                                ) : (
+                                    <p className="text-xs text-ink-500 italic">هیچ داده‌ای ثبت نشده است.</p>
+                                )
+                            ) : (
+                                <p className="text-xs text-rose-600 font-bold">🚫 تمامی جاسوسان شما در پدافند هدف کشته شدند و لو رفتید!</p>
+                            )}
+                        </div>
                     </div>
-                    <div className="bg-parchment-100 rounded-lg p-3">
-                        <p className="text-xs font-bold text-ink-700 mb-1">بازماندگان مهاجم</p>
-                        {renderTroops(report.attacker_troops_survived)}
+                ) : (
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-parchment-100 rounded-lg p-3">
+                            <p className="text-xs font-bold text-ink-700 mb-1">نیروی اعزامی مهاجم</p>
+                            {renderTroops(report.attacker_troops_sent)}
+                            <p className="text-[10px] text-rose-600 mt-1">تلفات: {report.attacker_loss_percent}٪</p>
+                        </div>
+                        <div className="bg-parchment-100 rounded-lg p-3">
+                            <p className="text-xs font-bold text-ink-700 mb-1">بازماندگان مهاجم</p>
+                            {renderTroops(report.attacker_troops_survived)}
+                        </div>
+                        <div className="bg-parchment-100 rounded-lg p-3">
+                            <p className="text-xs font-bold text-ink-700 mb-1">نیروی مدافع (قبل)</p>
+                            {renderTroops(report.defender_troops_before)}
+                        </div>
+                        <div className="bg-parchment-100 rounded-lg p-3">
+                            <p className="text-xs font-bold text-ink-700 mb-1">نیروی مدافع (بعد)</p>
+                            {renderTroops(report.defender_troops_after)}
+                            <p className="text-[10px] text-rose-600 mt-1">تلفات: {report.defender_loss_percent}٪</p>
+                        </div>
                     </div>
-                    <div className="bg-parchment-100 rounded-lg p-3">
-                        <p className="text-xs font-bold text-ink-700 mb-1">نیروی مدافع (قبل)</p>
-                        {renderTroops(report.defender_troops_before)}
-                    </div>
-                    <div className="bg-parchment-100 rounded-lg p-3">
-                        <p className="text-xs font-bold text-ink-700 mb-1">نیروی مدافع (بعد)</p>
-                        {renderTroops(report.defender_troops_after)}
-                        <p className="text-[10px] text-rose-600 mt-1">تلفات: {report.defender_loss_percent}٪</p>
-                    </div>
-                </div>
+                )}
 
                 {(report.wall_damage_text || report.catapult_damage_text || report.trapped_summary) && (
                     <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 mb-3 text-xs text-rose-800 whitespace-pre-wrap">

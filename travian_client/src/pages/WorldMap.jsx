@@ -61,8 +61,7 @@ function getTerrainColor(x, y) {
 }
 
 function getEmptySlotFieldType(x, y) {
-  const hash = ((x * 2654435761) ^ (y * 2246822519)) & 0x7fffffff;
-  return (hash % 9) + 1;
+  return ((Math.abs(x * 7 + y * 13) % 12) + 1);
 }
 
 function BonusBadge({ resource, percent }) {
