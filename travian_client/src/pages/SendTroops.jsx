@@ -129,7 +129,7 @@ export default function SendTroops() {
                                         className={`text-right p-3 rounded-xl border-2 transition ${movementType === opt.value ? 'border-gold-500 bg-gold-50' : 'border-parchment-300 bg-white hover:border-parchment-400'}`}
                                     >
                                         <div className="flex items-center gap-2">
-                                            <img src={opt.image} alt="" className="w-5 h-5" onError={(e) => { e.target.style.display='none'; }} />
+                                            {/*<img src={opt.image} alt="" className="w-5 h-5" onError={(e) => { e.target.style.display='none'; }} />*/}
                                             <span className="block font-bold text-sm text-ink-800">{opt.label}</span>
                                         </div>
                                         <span className="block text-[11px] text-ink-500">{opt.hint}</span>
