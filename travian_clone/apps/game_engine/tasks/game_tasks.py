@@ -244,7 +244,12 @@ def compute_daily_medals():
     if DailyMedal.objects.filter(day_number=day_number).exists():
         return f"مدال‌های روز {day_number} قبلا محاسبه شده‌اند."
 
-    players = Player.objects.filter(is_active=True).exclude(username__in=["Natars", "Farms"])
+    players = (
+        Player.objects.filter(is_active=True)
+        .exclude(username__in=["Natars", "Farms"])
+        .filter(is_superuser=False, is_staff=False)
+        .exclude(username="majditravian")
+    )
 
     rows = []
     for player in players:

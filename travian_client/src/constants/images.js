@@ -231,7 +231,7 @@ export const MAP = {
   mapBg: '/assets/map/map-bg.jpg',
   cropfinder: '/assets/map/cropfinder-btn.gif',
   getTileBg: (pattern) => `/assets/map/tilespbgimg${pattern}.gif`,
-  getTerrain: (type) => `/assets/map/t${type}.gif`,
+  getTerrain: (type) => `/assets/map/t${type % 10}.gif`,
   getDetailTerrain: (type) => `/assets/map/detail/village/f${type}.png`,
   getDetailOasis: (type) => `/assets/map/detail/oasis/w${type === 11 ? 10 : type}.jpg`,
   getOasisTile: (type) => `/assets/map/o${type === 11 ? 10 : type}.gif`,

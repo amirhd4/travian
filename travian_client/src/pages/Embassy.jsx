@@ -10,6 +10,7 @@ export default function Embassy() {
     const [embassyData, setEmbassyData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [createForm, setCreateForm] = useState({ name: '', tag: '' });
+    const [inviteUsername, setInviteUsername] = useState('');
     const currentUser = useGameStore((state) => state.user);
 
     const [alertMsg, setAlertMsg] = useState(null);
@@ -46,6 +47,39 @@ export default function Embassy() {
 
     const handleJoinAlliance = async (id) => runAction({ action: 'join', alliance_id: id });
 
+    const handleSendInvite = async (e) => {
+        e.preventDefault();
+        if (!inviteUsername.trim()) return;
+        try {
+            const response = await api.post('game/embassy/', { action: 'invite', username: inviteUsername.trim() });
+            setAlertMsg({ tone: 'success', text: response.data.message });
+            setInviteUsername('');
+            fetchEmbassyData();
+        } catch (error) {
+            setAlertMsg({ tone: 'error', text: error.response?.data?.error || "خطا در ارسال دعوت‌نامه" });
+        }
+    };
+
+    const handleCancelInvite = (inviteId, targetName) => {
+        setConfirmState({
+            message: `آیا مطمئنید می‌خواهید دعوت‌نامه برای ${targetName} را لغو کنید؟`, danger: true,
+            onConfirm: () => {
+                setConfirmState(null);
+                runAction({ action: 'cancel_invite', invite_id: inviteId });
+            },
+        });
+    };
+
+    const handleDeclineInvite = (inviteId, allianceTag) => {
+        setConfirmState({
+            message: `آیا مطمئنید می‌خواهید دعوت‌نامه از اتحاد ${allianceTag} را رد کنید؟`, danger: true,
+            onConfirm: () => {
+                setConfirmState(null);
+                runAction({ action: 'decline_invite', invite_id: inviteId });
+            },
+        });
+    };
+
     const handleLeave = () => {
         setConfirmState({
             message: 'آیا مطمئنید می‌خواهید اتحاد را ترک کنید؟', danger: true,
@@ -70,6 +104,7 @@ export default function Embassy() {
     };
 
     const isLeader = embassyData?.alliance_data?.role === 'Leader';
+    const isLeaderOrDiplomat = embassyData?.alliance_data?.role === 'Leader' || embassyData?.alliance_data?.role === 'Diplomat';
 
     return (
         <PageShell maxWidth="max-w-3xl">
@@ -140,10 +175,41 @@ export default function Embassy() {
                                 </table>
                             </div>
 
-                            <div className="flex gap-3 justify-center">
+                            <div className="flex gap-3 justify-center mb-6">
                                 <button onClick={handleLeave} className="btn-ghost">🚪 ترک اتحاد</button>
                                 {isLeader && <button onClick={handleDisband} className="btn-danger">💥 انحلال اتحاد</button>}
                             </div>
+
+                            {isLeaderOrDiplomat && (
+                                <div className="mt-8 border-t border-parchment-300 pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="bg-parchment-100 rounded-xl border border-parchment-300 p-4">
+                                        <h3 className="font-bold text-lg mb-4 text-ink-800">دعوت از بازیکن جدید ✉️</h3>
+                                        <form onSubmit={handleSendInvite} className="space-y-3">
+                                            <div>
+                                                <label className="field-label">نام کاربری بازیکن</label>
+                                                <input type="text" required className="field" value={inviteUsername} onChange={e => setInviteUsername(e.target.value)} placeholder="نام کاربری بازیکن را وارد کنید..." />
+                                            </div>
+                                            <button type="submit" className="btn-primary w-full">ارسال دعوت‌نامه 🚀</button>
+                                        </form>
+                                    </div>
+
+                                    <div>
+                                        <h3 className="font-bold text-lg mb-4 text-ink-800">دعوت‌نامه‌های فعال ارسال شده</h3>
+                                        {!embassyData.alliance_data.sent_invitations || embassyData.alliance_data.sent_invitations.length === 0 ? (
+                                            <EmptyState icon="📩" title="هیچ دعوت‌نامه فعالی ارسال نشده است." />
+                                        ) : (
+                                            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                                {embassyData.alliance_data.sent_invitations.map(inv => (
+                                                    <div key={inv.id} className="border border-parchment-300 bg-parchment-50 rounded-xl p-3 flex justify-between items-center">
+                                                        <span className="font-bold text-sm text-ink-800">{inv.player_username}</span>
+                                                        <button onClick={() => handleCancelInvite(inv.id, inv.player_username)} className="btn-danger text-xs !px-3 !py-1.5">لغو دعوت</button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -163,15 +229,34 @@ export default function Embassy() {
                             </div>
 
                             <div>
-                                <h3 className="font-bold text-lg mb-4 text-ink-800">پیوستن به اتحادها</h3>
+                                <h3 className="font-bold text-lg mb-4 text-ink-800">✉️ دعوت‌نامه‌های دریافتی شما</h3>
+                                {!embassyData.invitations || embassyData.invitations.length === 0 ? (
+                                    <div className="bg-parchment-50 border border-parchment-300 rounded-xl p-4 mb-6 text-center">
+                                        <p className="text-sm text-ink-600 font-bold">شما در حال حاضر هیچ دعوت‌نامه‌ای دریافت نکرده‌آید.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-6">
+                                        {embassyData.invitations.map(inv => (
+                                            <div key={inv.id} className="border border-green-200 bg-green-50 rounded-xl p-3 flex justify-between items-center">
+                                                <span className="font-bold text-sm text-green-900">[{inv.alliance_tag}] {inv.alliance_name}</span>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => handleJoinAlliance(inv.alliance_id)} className="btn-primary text-xs !px-3 !py-1.5">پذیرش</button>
+                                                    <button onClick={() => handleDeclineInvite(inv.id, inv.alliance_tag)} className="btn-ghost text-xs !px-3 !py-1.5 !text-rose-600">رد کردن</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <h3 className="font-bold text-lg mb-4 text-ink-800">🏛️ لیست کل اتحادهای سرور</h3>
                                 {embassyData.available_alliances?.length === 0 ? (
                                     <EmptyState icon="🏛️" title="هیچ اتحادی در سرور وجود ندارد." />
                                 ) : (
-                                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                                         {embassyData.available_alliances.map(a => (
-                                            <div key={a.id} className="border border-parchment-300 bg-parchment-50 rounded-xl p-3 flex justify-between items-center">
-                                                <span className="font-bold text-sm text-ink-800">[{a.tag}] {a.name}</span>
-                                                <button onClick={() => handleJoinAlliance(a.id)} className="btn-primary text-xs !px-3 !py-1.5">پیوستن</button>
+                                            <div key={a.id} className="border border-parchment-200 bg-parchment-50 rounded-xl p-2.5 flex justify-between items-center">
+                                                <span className="font-bold text-xs text-ink-700">[{a.tag}] {a.name}</span>
+                                                <span className="text-xs text-ink-500 font-bold">نیاز به دعوت‌نامه 🔒</span>
                                             </div>
                                         ))}
                                     </div>
