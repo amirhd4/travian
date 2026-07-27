@@ -72,6 +72,9 @@ class Village(models.Model):
     y_coord = models.IntegerField()
 
     is_capital = models.BooleanField(default=False)
+    parent_village = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='expanded_villages'
+    )
 
     wood = models.FloatField(default=750.0)
     clay = models.FloatField(default=750.0)

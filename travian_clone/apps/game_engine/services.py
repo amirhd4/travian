@@ -362,6 +362,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         x_coord=x,
         y_coord=y,
         is_capital=False,
+        parent_village=source_village,
         field_type=field_type,
         wood=750.0,
         clay=750.0,
