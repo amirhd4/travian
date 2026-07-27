@@ -29,7 +29,7 @@ def _current_quest_value(player, quest):
     if condition == 'MARKETPLACE_LEVEL':
         return _max_building_level(player, ["بازارچه"])
     if condition == 'WALL_LEVEL':
-        return _max_building_level(player, ["دیوار"])
+        return _max_building_level(player, ["دیوار", "دیوار شهر", "دیوار خاکی", "حصار چوبی"])
 
     if condition == 'TROOP_COUNT':
         from apps.combat.models import VillageTroop
