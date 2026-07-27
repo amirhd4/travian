@@ -30,6 +30,18 @@ FIELD_DISTRIBUTIONS = {
     'CROPPER_15': {
         "چوب‌بری": 1, "گودال خاک رس": 1, "معدن آهن": 1, "مزرعه گندم": 15,
     },
+    1: {"چوب‌بری": 3, "گودال خاک رس": 3, "معدن آهن": 3, "مزرعه گندم": 9},  # 3-3-3-9
+    2: {"چوب‌بری": 3, "گودال خاک رس": 4, "معدن آهن": 5, "مزرعه گندم": 6},  # 3-4-5-6
+    3: {"چوب‌بری": 4, "گودال خاک رس": 4, "معدن آهن": 4, "مزرعه گندم": 6},  # 4-4-4-6
+    4: {"چوب‌بری": 4, "گودال خاک رس": 5, "معدن آهن": 3, "مزرعه گندم": 6},  # 4-5-3-6
+    5: {"چوب‌بری": 5, "گودال خاک رس": 3, "معدن آهن": 4, "مزرعه گندم": 6},  # 5-3-4-6
+    6: {"چوب‌بری": 1, "گودال خاک رس": 1, "معدن آهن": 1, "مزرعه گندم": 15}, # 1-1-1-15
+    7: {"چوب‌بری": 4, "گودال خاک رس": 4, "معدن آهن": 3, "مزرعه گندم": 7},  # 4-4-3-7
+    8: {"چوب‌بری": 3, "گودال خاک رس": 4, "معدن آهن": 4, "مزرعه گندم": 7},  # 3-4-4-7
+    9: {"چوب‌بری": 4, "گودال خاک رس": 3, "معدن آهن": 4, "مزرعه گندم": 7},  # 4-3-4-7
+    10: {"چوب‌بری": 3, "گودال خاک رس": 5, "معدن آهن": 4, "مزرعه گندم": 6}, # 3-5-4-6
+    11: {"چوب‌بری": 4, "گودال خاک رس": 3, "معدن آهن": 5, "مزرعه گندم": 6}, # 4-3-5-6
+    12: {"چوب‌بری": 5, "گودال خاک رس": 4, "معدن آهن": 3, "مزرعه گندم": 6}, # 5-4-3-6
 }
 
 FIELD_DISTRIBUTION_WEIGHTS = {
@@ -263,12 +275,15 @@ def create_starter_village(player, name="دهکده اول", starting_quadrant='
     quadrant = starting_quadrant if starting_quadrant in ('NE', 'NW', 'SE', 'SW') else None
     x, y = _find_free_coordinates(quadrant=quadrant)
 
+    field_type = ((abs(x * 7 + y * 13) % 12) + 1)
+
     village = Village.objects.create(
         player=player,
         name=name,
         x_coord=x,
         y_coord=y,
         is_capital=True,
+        field_type=field_type,
         wood=750.0,
         clay=750.0,
         iron=750.0,
@@ -281,7 +296,7 @@ def create_starter_village(player, name="دهکده اول", starting_quadrant='
         max_granary=max_granary,
     )
 
-    _create_default_buildings(village, tribe=player.tribe)
+    _create_default_buildings(village, distribution_key=field_type, tribe=player.tribe)
 
     return village
 
@@ -339,7 +354,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
 
     max_storage, max_granary = _get_starting_capacities()
 
-    distribution_key = _pick_field_distribution()
+    field_type = ((abs(x * 7 + y * 13) % 12) + 1)
 
     new_village = Village.objects.create(
         player=player,
@@ -347,6 +362,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         x_coord=x,
         y_coord=y,
         is_capital=False,
+        field_type=field_type,
         wood=750.0,
         clay=750.0,
         iron=750.0,
@@ -359,7 +375,7 @@ def found_new_village(player, source_village, target_x=None, target_y=None, name
         max_granary=max_granary,
     )
 
-    _create_default_buildings(new_village, distribution_key=distribution_key, tribe=player.tribe)
+    _create_default_buildings(new_village, distribution_key=field_type, tribe=player.tribe)
 
     return new_village
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import { AlertModal } from '../components/Modal';
 import useGameStore from '../store/useGameStore';
@@ -9,6 +9,10 @@ const SETTLERS_REQUIRED = 3;
 
 export default function Colonize() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const targetX = location.state?.targetX;
+    const targetY = location.state?.targetY;
+
     const villages = useGameStore((state) => state.villages);
     const setVillages = useGameStore((state) => state.setVillages);
     const setActiveVillageId = useGameStore((state) => state.setActiveVillageId);
@@ -17,12 +21,17 @@ export default function Colonize() {
     const [settlerCount, setSettlerCount] = useState(null);
     const [loadingSettlers, setLoadingSettlers] = useState(false);
 
-    const [center, setCenter] = useState({ x: 0, y: 0 });
+    const [center, setCenter] = useState({
+        x: targetX !== undefined ? targetX : 0,
+        y: targetY !== undefined ? targetY : 0
+    });
     const [mapVillages, setMapVillages] = useState([]);
     const [mapOases, setMapOases] = useState([]); // ✅ جدید
     const [loadingMap, setLoadingMap] = useState(false);
-    const [selectedTarget, setSelectedTarget] = useState(null);
-    const [autoFind, setAutoFind] = useState(true);
+    const [selectedTarget, setSelectedTarget] = useState(
+        targetX !== undefined && targetY !== undefined ? { x: targetX, y: targetY } : null
+    );
+    const [autoFind, setAutoFind] = useState(targetX === undefined || targetY === undefined);
 
     const [villageName, setVillageName] = useState('دهکده جدید');
     const [submitting, setSubmitting] = useState(false);

@@ -309,53 +309,153 @@ def _resolve_scout(movement):
     scout_qty_sent = sum(int(q) for q in movement.troops_payload.values())
     effective_scout_power = scout_qty_sent * scout_power_multiplier
 
-    defending_scouts = VillageTroop.objects.filter(
-        village=target, troop_type__is_scout=True
-    ).aggregate(total=Sum('count'))['total'] or 0
+    troop_type_cache = {
+        t.id: t for t in TroopType.objects.filter(
+            id__in=[int(k) for k in movement.troops_payload.keys()]
+        )
+    }
 
-    caught = defending_scouts >= effective_scout_power * 2
+    # Defending scouts
+    defending_scouts_qs = VillageTroop.objects.filter(
+        village=target, troop_type__is_scout=True
+    ).select_related('troop_type')
+    defending_scouts_count = sum(vt.count for vt in defending_scouts_qs)
+
+    # Spying combat logic
+    loss_ratio = 0.0
+    if defending_scouts_count > 0 and effective_scout_power > 0:
+        ratio = (defending_scouts_count * 1.5) / effective_scout_power
+        loss_ratio = min(1.0, ratio)
+
+    killed_count = int(round(scout_qty_sent * loss_ratio))
+    survivors_count = max(0, scout_qty_sent - killed_count)
+
+    # Distribute deaths across scout types
+    attacker_survivors = {}
+    for tid, qty in movement.troops_payload.items():
+        qty = int(qty)
+        if qty <= 0:
+            continue
+        k_pct = killed_count / scout_qty_sent if scout_qty_sent > 0 else 0
+        k = int(round(qty * k_pct))
+        attacker_survivors[int(tid)] = max(0, qty - k)
+
+    victory = "attacker" if survivors_count > 0 else "defender"
+
+    scout_type = movement.scout_type or 'RESOURCES_AND_BUILDINGS'
+    scout_result = {}
+
+    if victory == 'attacker':
+        if scout_type == 'RESOURCES_AND_BUILDINGS':
+            # Gather resources and cranny protection info
+            cranny_levels_sum = VillageBuilding.objects.filter(
+                village=target, building_type__name="مخفیگاه"
+            ).aggregate(total=Sum('level'))['total'] or 0
+            tribe_mult = CRANNY_TRIBE_MULTIPLIER.get(target.player.tribe, 1)
+            protected_amount = cranny_levels_sum * CRANNY_PROTECTION_PER_LEVEL * tribe_mult
+
+            scout_result = {
+                "resources": {
+                    "wood": int(target.wood),
+                    "clay": int(target.clay),
+                    "iron": int(target.iron),
+                    "crop": int(target.crop),
+                },
+                "max_storage": target.max_storage,
+                "max_granary": target.max_granary,
+                "cranny_protection": protected_amount,
+            }
+        else:
+            # Gather troops, wall, residence, loyalty info
+            target_troops = list(VillageTroop.objects.filter(village=target, count__gt=0).select_related('troop_type'))
+            troops_report = {vt.troop_type.name: vt.count for vt in target_troops}
+
+            wall_building = VillageBuilding.objects.filter(
+                village=target, building_type__provides_wall_defense=True
+            ).first()
+            wall_level = wall_building.level if wall_building else 0
+
+            residence_building = VillageBuilding.objects.filter(
+                village=target, building_type__name__in=["اقامتگاه", "قصر"]
+            ).first()
+            residence_level = residence_building.level if residence_building else 0
+
+            scout_result = {
+                "troops": troops_report,
+                "wall_level": wall_level,
+                "residence_level": residence_level,
+                "loyalty": int(target.loyalty),
+            }
+
+    # Create Structured CombatReport
+    attacker_troops_sent_named = {}
+    for tid_str, qty in movement.troops_payload.items():
+        tt = troop_type_cache.get(int(tid_str))
+        if tt:
+            attacker_troops_sent_named[tt.name] = int(qty)
+
+    attacker_troops_survived_named = {}
+    for tid, qty in attacker_survivors.items():
+        tt = troop_type_cache.get(tid)
+        if tt:
+            attacker_troops_survived_named[tt.name] = int(qty)
+
+    CombatReport.objects.create(
+        attacker_player=source.player,
+        defender_player=target.player,
+        attacker_village_name=source.name,
+        defender_village_name=target.name,
+        attacker_coords=f"{source.x_coord}|{source.y_coord}",
+        defender_coords=f"{target.x_coord}|{target.y_coord}",
+        movement_type='SCOUT',
+        victory=victory,
+        attacker_troops_sent=attacker_troops_sent_named,
+        attacker_troops_survived=attacker_troops_survived_named,
+        defender_troops_before={},
+        defender_troops_after={},
+        attacker_loss_percent=round((killed_count / scout_qty_sent) * 100, 1) if scout_qty_sent > 0 else 0,
+        defender_loss_percent=0,
+        scout_type=scout_type,
+        scout_result=scout_result,
+    )
 
     movement.is_completed = True
     movement.save()
 
-    if caught:
-        description = (
-            f"ماموریت شناسایی به دهکده {target.name} شکست خورد؛ "
-            f"جاسوسان شما توسط پدافند دشمن شکار شدند."
-        )
-        GameLog.objects.create(village=source, log_type='COMBAT', description=description)
+    # Log & Notifications
+    if victory == 'attacker':
+        description = f"عملیات شناسایی در دهکده {target.name} با موفقیت انجام شد."
+        _notify_player(source.player_id, "SCOUT_RESULT", {"message": description, "success": True})
+    else:
+        description = f"ماموریت شناسایی در دهکده {target.name} شکست خورد؛ تمامی جاسوسان شما توسط پدافند دشمن شکار شدند."
         _notify_player(source.player_id, "SCOUT_RESULT", {"message": description, "success": False})
-        return description
-
-    target_troops = list(VillageTroop.objects.filter(village=target).select_related('troop_type'))
-    troops_report = {vt.troop_type.name: vt.count for vt in target_troops if vt.count > 0}
-
-    report_lines = [
-        f"گزارش شناسایی از دهکده {target.name} ({target.x_coord}|{target.y_coord}):",
-        f"وفاداری: {target.loyalty:.0f}٪",
-        f"منابع: چوب {int(target.wood)} | خشت {int(target.clay)} | آهن {int(target.iron)} | گندم {int(target.crop)}",
-        "نیروهای مستقر: " + (
-            ", ".join(f"{name}: {count}" for name, count in troops_report.items())
-            if troops_report else "بدون نیرو"
-        ),
-    ]
-    description = "\n".join(report_lines)
 
     GameLog.objects.create(village=source, log_type='COMBAT', description=description)
-    _notify_player(source.player_id, "SCOUT_RESULT", {"message": description, "success": True})
 
-    travel_duration = movement.arrival_time - movement.start_time
-    return_arrival = timezone.now() + travel_duration
-    return_movement = TroopMovement.objects.create(
-        source_village=target,
-        target_village=source,
-        movement_type='RETURN',
-        troops_payload=movement.troops_payload,
-        arrival_time=return_arrival,
-    )
-    transaction.on_commit(lambda: resolve_combat_movement.apply_async(
-        args=[return_movement.id], eta=return_arrival
-    ))
+    # Notification for defender if defender has scouts
+    if defending_scouts_count > 0:
+        if victory == 'defender':
+            def_description = f"یک جاسوس دشمن سعی کرد از دهکده {target.name} جاسوسی کند اما تمام نیروهایش توسط مدافعان شما کشته شدند!"
+        else:
+            def_description = f"یک جاسوس دشمن از دهکده {target.name} جاسوسی کرد. مدافعان شما متوجه شده و {killed_count} عدد از جاسوسان حریف را کشتند!"
+        GameLog.objects.create(village=target, log_type='COMBAT', description=def_description)
+        _notify_player(target.player_id, "COMBAT_RESULT", {"message": def_description, "winner": "defender"})
+
+    # Return surviving scouts
+    if survivors_count > 0:
+        travel_duration = movement.arrival_time - movement.start_time
+        return_arrival = timezone.now() + travel_duration
+        survivors_payload = {str(tid): qty for tid, qty in attacker_survivors.items() if qty > 0}
+        return_movement = TroopMovement.objects.create(
+            source_village=target,
+            target_village=source,
+            movement_type='RETURN',
+            troops_payload=survivors_payload,
+            arrival_time=return_arrival,
+        )
+        transaction.on_commit(lambda: resolve_combat_movement.apply_async(
+            args=[return_movement.id], eta=return_arrival
+        ))
 
     return description
 
