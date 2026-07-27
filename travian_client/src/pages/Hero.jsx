@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import PageShell from '../components/PageShell';
 import LoadingState from '../components/LoadingState';
@@ -271,6 +272,7 @@ const TABS = [
 ];
 
 export default function Hero() {
+    const [searchParams] = useSearchParams();
     const { lastMessage } = useGameWebSocket();
     const villages = useGameStore((state) => state.villages);
     const activeVillageId = useGameStore((state) => state.activeVillageId);
@@ -279,7 +281,7 @@ export default function Hero() {
     const activeVillage = villages.find(v => v.id === activeVillageId);
     const ownedOases = activeVillage?.oases || [];
 
-    const [activeTab, setActiveTab] = useState('attributes');
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'attributes');
     const [hero, setHero] = useState(null);
     const [adventures, setAdventures] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -335,6 +337,13 @@ export default function Hero() {
             setRevivalVillageId(capital.id);
         }
     }, [villages, revivalVillageId]);
+
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         if (lastMessage?.type === 'ADVENTURE_RESULT') {
