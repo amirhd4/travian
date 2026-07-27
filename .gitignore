@@ -1,6 +1,10 @@
 docs
 travian_clone/venv
 
+# Python cache
+__pycache__/
+*.pyc
+
 **/migrations
 .idea
 
