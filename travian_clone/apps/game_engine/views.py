@@ -52,6 +52,16 @@ class VillageListView(APIView):
                 "iron": v.iron,
                 "crop": v.crop,
                 "has_world_wonder": hasattr(v, 'world_wonder'),
+                "oases": [
+                    {
+                        "id": o.id,
+                        "x_coord": o.x_coord,
+                        "y_coord": o.y_coord,
+                        "oasis_type": o.oasis_type,
+                        "bonus_display": o.bonus_display,
+                    }
+                    for o in v.oases.all()
+                ]
             }
             for v in villages
         ]
@@ -2893,27 +2903,30 @@ class OasisAttackView(APIView):
                         "error": f"آبادی خارج از محدوده است (فاصله: {dist:.1f}، حداکثر: {self.OASIS_CAPTURE_MAX_DISTANCE})."
                     }, status=400)
 
-                # Hero Mansion level → slots: (level-5)//5, max 3
+                # Hero Mansion level → slots: Level 10 (1 slot), Level 15 (2 slots), Level 20 (3 slots)
                 mansion = VillageBuilding.objects.filter(
                     village=village, building_type__name="عمارت قهرمان"
                 ).first()
-                if not mansion or mansion.level < 6:
-                    return Response({"error": "برای تصاحب آبادی به عمارت قهرمان سطح ۶ یا بالاتر نیاز دارید."}, status=400)
+                if not mansion:
+                    return Response({"error": "برای تصاحب آبادی به عمارت قهرمان نیاز دارید."}, status=400)
 
-                max_slots = min((mansion.level - 5) // 5, 3)
+                if mansion.level < 10:
+                    return Response({"error": "برای تصاحب آبادی به عمارت قهرمان سطح ۱۰ یا بالاتر نیاز دارید."}, status=400)
+
+                if mansion.level >= 20:
+                    max_slots = 3
+                elif mansion.level >= 15:
+                    max_slots = 2
+                elif mansion.level >= 10:
+                    max_slots = 1
+                else:
+                    max_slots = 0
+
                 used_slots = village.oases.count()
                 if used_slots >= max_slots:
                     return Response({
-                        "error": f"تمام {max_slots} اسلات آبادی پر است. سطح عمارت قهرمان را افزایش دهید."
+                        "error": f"تمام {max_slots} اسلات آبادی پر است. سطح عمارت قهرمان را افزایش دهید (سطح ۱۰ برای ۱ آبادی، سطح ۱۵ برای ۲ آبادی، سطح ۲۰ برای ۳ آبادی)."
                     }, status=400)
-
-                player_village_ids = Village.objects.filter(player=request.user).values_list('id', flat=True)
-                owned_count = Oasis.objects.filter(owner_village_id__in=player_village_ids).count()
-                if owned_count >= self.MAX_OASES_PER_PLAYER:
-                    return Response(
-                        {"error": f"هر بازیکن حداکثر {self.MAX_OASES_PER_PLAYER} آبادی می‌تواند داشته باشد."},
-                        status=400,
-                    )
 
             troop_type_cache = {t.id: t for t in TroopType.objects.filter(id__in=[int(k) for k in troops_payload.keys()])}
             attack_power = 0
@@ -2967,6 +2980,8 @@ class OasisAttackView(APIView):
                 if is_conquest_attempt:
                     oasis.owner_village = village
                     oasis.save()
+                    # Clear any remaining nature troops upon successful conquest
+                    oasis.troops.all().delete()
                     message = f"🌿 آبادی ({oasis.x_coord}|{oasis.y_coord}) با موفقیت تصاحب شد!"
                 else:
                     owner = oasis.owner_village
@@ -3075,8 +3090,15 @@ class OasisReleaseView(APIView):
             return Response({"error": "این آبادی متعلق به شما نیست."}, status=403)
 
         coords = f"({oasis.x_coord}|{oasis.y_coord})"
+        village = oasis.owner_village
+
+        from .utils import update_village_resources
+        update_village_resources(village)
+
         oasis.owner_village = None
         oasis.save()
+
+        update_village_resources(village)
         return Response({"message": f"آبادی {coords} با موفقیت رها شد."})
 
 

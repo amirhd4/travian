@@ -104,6 +104,7 @@ export default function PositionDetails() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const villages = useGameStore((s) => s.villages);
+  const setVillages = useGameStore((s) => s.setVillages);
 
   const x = parseInt(searchParams.get('x') || '0', 10);
   const y = parseInt(searchParams.get('y') || '0', 10);
@@ -127,8 +128,28 @@ export default function PositionDetails() {
   };
 
   const handleSendTroops = () => {
-    if (!data || data.type !== 'village') return;
-    navigate('/send-troops', { state: { targetVillageId: data.id, targetName: data.name } });
+    if (!data) return;
+    if (data.type === 'village') {
+      navigate('/send-troops', { state: { targetVillageId: data.id, targetName: data.name } });
+    } else if (data.type === 'oasis') {
+      navigate(`/world-map?x=${x}&y=${y}`);
+    }
+  };
+
+  const handleReleaseOasis = async () => {
+    if (!window.confirm("آیا از رها کردن این آبادی مطمئن هستید؟")) return;
+    try {
+      await api.post('game/oases/release/', { oasis_id: data.id });
+      alert('آبادی با موفقیت رها شد.');
+      // Refresh details
+      const { data: refreshed } = await api.get('game/position-details/', { params: { x, y } });
+      setData(refreshed);
+      // Refresh villages list in game store
+      const { data: vData } = await api.get('game/villages/');
+      setVillages(vData);
+    } catch (err) {
+      alert(err.response?.data?.error || 'خطا در رها کردن آبادی');
+    }
   };
 
   const handleSendMerchants = () => {
@@ -210,7 +231,10 @@ export default function PositionDetails() {
         )}
 
         {data.type === 'oasis' && data.is_mine && (
-          <span style={{ fontSize: 12, fontWeight: 'bold', color: '#228B22' }}>✓ این آبادی متعلق به شماست</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 'bold', color: '#228B22' }}>✓ این آبادی متعلق به شماست</span>
+            <button onClick={handleReleaseOasis} className="btn-danger" style={{ padding: '3px 8px', fontSize: 11 }}>رها کردن 🌿</button>
+          </div>
         )}
 
         {data.type === 'empty' && (
