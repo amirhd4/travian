@@ -105,6 +105,7 @@ export default function PositionDetails() {
   const [searchParams] = useSearchParams();
   const villages = useGameStore((s) => s.villages);
   const setVillages = useGameStore((s) => s.setVillages);
+  const activeVillageId = useGameStore((s) => s.activeVillageId);
 
   const x = parseInt(searchParams.get('x') || '0', 10);
   const y = parseInt(searchParams.get('y') || '0', 10);
@@ -112,6 +113,14 @@ export default function PositionDetails() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [availableTroops, setAvailableTroops] = useState([]);
+  const [fetchingTroops, setFetchingTroops] = useState(false);
+  const [troopsPayload, setTroopsPayload] = useState({});
+  const [showAttackForm, setShowAttackForm] = useState(false);
+  const [attacking, setAttacking] = useState(false);
+  const [attackResult, setAttackResult] = useState(null);
+  const [attackError, setAttackError] = useState(null);
 
   useEffect(() => {
     if (!x && !y) return;
@@ -123,6 +132,66 @@ export default function PositionDetails() {
       .finally(() => setLoading(false));
   }, [x, y]);
 
+  useEffect(() => {
+    if (showAttackForm && activeVillageId) {
+      setFetchingTroops(true);
+      setAttackError(null);
+      setAttackResult(null);
+      api.get('combat/village-troops/', { params: { village_id: activeVillageId } })
+        .then(({ data }) => {
+          setAvailableTroops(data);
+          const initial = {};
+          data.forEach(t => {
+            initial[t.troop_type_id] = 0;
+          });
+          setTroopsPayload(initial);
+        })
+        .catch(err => {
+          console.error("Error fetching troops", err);
+          setAttackError('خطا در دریافت لیست نیروها');
+        })
+        .finally(() => {
+          setFetchingTroops(false);
+        });
+    }
+  }, [showAttackForm, activeVillageId]);
+
+  const handleExecuteAttack = async () => {
+    const payload = Object.fromEntries(
+      Object.entries(troopsPayload).filter(([, v]) => v > 0)
+    );
+    if (Object.keys(payload).length === 0) {
+      setAttackError('لطفاً حداقل یک نیرو برای حمله انتخاب کنید.');
+      return;
+    }
+    setAttacking(true);
+    setAttackError(null);
+    setAttackResult(null);
+    try {
+      const response = await api.post('game/oases/attack/', {
+        village_id: activeVillageId,
+        oasis_id: data.id,
+        troops_payload: payload,
+      });
+
+      setAttackResult(response.data.message);
+      // Refresh details
+      const { data: refreshed } = await api.get('game/position-details/', { params: { x, y } });
+      setData(refreshed);
+
+      // Refresh villages list in game store
+      const { data: vData } = await api.get('game/villages/');
+      setVillages(vData);
+
+      // Reset troop inputs
+      setTroopsPayload({});
+    } catch (err) {
+      setAttackError(err.response?.data?.error || 'خطا در انجام نبرد');
+    } finally {
+      setAttacking(false);
+    }
+  };
+
   const handleCenterMap = () => {
     navigate(`/world-map?x=${x}&y=${y}`);
   };
@@ -132,7 +201,7 @@ export default function PositionDetails() {
     if (data.type === 'village') {
       navigate('/send-troops', { state: { targetVillageId: data.id, targetName: data.name } });
     } else if (data.type === 'oasis') {
-      navigate(`/world-map?x=${x}&y=${y}`);
+      setShowAttackForm(prev => !prev);
     }
   };
 
@@ -241,6 +310,70 @@ export default function PositionDetails() {
           <button onClick={handleFoundVillage} className="btn-gold">🏠 تاسیس دهکده</button>
         )}
       </div>
+
+      {/* Attack/Conquer Form */}
+      {showAttackForm && (
+        <div style={{ background: '#fcfcfc', borderBottom: '1px solid #C9C9C9', padding: '12px' }}>
+          <div style={{ fontWeight: 'bold', fontSize: 13, marginBottom: 8, color: '#DE0000', borderBottom: '1px solid #eee', paddingBottom: 4 }}>
+            ⚔️ اعزام نیرو برای {data.is_free ? 'تصاحب' : 'غارت'} آبادی
+          </div>
+
+          {fetchingTroops ? (
+            <div style={{ fontSize: 11, color: '#666' }}>در حال بارگذاری نیروهای موجود...</div>
+          ) : availableTroops.length === 0 ? (
+            <div style={{ fontSize: 11, color: '#DE0000', fontWeight: 'bold' }}>هیچ نیرویی در این دهکده برای ارسال وجود ندارد.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {availableTroops.map((t) => (
+                <div key={t.troop_type_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f5f5f5', padding: '6px 8px', borderRadius: 4, fontSize: 11 }}>
+                  <span>{t.name} <span style={{ color: '#666', fontSize: 10 }}>(موجود: {t.count})</span></span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={t.count}
+                    style={{ width: 60, padding: '3px', fontSize: 11, border: '1px solid #ccc', borderRadius: 3, textAlign: 'center' }}
+                    value={troopsPayload[t.troop_type_id] || ''}
+                    onChange={(e) => {
+                      const val = Math.max(0, Math.min(t.count, parseInt(e.target.value) || 0));
+                      setTroopsPayload(prev => ({ ...prev, [t.troop_type_id]: val }));
+                    }}
+                  />
+                </div>
+              ))}
+
+              {attackError && (
+                <div style={{ padding: '8px', background: '#FDF2F2', border: '1px solid #F8B4B4', color: '#9B1C1C', borderRadius: 4, fontSize: 11, marginTop: 8 }}>
+                  {attackError}
+                </div>
+              )}
+
+              {attackResult && (
+                <div style={{ padding: '8px', background: '#F3FAF7', border: '1px solid #DEF7EC', color: '#03543F', borderRadius: 4, fontSize: 11, marginTop: 8, whiteSpace: 'pre-line' }}>
+                  {attackResult}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                <button
+                  onClick={handleExecuteAttack}
+                  disabled={attacking || !Object.values(troopsPayload).some(v => v > 0)}
+                  className="btn-danger"
+                  style={{ flex: 1, padding: '6px 12px', fontSize: 12 }}
+                >
+                  {attacking ? 'در حال ارسال کبوتر نبرد...' : '⚔️ تایید و حمله فوری'}
+                </button>
+                <button
+                  onClick={() => { setShowAttackForm(false); setAttackError(null); setAttackResult(null); }}
+                  className="btn-ghost"
+                  style={{ padding: '6px 12px', fontSize: 12 }}
+                >
+                  انصراف
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Content */}
       <div style={{ background: '#fff', padding: 12 }}>

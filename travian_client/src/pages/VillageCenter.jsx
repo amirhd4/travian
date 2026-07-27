@@ -416,7 +416,7 @@ export default function VillageCenter() {
                                     'تالار شهر': '/town-hall',
                                     'اقامتگاه': '/residence',
                                     'ساختمان اصلی': '/main-building',
-                                    'عمارت قهرمان': '/hero',
+                                    'عمارت قهرمان': '/hero?tab=oases',
                                     'بازارچه': '/marketplace',
                                     'محل گردهمایی': '/movements',
                                     'مخفیگاه': '/hideout',

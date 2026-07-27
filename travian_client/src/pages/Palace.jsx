@@ -93,7 +93,7 @@ export default function Palace() {
         setSubmitting('capital');
         try {
             const response = await api.post('game/villages/move-capital/', {
-                new_village_id: activeVillageId,
+                village_id: activeVillageId,
             });
             setAlertMsg({ tone: 'success', text: response.data.message });
             fetchData();
