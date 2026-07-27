@@ -197,6 +197,16 @@ def _create_default_buildings(village, distribution_key='NORMAL', tribe='ROMAN')
 
     # Ensure all BuildingType records exist so AvailableBuildingsView works
     _ensure_all_building_types_exist()
+
+    distribution_map = {
+        'NORMAL': 3,
+        'CROPPER_9': 1,
+        'CROPPER_15': 6,
+    }
+    field_type = distribution_map.get(distribution_key, 3)
+    village.field_type = field_type
+    village.save(update_fields=['field_type'])
+
     position = 1
     field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
     for type_name, count in field_defs.items():
@@ -370,6 +380,16 @@ def abandon_village(player, village):
 def _create_resource_fields_only(village, distribution_key='NORMAL'):
     if VillageBuilding.objects.filter(village=village).exists():
         return
+
+    distribution_map = {
+        'NORMAL': 3,
+        'CROPPER_9': 1,
+        'CROPPER_15': 6,
+    }
+    field_type = distribution_map.get(distribution_key, 3)
+    village.field_type = field_type
+    village.save(update_fields=['field_type'])
+
     position = 1
     field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
     for type_name, count in field_defs.items():
