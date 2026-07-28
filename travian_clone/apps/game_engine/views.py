@@ -128,9 +128,6 @@ class VillageBuildingsView(APIView):
 
         buildings = VillageBuilding.objects.filter(village=village).select_related('building_type').order_by('position')
 
-        # ✅ سطح واقعی شگفتی جهان روی مدل WorldWonder نگه‌داری می‌شود، نه روی
-        # VillageBuilding (که همیشه با level=0 ساخته می‌شود). برای اینکه بج
-        # لول روی نقشه‌ی دهکده درست نمایش داده شود، این مقدار را جداگانه می‌خوانیم.
         ww_level = None
         if hasattr(village, 'world_wonder'):
             ww_level = village.world_wonder.level
