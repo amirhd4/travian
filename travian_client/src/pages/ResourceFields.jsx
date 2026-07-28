@@ -4,33 +4,7 @@ import useGameStore from '../store/useGameStore';
 import { useGameWebSocket } from '../hooks/useGameWebsocket';
 import { formatDuration } from "../utils/formatter.js";
 import { getUnitImage, getUnitSmallImage } from '../constants/images';
-
-// مختصات جدید و کاملا قرینه شده، مخصوص زمانی که عکس پس‌زمینه scaleX(-1) دارد
-// تنظیم شده برای بوم دقیق 484x317
-const DORF1_SLOTS = {
-    // 1-4: چوب (جنگل) - positions on forest areas
-    1: { x: 260, y: 270 },   // جنگل پایین مرکز (مثلث سبز)
-    2: { x: 370, y: 55 },    // جنگل بالا راست
-    3: { x: 275, y: 225 },   // جنگل پایین چپ
-    4: { x: 155, y: 40 },    // جنگل بالا چپ (پشت کوه)
-    // 5-8: گودال خاک رس (قهوه‌ای)
-    5: { x: 230, y: 90 },   // گودال خاک رس پایین چپ بزرگ
-    6: { x: 185, y: 245 },   // گودال خاک رس پایین چپ کوچک
-    7: { x: 290, y: 90 },   // گودال خاک رس پایین راست بزرگ
-    8: { x: 350, y: 250 },   // گودال خاک رس پایین راست کوچک
-    // 9-12: معدن آهن (کوه/تپه خاکستری)
-    9: { x: 430, y: 110 },    // کوه بالا چپ
-    10: { x: 120, y: 100 },  // کوه بالا چپ 2
-    11: { x: 350, y: 90 },   // کوه بالا راست
-    12: { x: 380, y: 105 },  // کوه بالا راست 2
-    // 13-18: مزرعه گندم (زرد)
-    13: { x: 110, y: 155 },  // گندم زار بزرگ چپ بالا
-    14: { x: 80, y: 190 },   // گندم زار بزرگ چپ پایین
-    15: { x: 245, y: 40 },   // گندم زار کوچک بالای مرکز
-    16: { x: 370, y: 155 },  // گندم زار راست بالا
-    17: { x: 395, y: 185 },  // گندم زار راست پایین
-    18: { x: 150, y: 165 },  // گندم زار مرکز (نزدیک دهکده)
-};
+import { getCoordinatesForFieldType } from '../constants/fieldCoordinates';
 
 const HERO_TRIBE_IMAGE = {
     ROMAN: '/assets/hero/hero-roman.png',
@@ -61,12 +35,35 @@ export default function ResourceFields() {
     const [selectedSlot, setSelectedSlot] = useState(null);
     const [upgrading, setUpgrading] = useState(false);
     const [bgFailed, setBgFailed] = useState(false);
+    const [bgImage, setBgImage] = useState('/assets/bgs/f3-rtl.jpg');
     const [hoveredSlot, setHoveredSlot] = useState(null);
     const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
     const [movements, setMovements] = useState([]);
     const [troops, setTroops] = useState([]);
     const [heroData, setHeroData] = useState(null);
+
+    const fieldType = villageInfo?.field_type || 3;
+    const currentCoordinates = getCoordinatesForFieldType(fieldType);
+
+    useEffect(() => {
+        if (villageInfo?.field_type) {
+            const ft = villageInfo.field_type;
+            setBgImage(ft === 3 ? '/assets/bgs/f3-rtl.jpg' : `/assets/bgs/field-bg-${ft}.jpg`);
+            setBgFailed(false);
+        } else {
+            setBgImage('/assets/bgs/f3-rtl.jpg');
+            setBgFailed(false);
+        }
+    }, [villageInfo]);
+
+    const handleBgError = () => {
+        if (bgImage !== '/assets/bgs/f3-rtl.jpg') {
+            setBgImage('/assets/bgs/f3-rtl.jpg');
+        } else {
+            setBgFailed(true);
+        }
+    };
 
     const fetchBuildings = useCallback(async () => {
         if (!activeVillageId) { setLoading(false); return; }
@@ -170,7 +167,7 @@ export default function ResourceFields() {
         }
     };
 
-    const activeSlots = buildings.filter((b) => DORF1_SLOTS[b.position]);
+    const activeSlots = buildings.filter((b) => currentCoordinates[b.position]);
 
     return (
         <div className="village1">
@@ -184,17 +181,17 @@ export default function ResourceFields() {
                         {/* عکس پس زمینه که با دستور scaleX(-1) برعکس شده است */}
                         {!bgFailed ? (
                             <img
-                                src="/assets/bgs/f3-rtl.jpg"
+                                src={bgImage}
                                 alt="Village Map"
                                 style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 0, transform: 'scaleX(-1)' }}
-                                onError={() => setBgFailed(true)}
+                                onError={handleBgError}
                             />
                         ) : (
                             <div style={{ position: 'absolute', inset: 0, background: '#C3EDAE', zIndex: 0 }} />
                         )}
 
                         {activeSlots.map((b) => {
-                            const coords = DORF1_SLOTS[b.position];
+                            const coords = currentCoordinates[b.position];
                             const isEmpty = b.level === 0 && !b.is_upgrading;
 
                             return (
