@@ -31,7 +31,7 @@ class Command(BaseCommand):
             # 4. خبرچین (Scout)
             {"id": 4, "name": "خبرچین", "tribe": "ROMAN", "attack_power": 0, "defense_infantry": 20, "defense_cavalry": 10,
              "speed": 16, "carry_capacity": 0, "wood_cost": 140, "clay_cost": 160, "iron_cost": 20, "crop_cost": 40,
-             "crop_upkeep": 1, "base_train_time": 1360, "is_siege_weapon": False, "is_settler": False, "is_scout": True},
+             "crop_upkeep": 1, "base_train_time": 1360, "is_siege_weapon": False, "is_settler": False, "is_scout": True, "is_cavalry": True},
             # 5. شوالیه (Equites Imperatoris)
             {"id": 5, "name": "شوالیه", "tribe": "ROMAN", "attack_power": 120, "defense_infantry": 65, "defense_cavalry": 50,
              "speed": 14, "carry_capacity": 100, "wood_cost": 550, "clay_cost": 440, "iron_cost": 320, "crop_cost": 100,
@@ -73,7 +73,7 @@ class Command(BaseCommand):
             # 13. ردياب (Pathfinder)
             {"id": 13, "name": "ردياب", "tribe": "GAUL", "attack_power": 0, "defense_infantry": 20, "defense_cavalry": 10,
              "speed": 17, "carry_capacity": 0, "wood_cost": 170, "clay_cost": 150, "iron_cost": 20, "crop_cost": 40,
-             "crop_upkeep": 1, "base_train_time": 1360, "is_siege_weapon": False, "is_settler": False, "is_scout": True},
+             "crop_upkeep": 1, "base_train_time": 1360, "is_siege_weapon": False, "is_settler": False, "is_scout": True, "is_cavalry": True},
             # 14. رعد (Theutates Thunder)
             {"id": 14, "name": "رعد", "tribe": "GAUL", "attack_power": 90, "defense_infantry": 25, "defense_cavalry": 40,
              "speed": 19, "carry_capacity": 75, "wood_cost": 350, "clay_cost": 450, "iron_cost": 230, "crop_cost": 60,

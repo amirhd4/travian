@@ -411,6 +411,8 @@ export default function VillageCenter() {
                                 const navMap = {
                                     'آکادمی': '/academy',
                                     'پادگان': '/barracks',
+                                    'اصطبل': '/stable',
+                                    'کارگاه': '/workshop',
                                     'آهنگری': '/blacksmith',
                                     'سفارتخانه': '/embassy',
                                     'تالار شهر': '/town-hall',

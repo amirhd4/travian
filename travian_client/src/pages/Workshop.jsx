@@ -27,7 +27,7 @@ function troopTypeBadge(unit) {
     return { label: 'پیاده', color: 'bg-blue-100 text-blue-700' };
 }
 
-export default function Barracks() {
+export default function Workshop() {
     const { resources } = useGameStore();
     const activeVillageId = useGameStore((state) => state.activeVillageId);
     const { lastMessage } = useGameWebSocket();
@@ -37,31 +37,6 @@ export default function Barracks() {
     const [loading, setLoading] = useState(true);
     const [trainQty, setTrainQty] = useState({});
     const [submitting, setSubmitting] = useState(null);
-
-    const [trappedTroops, setTrappedTroops] = useState([]);
-    const [releasingId, setReleasingId] = useState(null);
-
-    const fetchTrapped = useCallback(async () => {
-        try {
-            const { data } = await api.get('combat/trapped-troops/');
-            setTrappedTroops(data);
-        } catch (error) { console.error(error); }
-    }, []);
-
-    useEffect(() => { fetchTrapped(); }, [fetchTrapped]);
-
-    const handleRelease = async (id) => {
-        setReleasingId(id);
-        try {
-            const { data } = await api.post(`combat/trapped-troops/${id}/release/`);
-            alert(data.message);
-            fetchTrapped();
-        } catch (error) {
-            alert(error.response?.data?.error || 'خطا در آزادسازی نیرو');
-        } finally {
-            setReleasingId(null);
-        }
-    };
 
     const fetchCatalog = useCallback(async () => {
         try {
@@ -74,7 +49,7 @@ export default function Barracks() {
     const fetchQueue = useCallback(async () => {
         if (!activeVillageId) return;
         try {
-            const { data } = await api.get('combat/barracks/queue/', { params: { village_id: activeVillageId, building_type: 'barracks' } });
+            const { data } = await api.get('combat/barracks/queue/', { params: { village_id: activeVillageId, building_type: 'workshop' } });
             setQueue(data);
         } catch (error) { console.error(error); }
     }, [activeVillageId]);
@@ -123,21 +98,21 @@ export default function Barracks() {
         }
     };
 
-    if (loading) return <PageShell><LoadingState label="در حال بارگذاری پادگان..." /></PageShell>;
+    if (loading) return <PageShell><LoadingState label="در حال بارگذاری کارگاه..." /></PageShell>;
 
     return (
         <PageShell maxWidth="max-w-4xl">
             <div className="panel">
                 <div className="panel-header">
-                    <span className="panel-title">⚔️ پادگان</span>
+                    <span className="panel-title">🎯 کارگاه</span>
                 </div>
                 <div className="panel-body">
                     <p className="text-ink-500 text-xs mb-5">
-                        هر نیرویی که آموزش دهید بلافاصله وارد صف می‌شود و پس از اتمام زمان آموزش به‌طور خودکار به نیروهای دهکده اضافه می‌شود.
+                        در اینجا سلاح‌های محاصره سنگین (دژکوب و منجنیق) را آموزش می‌دهید. پس از اتمام زمان آموزش، سلاح‌ها به دهکده اضافه می‌شوند.
                     </p>
 
                     <div className="space-y-3">
-                        {catalog.filter(unit => !unit.is_cavalry && !unit.is_siege_weapon).map((unit) => {
+                        {catalog.filter(unit => unit.is_siege_weapon).map((unit) => {
                             const maxUnits = calculateMaxPossible(unit.costs);
                             const quantity = trainQty[unit.id] || 0;
                             const canTrain = unit.is_researched || unit.is_basic;
@@ -164,9 +139,6 @@ export default function Barracks() {
                                         </p>
                                         <div className="flex gap-1.5 mt-1 flex-wrap">
                                             <span className="badge-gold">🏗️ {unit.required_building}</span>
-                                            {(unit.is_chief || unit.is_settler) && (
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">اقامتگاه/قصر</span>
-                                            )}
                                             {unit.required_academy_level > 0 && (
                                                 <span className="badge-gold">🎓 آکادمی سطح {unit.required_academy_level}</span>
                                             )}
@@ -220,10 +192,10 @@ export default function Barracks() {
             </div>
 
             <div className="panel">
-                <div className="panel-header"><span className="panel-title">⏳ صف آموزش فعلی</span></div>
+                <div className="panel-header"><span className="panel-title">⏳ صف آموزش کارگاه فعلی</span></div>
                 <div className="panel-body">
                     {queue.length === 0 ? (
-                        <EmptyState icon="🏋️" title="در حال حاضر هیچ نیرویی در حال آموزش نیست." />
+                        <EmptyState icon="🎯" title="در حال حاضر هیچ سلاح محاصره‌ای در حال آموزش نیست." />
                     ) : (
                         <div className="space-y-2">
                             {queue.map((item) => (
@@ -236,24 +208,6 @@ export default function Barracks() {
                     )}
                 </div>
             </div>
-            {trappedTroops.length > 0 && (
-                <div className="panel">
-                    <div className="panel-header"><span className="panel-title">🪤 نیروهای اسیرشده در تله</span></div>
-                    <div className="panel-body space-y-2">
-                        {trappedTroops.map((t) => (
-                            <div key={t.id} className="flex items-center justify-between border border-parchment-300 bg-parchment-50 rounded-lg p-3">
-                                <div>
-                                    <p className="font-bold text-sm text-ink-800">{t.count}x {t.troop_name}</p>
-                                    <p className="text-xs text-ink-500">مالک اصلی: {t.original_owner} · دهکده‌ی تله: {t.trapper_village_name}</p>
-                                </div>
-                                <button onClick={() => handleRelease(t.id)} disabled={releasingId === t.id} className="btn-ghost text-xs !px-3 !py-1.5">
-                                    {releasingId === t.id ? '...' : '🕊️ آزادسازی'}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
         </PageShell>
     );
 }
