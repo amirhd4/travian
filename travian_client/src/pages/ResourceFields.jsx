@@ -49,7 +49,7 @@ export default function ResourceFields() {
     useEffect(() => {
         if (villageInfo?.field_type) {
             const ft = villageInfo.field_type;
-            setBgImage(ft === 3 ? '/assets/bgs/f3-rtl.jpg' : `/assets/bgs/field-bg-${ft}.jpg`);
+            setBgImage(ft === 3 ? '/assets/bgs/f3-rtl.jpg' : `/assets/bgs/f${ft}-rtl.jpg`);
             setBgFailed(false);
         } else {
             setBgImage('/assets/bgs/f3-rtl.jpg');
