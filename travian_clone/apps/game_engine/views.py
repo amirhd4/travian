@@ -293,6 +293,19 @@ class FoundVillageView(APIView):
         target_y = request.data.get('target_y')
         name = request.data.get('name') or 'دهکده جدید'
 
+        # Server-side validation of target coordinates boundaries
+        from apps.game_engine.services import MAP_SEARCH_RADIUS
+        if target_x not in (None, '') or target_y not in (None, ''):
+            try:
+                tx = int(target_x)
+                ty = int(target_y)
+                if abs(tx) > MAP_SEARCH_RADIUS or abs(ty) > MAP_SEARCH_RADIUS:
+                    return Response({
+                        "error": f"مختصات هدف خارج از محدوده نقشه است (حداکثر شعاع: {MAP_SEARCH_RADIUS})."
+                    }, status=400)
+            except (ValueError, TypeError):
+                return Response({"error": "مختصات نامعتبر است."}, status=400)
+
         try:
             with transaction.atomic():
                 try:
@@ -527,6 +540,11 @@ class UpgradeBuildingView(APIView):
             if building.is_upgrading:
                 return Response({"error": "این ساختمان در حال حاضر در حال ارتقا است."}, status=400)
 
+            # Enforce strict position boundaries:
+            # Positions 1-18 are exclusively for RESOURCE category buildings
+            # Positions 19-41 are exclusively for non-RESOURCE category buildings (infrastructure, military, wall, etc.)
+            pos_int = int(position)
+
             # ─── ساخت جدید روی محل ساخت ───
             is_empty_slot = (building.level == 0 and building.building_type.name == EMPTY_SLOT_NAME)
 
@@ -536,6 +554,17 @@ class UpgradeBuildingView(APIView):
                     new_building_type = BuildingType.objects.get(id=building_type_id)
                 except BuildingType.DoesNotExist:
                     return Response({"error": "نوع ساختمان نامعتبر است."}, status=400)
+
+                if pos_int <= 18 and new_building_type.category != 'RESOURCE':
+                    return Response(
+                        {"error": "در اسلات‌های ۱ تا ۱۸ فقط می‌توان مزارع منابع ساخت."},
+                        status=400
+                    )
+                if pos_int >= 19 and new_building_type.category == 'RESOURCE':
+                    return Response(
+                        {"error": "در اسلات‌های ۱۹ به بعد نمی‌توان مزارع منابع ساخت."},
+                        status=400
+                    )
 
                 if new_building_type.name in {"شگفتی جهان"}:
                     return Response(
@@ -631,6 +660,17 @@ class UpgradeBuildingView(APIView):
             if building.building_type.name == EMPTY_SLOT_NAME:
                 return Response(
                     {"error": "این محل ساخت است. لطفاً ابتدا نوع ساختمان را انتخاب کنید."},
+                    status=400
+                )
+
+            if pos_int <= 18 and building.building_type.category != 'RESOURCE':
+                return Response(
+                    {"error": "در اسلات‌های ۱ تا ۱۸ فقط مزارع منابع قابل ارتقا هستند."},
+                    status=400
+                )
+            if pos_int >= 19 and building.building_type.category == 'RESOURCE':
+                return Response(
+                    {"error": "در اسلات‌های ۱۹ به بعد مزارع منابع وجود ندارند."},
                     status=400
                 )
 

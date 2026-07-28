@@ -215,12 +215,17 @@ def _create_default_buildings(village, distribution_key='NORMAL', tribe='ROMAN')
         'CROPPER_9': 1,
         'CROPPER_15': 6,
     }
-    field_type = distribution_map.get(distribution_key, 3)
+    if isinstance(distribution_key, str) and distribution_key in distribution_map:
+        field_type = distribution_map[distribution_key]
+    elif isinstance(distribution_key, int) and 1 <= distribution_key <= 12:
+        field_type = distribution_key
+    else:
+        field_type = 3
     village.field_type = field_type
     village.save(update_fields=['field_type'])
 
     position = 1
-    field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
+    field_defs = FIELD_DISTRIBUTIONS.get(field_type, FIELD_DISTRIBUTIONS['NORMAL'])
     for type_name, count in field_defs.items():
         building_type = _get_or_create_building_type(type_name, category='RESOURCE')
         for _ in range(count):
@@ -403,12 +408,17 @@ def _create_resource_fields_only(village, distribution_key='NORMAL'):
         'CROPPER_9': 1,
         'CROPPER_15': 6,
     }
-    field_type = distribution_map.get(distribution_key, 3)
+    if isinstance(distribution_key, str) and distribution_key in distribution_map:
+        field_type = distribution_map[distribution_key]
+    elif isinstance(distribution_key, int) and 1 <= distribution_key <= 12:
+        field_type = distribution_key
+    else:
+        field_type = 3
     village.field_type = field_type
     village.save(update_fields=['field_type'])
 
     position = 1
-    field_defs = FIELD_DISTRIBUTIONS.get(distribution_key, FIELD_DISTRIBUTIONS['NORMAL'])
+    field_defs = FIELD_DISTRIBUTIONS.get(field_type, FIELD_DISTRIBUTIONS['NORMAL'])
     for type_name, count in field_defs.items():
         building_type = _get_or_create_building_type(type_name, category='RESOURCE')
         for _ in range(count):
