@@ -456,7 +456,7 @@ export default function PositionDetails() {
                 </tr>
                 {data.owner_name && (
                   <tr>
-                    <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee', color: '#666' }}>دهکده مالک</td>
+                    <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee', color: '#666' }}>مالک دهکده</td>
                     <td style={{ padding: '4px 8px', borderBottom: '1px solid #eee' }}>{data.owner_name}</td>
                   </tr>
                 )}

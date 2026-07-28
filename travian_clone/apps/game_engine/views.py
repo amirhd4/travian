@@ -3182,7 +3182,8 @@ class OasisReleaseView(APIView):
         from .models import Oasis
         oasis_id = request.data.get('oasis_id')
         try:
-            oasis = Oasis.objects.select_for_update().get(id=oasis_id)
+            with transaction.atomic():
+                oasis = Oasis.objects.select_for_update().get(id=oasis_id)
         except (Oasis.DoesNotExist, ValueError, TypeError):
             return Response({"error": "آبادی یافت نشد."}, status=404)
 
