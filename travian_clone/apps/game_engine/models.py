@@ -6,42 +6,44 @@ from django.utils import timezone
 
 class ServerSetting(models.Model):
     # سرعت کلی تولید منابع
-    server_speed = models.BigIntegerField(default=1)
+    server_speed = models.BigIntegerField(default=1, verbose_name="سرعت سرور")
     # سرعت حرکت نیرو روی نقشه (جابه‌جایی/حمله/غارت/بازگشت)
-    troop_speed = models.BigIntegerField(default=1)
+    troop_speed = models.BigIntegerField(default=1, verbose_name="سرعت نیروها")
     # ✅ سرعت ساخت‌وساز ساختمان‌ها (قبلا تعریف شده بود ولی هیچ‌جا استفاده نمی‌شد)
-    building_speed = models.BigIntegerField(default=1)
+    building_speed = models.BigIntegerField(default=1, verbose_name="سرعت ساخت‌وساز")
     # ✅ جدید: سرعت آموزش نیرو در پادگان/اصطبل/کارگاه (کاملا جدا از سرعت حرکت و ساخت‌وساز)
-    troop_training_speed = models.BigIntegerField(default=1)
+    troop_training_speed = models.BigIntegerField(default=1, verbose_name="سرعت آموزش نیرو")
 
-    duration_days = models.IntegerField(default=365)
-    is_active = models.BooleanField(default=True)
-    start_date = models.DateTimeField(auto_now_add=True)
-    ww_unlocked = models.BooleanField(default=False)
+    duration_days = models.IntegerField(default=365, verbose_name="طول دوره سرور (روز)")
+    is_active = models.BooleanField(default=True, verbose_name="فعال")
+    start_date = models.DateTimeField(auto_now_add=True, verbose_name="تاریخ شروع")
+    ww_unlocked = models.BooleanField(default=False, verbose_name="شگفتی جهان آزاد شده")
 
-    artifacts_unlocked = models.BooleanField(default=False)
-    artifact_release_duration_percent = models.FloatField(default=50)
+    artifacts_unlocked = models.BooleanField(default=False, verbose_name="کتیبه‌ها آزاد شده‌اند")
+    artifact_release_duration_percent = models.FloatField(default=50, verbose_name="درصد زمان آزادسازی کتیبه‌ها")
 
     # ✅ ظرفیت پیش‌فرض انبار/سیلو برای دهکده‌های جدید این سرور
-    starting_max_storage = models.IntegerField(default=800)
-    starting_max_granary = models.IntegerField(default=800)
+    starting_max_storage = models.IntegerField(default=800, verbose_name="ظرفیت اولیه انبار")
+    starting_max_granary = models.IntegerField(default=800, verbose_name="ظرفیت اولیه سیلو")
 
     # ✅ تنظیمات دهکده‌های فارم (تعداد و ضریب تولید، هر دو قابل تنظیم توسط ادمین موقع نصب سرور)
-    farm_village_count = models.IntegerField(default=20)
-    farm_village_multiplier = models.IntegerField(default=1)
-    farm_production_per_hour = models.IntegerField(default=1000000, help_text="تولید هر منبع در ساعت برای هر دهکده فارم")
+    farm_village_count = models.IntegerField(default=20, verbose_name="تعداد دهکده‌های فارم")
+    farm_village_multiplier = models.IntegerField(default=1, verbose_name="ضریب تولید دهکده‌های فارم")
+    farm_production_per_hour = models.IntegerField(default=1000000, help_text="تولید هر منبع در ساعت برای هر دهکده فارم", verbose_name="تولید ساعتی فارم")
 
     # ✅ مدت زمان محافظت تازه‌واردان در برابر حمله/غارت/تسخیر (به روز)، قابل تنظیم برای هر سرور
-    new_player_protection_days = models.IntegerField(default=7)
+    new_player_protection_days = models.IntegerField(default=7, verbose_name="روزهای حمایت از تازه‌واردین")
 
     # وضعیت پایان بازی
-    is_finished = models.BooleanField(default=False)
-    finished_at = models.DateTimeField(null=True, blank=True)
+    is_finished = models.BooleanField(default=False, verbose_name="سرور پایان یافته")
+    finished_at = models.DateTimeField(null=True, blank=True, verbose_name="زمان پایان سرور")
     winner_player = models.ForeignKey(
-        'authentication.Player', on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
+        'authentication.Player', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        verbose_name="بازیکن برنده"
     )
     winner_alliance = models.ForeignKey(
-        'Alliance', on_delete=models.SET_NULL, null=True, blank=True, related_name='+'
+        'Alliance', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+        verbose_name="اتحاد برنده"
     )
 
     # عناوین پایان بازی
@@ -58,11 +60,15 @@ class ServerSetting(models.Model):
         verbose_name="برترین مدافع"
     )
 
-    culture_point_speed = models.BigIntegerField(default=1)
+    culture_point_speed = models.BigIntegerField(default=1, verbose_name="سرعت تولید امتیاز فرهنگی")
 
     # apps/game_engine/models.py -> class ServerSetting
-    catapult_unlocked = models.BooleanField(default=False)
-    catapult_release_duration_percent = models.FloatField(default=30)
+    catapult_unlocked = models.BooleanField(default=False, verbose_name="منجنیق آزاد شده")
+    catapult_release_duration_percent = models.FloatField(default=30, verbose_name="درصد زمان آزادسازی منجنیق")
+
+    class Meta:
+        verbose_name = "تنظیمات سرور"
+        verbose_name_plural = "تنظیمات سرور"
 
 
 class Village(models.Model):
@@ -382,8 +388,14 @@ class Oasis(models.Model):
 
     @property
     def bonus_display(self):
-        parts = [f"{r} {p}%" for r, p in self.bonuses]
-        return " + ".join(parts) if parts else "None"
+        translations = {
+            'wood': 'چوب',
+            'clay': 'خشت',
+            'iron': 'آهن',
+            'crop': 'گندم'
+        }
+        parts = [f"{translations.get(r, r)} {p}%" for r, p in self.bonuses]
+        return " + ".join(parts) if parts else "هیچ"
 
 
 # Maps oasis_type (1-12) → list of (resource, percent) tuples

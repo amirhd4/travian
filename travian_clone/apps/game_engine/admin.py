@@ -27,6 +27,11 @@ class ServerSettingAdmin(admin.ModelAdmin):
         'starting_max_storage', 'starting_max_granary',
         'farm_village_count', 'farm_village_multiplier', 'farm_production_per_hour',
     )
+    readonly_fields = (
+        'start_date', 'is_finished', 'finished_at', 'winner_player',
+        'winner_alliance', 'greatest_empire_player', 'top_attacker_player',
+        'top_defender_player'
+    )
 
 
 @admin.register(Artifact)
