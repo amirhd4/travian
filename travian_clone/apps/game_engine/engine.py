@@ -6,7 +6,7 @@ from apps.combat.models import TroopType, VillageTroop
 from .utils import recalculate_village_capacities
 
 
-def schedule_game_event(village_id, event_type, base_duration_seconds, details):
+def schedule_game_event(village_id, event_type, base_duration_seconds, details, run_time=None):
     # ✅ FIX: قبلا ServerSetting.objects.get(is_active=True) بود؛
     # نبود سرور فعال یا وجود بیش از یکی، کل فلوی تکمیل ساخت/آموزش را کرش می‌کرد.
     settings = ServerSetting.objects.filter(is_active=True).first()
@@ -22,7 +22,13 @@ def schedule_game_event(village_id, event_type, base_duration_seconds, details):
 
     actual_duration = base_duration_seconds / max(1, speed)
 
-    if actual_duration <= 0.1:
+    if run_time:
+        now_utc = datetime.now(timezone.utc)
+        if run_time <= now_utc:
+            execute_immediate_event(village_id, event_type, details)
+        else:
+            process_game_event.apply_async(args=[village_id, event_type, details], eta=run_time)
+    elif actual_duration <= 0.1:
         # حالت سرعت نجومی: اجرای آنی
         execute_immediate_event(village_id, event_type, details)
     else:

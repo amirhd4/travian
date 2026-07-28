@@ -9,6 +9,8 @@ import WorldWonder from "./pages/WorldWonder.jsx";
 import Messages from "./pages/Messages.jsx";
 import AdminMessages from "./pages/AdminMessages.jsx";
 import Barracks from "./pages/Barracks.jsx";
+import Stable from "./pages/Stable.jsx";
+import Workshop from "./pages/Workshop.jsx";
 import Academy from "./pages/Academy.jsx";
 import Embassy from "./pages/Embassy.jsx";
 import TownHall from "./pages/TownHall.jsx";
@@ -135,6 +137,8 @@ function App() {
                     <Route path="/messages" element={<Messages />} />
                     <Route path="/admin/messages" element={<AdminMessages />} />
                     <Route path="/barracks" element={<Barracks />} />
+                    <Route path="/stable" element={<Stable />} />
+                    <Route path="/workshop" element={<Workshop />} />
                     <Route path="/academy" element={<Academy />} />
                     <Route path="/embassy" element={<Embassy />} />
                     <Route path="/town-hall" element={<TownHall />} />

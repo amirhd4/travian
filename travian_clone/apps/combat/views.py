@@ -143,12 +143,38 @@ class BarracksTrainView(APIView):
                 from .hero_utils import get_hero_training_speed_bonus_percent  # ✅ جدید
 
                 raw_duration = troop_info.base_train_time * quantity
+
+                # Apply level-based speed multiplier
+                building_name = "کارگاه" if troop_info.is_siege_weapon else ("اصطبل" if troop_info.is_cavalry else "پادگان")
+                building = VillageBuilding.objects.filter(village=village, building_type__name=building_name).first()
+                level = building.level if building else 1
+                level_speed_multiplier = 0.9 ** (max(1, level) - 1)
+                duration_after_level = raw_duration * level_speed_multiplier
+
                 artifact_multiplier = get_training_speed_multiplier(request.user)
 
                 hero_training_bonus_percent = get_hero_training_speed_bonus_percent(request.user, troop_info)  # ✅ جدید
                 hero_training_multiplier = 1 + (hero_training_bonus_percent / 100)
 
-                duration_after_artifact = raw_duration / artifact_multiplier / hero_training_multiplier  # ✅ به‌روزشده
+                duration_after_modifiers = duration_after_level / artifact_multiplier / hero_training_multiplier  # ✅ به‌روزشده
+
+                # Find the sequential queue's start time for this specific building type
+                if troop_info.is_siege_weapon:
+                    last_item = TrainingQueue.objects.filter(
+                        village=village, is_completed=False, troop_type__is_siege_weapon=True
+                    ).order_by('-finishes_at').first()
+                elif troop_info.is_cavalry:
+                    last_item = TrainingQueue.objects.filter(
+                        village=village, is_completed=False, troop_type__is_cavalry=True
+                    ).order_by('-finishes_at').first()
+                else:
+                    last_item = TrainingQueue.objects.filter(
+                        village=village, is_completed=False, troop_type__is_cavalry=False, troop_type__is_siege_weapon=False
+                    ).order_by('-finishes_at').first()
+
+                start_time = last_item.finishes_at if last_item else timezone.now()
+                if start_time < timezone.now():
+                    start_time = timezone.now()
 
                 # ✅ FIX همزمان: قبلا finishes_at (شمارش معکوس UI) اصلا سرعت
                 # آموزش سرور (troop_training_speed) را لحاظ نمی‌کرد؛ فقط زمان
@@ -157,8 +183,8 @@ class BarracksTrainView(APIView):
                 # بازیکن اشتباه (خیلی بیشتر از واقعیت) بود.
                 server_settings = ServerSetting.objects.filter(is_active=True).first()
                 training_speed = (server_settings.troop_training_speed if server_settings else 1) or 1
-                display_duration = duration_after_artifact / training_speed
-                finishes_at = timezone.now() + datetime.timedelta(seconds=max(0.1, display_duration))
+                display_duration = duration_after_modifiers / training_speed
+                finishes_at = start_time + datetime.timedelta(seconds=max(0.1, display_duration))
 
                 queue_item = TrainingQueue.objects.create(
                     village=village,
@@ -170,20 +196,20 @@ class BarracksTrainView(APIView):
                 GameLog.objects.create(
                     village=village,
                     log_type='BUILDING',
-                    description=f"آموزش {quantity} سرباز {troop_info.name} در پادگان آغاز شد."
+                    description=f"آموزش {quantity} سرباز {troop_info.name} در {building_name} آغاز شد."
                 )
 
                 transaction.on_commit(lambda: schedule_game_event(
                     village_id=village.id,
                     event_type="TROOP_RECRUITMENT",
-                    base_duration_seconds=duration_after_artifact,
-                    # ✅ اثر کتیبه از قبل اعمال شده؛ سرعت سرور داخل خودِ schedule_game_event اعمال می‌شود
+                    base_duration_seconds=duration_after_modifiers,
+                    run_time=finishes_at,
                     details={"troop_id": troop_info.id, "count": quantity, "queue_id": queue_item.id}
                 ))
 
             return Response({
                 "message": (
-                    f"آموزش {quantity} {troop_info.name} در صف پادگان قرار گرفت "
+                    f"آموزش {quantity} {troop_info.name} در صف {building_name} قرار گرفت "
                     f"و پس از اتمام، به‌طور خودکار به نیروهای دهکده اضافه می‌شود."
                 )
             })
@@ -275,12 +301,21 @@ class TrainingQueueView(APIView):
 
     def get(self, request):
         village_id = request.query_params.get('village_id')
+        building_type = request.query_params.get('building_type') # "barracks", "stable", "workshop"
         try:
             village = Village.objects.get(id=village_id, player=request.user)
         except (Village.DoesNotExist, ValueError, TypeError):
             return Response({"error": "دهکده یافت نشد یا متعلق به شما نیست."}, status=404)
 
         queue = TrainingQueue.objects.filter(village=village, is_completed=False).select_related('troop_type')
+
+        if building_type == "stable":
+            queue = queue.filter(troop_type__is_cavalry=True)
+        elif building_type == "workshop":
+            queue = queue.filter(troop_type__is_siege_weapon=True)
+        elif building_type == "barracks":
+            queue = queue.filter(troop_type__is_cavalry=False, troop_type__is_siege_weapon=False)
+
         now = timezone.now()
         return Response([
             {
@@ -289,6 +324,8 @@ class TrainingQueueView(APIView):
                 "count": q.count,
                 "finishes_at": q.finishes_at,
                 "remaining_seconds": max(0, int((q.finishes_at - now).total_seconds())),
+                "is_cavalry": q.troop_type.is_cavalry,
+                "is_siege_weapon": q.troop_type.is_siege_weapon,
             }
             for q in queue
         ])
