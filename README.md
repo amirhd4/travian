@@ -71,7 +71,7 @@ If you just want to get the project running as quickly as possible (full details
 
 ```bash
 # 1) Clone the repository
-git clone <repository-url> travian
+git clone https://github.com/amirhd4/travian.git travian
 cd travian
 
 # 2) Backend
@@ -115,7 +115,7 @@ Then open your browser and navigate to the URL displayed by Vite (default: `http
 ### Step 1 - Clone the Repository
 
 ```bash
-git clone <repository-url> travian
+git clone https://github.com/amirhd4/travian.git travian
 cd travian
 ```
 
@@ -360,7 +360,7 @@ sudo apt install -y certbot python3-certbot-nginx
 ```bash
 sudo mkdir -p /opt/travian
 sudo chown $USER:$USER /opt/travian
-git clone <repository-url> /opt/travian
+git clone https://github.com/amirhd4/travian.git /opt/travian
 cd /opt/travian
 ```
 ### Step 3 - Set Up PostgreSQL and Redis
