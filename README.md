@@ -1,4 +1,4 @@
-# Travian 🏛️
+# Travian Game
 
 A complete clone of the browser-based game Travian with a separated backend and frontend architecture:
 
